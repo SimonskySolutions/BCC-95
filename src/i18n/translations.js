@@ -368,6 +368,35 @@ const en = {
 
   // Products
   'products.hint': 'Select a product to open the workspace.',
+  'products.newInquiry': '+ New inquiry',
+  'products.customer': 'Customer',
+
+  // New inquiry flow (inquiry-first product creation)
+  'newInquiry.title': 'New inquiry',
+  'newInquiry.subtitle':
+    'Creates the client and product records and starts the Inquiry & Offering phase in one step.',
+  'newInquiry.section.customer': 'Customer',
+  'newInquiry.section.product': 'Product',
+  'newInquiry.section.inquiry': 'Inquiry details',
+  'newInquiry.customer.new': 'New customer',
+  'newInquiry.customer.existing': 'Existing customer',
+  'newInquiry.existingClient': 'Select customer',
+  'newInquiry.clientName': 'Customer / company name',
+  'newInquiry.contactName': 'Contact name',
+  'newInquiry.contactEmail': 'Contact email',
+  'newInquiry.region': 'Region',
+  'newInquiry.productName': 'Product name',
+  'newInquiry.productDescription': 'Product description',
+  'newInquiry.quantity': 'Requested quantity',
+  'newInquiry.submit': 'Create inquiry',
+  'newInquiry.validation': 'Please fill in the highlighted fields.',
+  'newInquiry.error.missing_client_name': 'Customer name is required.',
+  'newInquiry.error.missing_product_name': 'Product name is required.',
+  'newInquiry.error.missing_channel': 'Inquiry channel is required.',
+  'newInquiry.error.client_not_found': 'Selected customer was not found.',
+  'newInquiry.error.inquiry_failed': 'Inquiry could not be registered.',
+
+  'audit.action.product.created': 'Product created',
 
   // Product workspace page
   'pw.back': '← Back to products',
@@ -567,7 +596,7 @@ const en = {
   'pws.timeline': 'Process timeline',
 
   // Lifecycle phase labels (EN defaults)
-  'lifecycle.phase.concept': 'Inquiry',
+  'lifecycle.phase.concept': 'Inquiry & Offering',
   'lifecycle.phase.design': 'Implementation',
   'lifecycle.phase.prototype': 'Zero series',
   'lifecycle.phase.production': 'Serial production',
@@ -576,6 +605,7 @@ const en = {
 
   // Common extras
   'common.cancel': 'Cancel',
+  'common.close': 'Close',
   'common.remove': 'Remove',
 
   // Inquiry
@@ -1131,6 +1161,32 @@ const bg = {
   'analytics.simulateBtn': 'Симулирай приключване на задача „калкулация“ (демо)',
 
   'products.hint': 'Изберете продукт, за да отворите работното пространство.',
+  'products.newInquiry': '+ Ново запитване',
+  'products.customer': 'Клиент',
+
+  'newInquiry.title': 'Ново запитване',
+  'newInquiry.subtitle':
+    'Създава клиент и продукт и стартира фаза „Запитване и офериране“ на една стъпка.',
+  'newInquiry.section.customer': 'Клиент',
+  'newInquiry.section.product': 'Продукт',
+  'newInquiry.section.inquiry': 'Детайли на запитването',
+  'newInquiry.customer.new': 'Нов клиент',
+  'newInquiry.customer.existing': 'Съществуващ клиент',
+  'newInquiry.existingClient': 'Избери клиент',
+  'newInquiry.clientName': 'Клиент / Фирма',
+  'newInquiry.contactName': 'Лице за контакт',
+  'newInquiry.contactEmail': 'Имейл за контакт',
+  'newInquiry.region': 'Регион',
+  'newInquiry.productName': 'Име на продукт',
+  'newInquiry.productDescription': 'Описание на продукт',
+  'newInquiry.quantity': 'Искано количество',
+  'newInquiry.submit': 'Създай запитване',
+  'newInquiry.validation': 'Моля попълнете маркираните полета.',
+  'newInquiry.error.missing_client_name': 'Името на клиента е задължително.',
+  'newInquiry.error.missing_product_name': 'Името на продукта е задължително.',
+  'newInquiry.error.missing_channel': 'Каналът на запитването е задължителен.',
+  'newInquiry.error.client_not_found': 'Избраният клиент не е намерен.',
+  'newInquiry.error.inquiry_failed': 'Запитването не може да бъде регистрирано.',
 
   'pw.back': '← Назад към продуктите',
   'pw.phaseControl': 'Управление на фаза',
@@ -1308,7 +1364,7 @@ const bg = {
   'pws.recentActivity': 'Скорошна активност',
   'pws.timeline': 'Хронология на процеса',
 
-  'lifecycle.phase.concept': 'Запитване',
+  'lifecycle.phase.concept': 'Запитване и офериране',
   'lifecycle.phase.design': 'Внедряване',
   'lifecycle.phase.prototype': 'Нулева серия',
   'lifecycle.phase.production': 'Серийно производство',
@@ -1316,6 +1372,7 @@ const bg = {
   'lifecycle.phase.released': 'Приключен',
 
   'common.cancel': 'Отказ',
+  'common.close': 'Затвори',
   'common.remove': 'Премахни',
 
   'inquiry.title': 'Прием на запитване',
@@ -1451,6 +1508,7 @@ const bg = {
   'send.error': 'Неуспешно изпращане',
 
   'audit.empty': 'Няма записи в одит-дневника.',
+  'audit.action.product.created': 'Създаден продукт',
   'audit.action.inquiry.received': 'Получено запитване',
   'audit.action.inquiry.intakeComplete': 'Приемът е завършен',
   'audit.action.inquiry.feasibilityRecorded': 'Изпълнимостта е оценена',

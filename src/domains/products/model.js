@@ -10,6 +10,7 @@
  * @property {ProductStatus} status
  * @property {string} [description]
  * @property {string} lifecyclePhaseId — key into lifecycle phase catalog
+ * @property {string} [customerId]     — owning CRM client; products are typically 1:1 with a customer
  */
 
 /** @type {ProductStatus[]} */

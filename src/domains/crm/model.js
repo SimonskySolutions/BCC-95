@@ -5,6 +5,8 @@
  * @property {string} segment
  * @property {string} region
  * @property {string} [notes]
+ * @property {string} [contactName]
+ * @property {string} [contactEmail]
  */
 
 /**
