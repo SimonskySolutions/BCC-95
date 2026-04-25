@@ -1,0 +1,18 @@
+export const ERP_NAV_ITEMS = [
+  { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'LayoutDashboard' },
+  { id: 'products', labelKey: 'nav.products', icon: 'Package' },
+  { id: 'tasks', labelKey: 'nav.tasks', icon: 'ClipboardList' },
+  { id: 'planning', labelKey: 'nav.planning', icon: 'CalendarDays' },
+  { id: 'manufacturing', labelKey: 'nav.manufacturing', icon: 'Factory' },
+  { id: 'machines', labelKey: 'nav.machines', icon: 'Cpu' },
+  { id: 'purchase', labelKey: 'nav.purchase', icon: 'ShoppingCart' },
+  { id: 'shipping', labelKey: 'nav.shipping', icon: 'Truck' },
+  { id: 'people', labelKey: 'nav.people', icon: 'Users' },
+  { id: 'quality', labelKey: 'nav.quality', icon: 'BadgeCheck' },
+  { id: 'analytics', labelKey: 'nav.analytics', icon: 'BarChart3' },
+  { id: 'reports', labelKey: 'nav.reports', icon: 'FileBarChart2' },
+  { id: 'ai-agents', labelKey: 'nav.aiAgents', icon: 'Bot' },
+  { id: 'crm', labelKey: 'nav.crm', icon: 'ContactRound' },
+  { id: 'documentation', labelKey: 'nav.documentation', icon: 'BookText' },
+  { id: 'settings', labelKey: 'nav.settings', icon: 'Settings' },
+]

@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, "Segoe UI", Roboto, sans-serif;
+  background: #f3f6fb;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.vsm-content h2,
+.vsm-content h3,
+.vsm-content h4,
+.vsm-content h5 {
+  margin: 1rem 0 0.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.vsm-content p,
+.vsm-content li {
+  color: #334155;
+  line-height: 1.72;
+  font-size: 0.95rem;
+}
+
+.vsm-content ul {
+  margin: 0.5rem 0 1rem 1.25rem;
+  list-style: disc;
+}
+
+.vsm-content .step-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.vsm-content .step-item.bar {
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.vsm-content .step-item.bar:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.vsm-content .step-item.detail {
+  display: none;
+  background: #ffffff;
+}
+
+.vsm-content .step-item.detail.open {
+  display: block;
+}
+
+.vsm-content .step-item.bar.open {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.vsm-content .step-item.collapsible {
+  cursor: pointer;
+}
+
+.vsm-content .step-item.collapsible .collapsible-body {
+  display: none;
+}
+
+.vsm-content .step-item.collapsible.open {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.vsm-content .step-item.collapsible.open .collapsible-body {
+  display: block;
+}
+
+.vsm-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+
+.vsm-content th,
+.vsm-content td {
+  border: 1px solid #e2e8f0;
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.vsm-content th {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+}
+
+.vsm-content--dense p,
+.vsm-content--dense li {
+  line-height: 1.55;
+  font-size: 0.88rem;
+}
+
+.vsm-content--dense .step-item {
+  padding: 0.6rem;
+}

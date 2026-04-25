@@ -1,0 +1,226 @@
+import { useMemo, useState } from 'react'
+import Sidebar from './components/Sidebar.jsx'
+import Header from './components/Header.jsx'
+import { useLanguage } from './i18n/useLanguage.js'
+import { getMockDatabase } from './data/mockDatabase.js'
+import DashboardPage from './pages/DashboardPage.jsx'
+import ProductsPage from './pages/ProductsPage.jsx'
+import ProductWorkspacePage from './pages/ProductWorkspacePage.jsx'
+import MyTasksPage from './pages/MyTasksPage.jsx'
+import TeamWorkloadPage from './pages/TeamWorkloadPage.jsx'
+import ManufacturingPage from './pages/ManufacturingPage.jsx'
+import MachinesPage from './pages/MachinesPage.jsx'
+import MachineProfilePage from './pages/MachineProfilePage.jsx'
+import PeoplePage from './pages/PeoplePage.jsx'
+import QualityPage from './pages/QualityPage.jsx'
+import AnalyticsPage from './pages/AnalyticsPage.jsx'
+import PlanningPage from './pages/PlanningPage.jsx'
+import DocumentationPage from './pages/DocumentationPage.jsx'
+import SettingsPage from './pages/SettingsPage.jsx'
+import PurchasePage from './pages/PurchasePage.jsx'
+import ShippingPage from './pages/ShippingPage.jsx'
+import CRMPage from './pages/CRMPage.jsx'
+import ClientProfilePage from './pages/ClientProfilePage.jsx'
+import AiAgentsPage from './pages/AiAgentsPage.jsx'
+import ReportsPage from './pages/ReportsPage.jsx'
+import OfferAcceptancePage from './pages/public/OfferAcceptancePage.jsx'
+import { ERP_NAV_ITEMS } from './config/erpNav.js'
+
+const PAGE_META_KEYS = {
+  dashboard: { titleKey: 'page.dashboard.title', subtitleKey: 'page.dashboard.subtitle' },
+  products: { titleKey: 'page.products.title', subtitleKey: 'page.products.subtitle' },
+  'product-workspace': {
+    titleKey: 'page.productWorkspace.title',
+    subtitleKey: 'page.productWorkspace.subtitle',
+  },
+  tasks: { titleKey: 'page.tasks.title', subtitleKey: 'page.tasks.subtitle' },
+  'team-workload': { titleKey: 'page.teamWorkload.title', subtitleKey: 'page.teamWorkload.subtitle' },
+  planning: { titleKey: 'page.planning.title', subtitleKey: 'page.planning.subtitle' },
+  manufacturing: { titleKey: 'page.manufacturing.title', subtitleKey: 'page.manufacturing.subtitle' },
+  machines: { titleKey: 'page.machines.title', subtitleKey: 'page.machines.subtitle' },
+  'machine-profile': {
+    titleKey: 'page.machineProfile.title',
+    subtitleKey: 'page.machineProfile.subtitle',
+  },
+  purchase: { titleKey: 'page.purchase.title', subtitleKey: 'page.purchase.subtitle' },
+  shipping: { titleKey: 'page.shipping.title', subtitleKey: 'page.shipping.subtitle' },
+  people: { titleKey: 'page.people.title', subtitleKey: 'page.people.subtitle' },
+  quality: { titleKey: 'page.quality.title', subtitleKey: 'page.quality.subtitle' },
+  analytics: { titleKey: 'page.analytics.title', subtitleKey: 'page.analytics.subtitle' },
+  reports: { titleKey: 'page.reports.title', subtitleKey: 'page.reports.subtitle' },
+  'ai-agents': { titleKey: 'page.aiAgents.title', subtitleKey: 'page.aiAgents.subtitle' },
+  crm: { titleKey: 'page.crm.title', subtitleKey: 'page.crm.subtitle' },
+  'client-profile': {
+    titleKey: 'page.clientProfile.title',
+    subtitleKey: 'page.clientProfile.subtitle',
+  },
+  documentation: { titleKey: 'page.documentation.title', subtitleKey: 'page.documentation.subtitle' },
+  settings: { titleKey: 'page.settings.title', subtitleKey: 'page.settings.subtitle' },
+}
+
+/**
+ * @param {{ page: string; productId: string | null; clientId: string | null; machineId: string | null }} route
+ * @param {import('./data/mockDatabase.js').MockDatabase} db
+ * @param {{
+ *   openProduct: (id: string) => void
+ *   backFromProduct: () => void
+ *   openTeamWorkload: () => void
+ *   openClient: (id: string) => void
+ *   backFromClient: () => void
+ *   openMachine: (id: string) => void
+ *   backFromMachine: () => void
+ *   openReports: () => void
+ * }} actions
+ */
+function renderPage(route, db, actions) {
+  switch (route.page) {
+    case 'dashboard':
+      return <DashboardPage db={db} />
+    case 'products':
+      return <ProductsPage db={db} onOpenProduct={actions.openProduct} />
+    case 'product-workspace':
+      return (
+        <ProductWorkspacePage
+          db={db}
+          productId={route.productId ?? 'prod-1'}
+          onBack={actions.backFromProduct}
+          onOpenReports={actions.openReports}
+        />
+      )
+    case 'tasks':
+      return <MyTasksPage db={db} />
+    case 'team-workload':
+      return <TeamWorkloadPage db={db} />
+    case 'planning':
+      return <PlanningPage db={db} />
+    case 'manufacturing':
+      return <ManufacturingPage db={db} />
+    case 'machines':
+      return <MachinesPage db={db} onOpenMachine={actions.openMachine} />
+    case 'machine-profile':
+      return (
+        <MachineProfilePage
+          db={db}
+          machineId={route.machineId ?? 'mach-1'}
+          onBack={actions.backFromMachine}
+        />
+      )
+    case 'purchase':
+      return <PurchasePage db={db} />
+    case 'shipping':
+      return <ShippingPage db={db} />
+    case 'people':
+      return <PeoplePage db={db} onTeamWorkload={actions.openTeamWorkload} />
+    case 'quality':
+      return <QualityPage db={db} />
+    case 'analytics':
+      return <AnalyticsPage db={db} />
+    case 'reports':
+      return <ReportsPage db={db} />
+    case 'ai-agents':
+      return <AiAgentsPage db={db} />
+    case 'crm':
+      return <CRMPage db={db} onOpenClient={actions.openClient} />
+    case 'client-profile':
+      return (
+        <ClientProfilePage
+          db={db}
+          clientId={route.clientId ?? 'client-1'}
+          onBack={actions.backFromClient}
+        />
+      )
+    case 'documentation':
+      return <DocumentationPage />
+    case 'settings':
+      return <SettingsPage />
+    default:
+      return <DashboardPage db={db} />
+  }
+}
+
+/** @returns {null | { token: string }} */
+function detectAcceptanceToken() {
+  if (typeof window === 'undefined') return null
+  const path = window.location?.pathname ?? ''
+  const match = /^\/offer-accept\/([^/?#]+)/.exec(path)
+  if (match) return { token: decodeURIComponent(match[1]) }
+  const params = new URLSearchParams(window.location?.search ?? '')
+  const queryToken = params.get('offerAccept')
+  if (queryToken) return { token: queryToken }
+  return null
+}
+
+function App() {
+  const { t } = useLanguage()
+  const db = useMemo(() => getMockDatabase(), [])
+  const [route, setRoute] = useState(
+    /** @type {{ page: string; productId: string | null; clientId: string | null; machineId: string | null }} */ ({
+      page: 'dashboard',
+      productId: null,
+      clientId: null,
+      machineId: null,
+    }),
+  )
+
+  const publicRoute = useMemo(() => detectAcceptanceToken(), [])
+
+  const sidebarItems = useMemo(
+    () =>
+      ERP_NAV_ITEMS.map((item) => ({
+        id: item.id,
+        icon: item.icon,
+        label: t(item.labelKey),
+        active:
+          item.id === route.page ||
+          (route.page === 'product-workspace' && item.id === 'products') ||
+          (route.page === 'client-profile' && item.id === 'crm') ||
+          (route.page === 'machine-profile' && item.id === 'machines'),
+      })),
+    [route.page, t],
+  )
+
+  const metaKeys = PAGE_META_KEYS[route.page] ?? PAGE_META_KEYS.dashboard
+  const meta = { title: t(metaKeys.titleKey), subtitle: t(metaKeys.subtitleKey) }
+
+  const actions = useMemo(
+    () => ({
+      openProduct: (id) =>
+        setRoute({ page: 'product-workspace', productId: id, clientId: null, machineId: null }),
+      backFromProduct: () =>
+        setRoute({ page: 'products', productId: null, clientId: null, machineId: null }),
+      openTeamWorkload: () =>
+        setRoute({ page: 'team-workload', productId: null, clientId: null, machineId: null }),
+      openClient: (id) =>
+        setRoute({ page: 'client-profile', clientId: id, productId: null, machineId: null }),
+      backFromClient: () =>
+        setRoute({ page: 'crm', productId: null, clientId: null, machineId: null }),
+      openMachine: (id) =>
+        setRoute({ page: 'machine-profile', machineId: id, productId: null, clientId: null }),
+      backFromMachine: () =>
+        setRoute({ page: 'machines', productId: null, clientId: null, machineId: null }),
+      openReports: () =>
+        setRoute({ page: 'reports', productId: null, clientId: null, machineId: null }),
+    }),
+    [],
+  )
+
+  if (publicRoute) {
+    return <OfferAcceptancePage db={db} token={publicRoute.token} />
+  }
+
+  return (
+    <div className="flex min-h-screen bg-slate-100 text-slate-900">
+      <Sidebar
+        items={sidebarItems}
+        onSelect={(id) => setRoute({ page: id, productId: null, clientId: null, machineId: null })}
+      />
+
+      <main className="flex-1 p-4 md:p-6 xl:p-8">
+        <Header title={meta.title} subtitle={meta.subtitle} />
+        {renderPage(route, db, actions)}
+      </main>
+    </div>
+  )
+}
+
+export default App
