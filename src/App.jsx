@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
+import { Plus } from 'lucide-react'
 import Sidebar from './components/Sidebar.jsx'
 import Header from './components/Header.jsx'
 import { useLanguage } from './i18n/useLanguage.js'
 import { getMockDatabase } from './data/mockDatabase.js'
 import DashboardPage from './pages/DashboardPage.jsx'
+import NewInquiryForm from './components/erp/offers/NewInquiryForm.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductWorkspacePage from './pages/ProductWorkspacePage.jsx'
 import MyTasksPage from './pages/MyTasksPage.jsx'
@@ -75,7 +77,13 @@ const PAGE_META_KEYS = {
 function renderPage(route, db, actions) {
   switch (route.page) {
     case 'dashboard':
-      return <DashboardPage db={db} />
+      return (
+        <DashboardPage
+          db={db}
+          onNewInquiry={actions.openNewInquiry}
+          onNavigate={actions.navigate}
+        />
+      )
     case 'products':
       return <ProductsPage db={db} onOpenProduct={actions.openProduct} />
     case 'product-workspace':
@@ -161,6 +169,8 @@ function App() {
       machineId: null,
     }),
   )
+  const [showNewInquiry, setShowNewInquiry] = useState(false)
+  const [, forceRerender] = useState(0)
 
   const publicRoute = useMemo(() => detectAcceptanceToken(), [])
 
@@ -200,6 +210,8 @@ function App() {
         setRoute({ page: 'machines', productId: null, clientId: null, machineId: null }),
       openReports: () =>
         setRoute({ page: 'reports', productId: null, clientId: null, machineId: null }),
+      openNewInquiry: () => setShowNewInquiry(true),
+      navigate: (page) => setRoute({ page, productId: null, clientId: null, machineId: null }),
     }),
     [],
   )
@@ -219,6 +231,52 @@ function App() {
         <Header title={meta.title} subtitle={meta.subtitle} />
         {renderPage(route, db, actions)}
       </main>
+
+      {/* Floating action button — New Inquiry */}
+      <button
+        type="button"
+        onClick={() => setShowNewInquiry(true)}
+        title={t('dashboard.quickActions.newInquiry')}
+        className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition active:scale-95"
+      >
+        <Plus size={22} />
+      </button>
+
+      {/* New Inquiry modal */}
+      {showNewInquiry ? (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNewInquiry(false) }}
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+            <header className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">{t('newInquiry.title')}</h2>
+                <p className="mt-1 text-xs text-slate-500">{t('newInquiry.subtitle')}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewInquiry(false)}
+                className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                aria-label={t('common.close')}
+              >
+                ✕
+              </button>
+            </header>
+            <NewInquiryForm
+              db={db}
+              onCancel={() => setShowNewInquiry(false)}
+              onCreated={(productId) => {
+                setShowNewInquiry(false)
+                forceRerender((v) => v + 1)
+                setRoute({ page: 'product-workspace', productId, clientId: null, machineId: null })
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

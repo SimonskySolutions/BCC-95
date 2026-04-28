@@ -149,6 +149,26 @@ const en = {
   'dashboard.footerNote':
     'KPIs are computed from the in-memory mock database (tasks, operations, quality incidents, lifecycle).',
 
+  // Dashboard widgets
+  'dashboard.quickActions.title': 'Quick actions',
+  'dashboard.quickActions.newInquiry': '+ New inquiry',
+  'dashboard.quickActions.products': 'Products',
+  'dashboard.quickActions.planning': 'Planning',
+  'dashboard.quickActions.quality': 'Quality',
+  'dashboard.pipeline.title': 'Inquiries pipeline',
+  'dashboard.pipeline.received': 'Received',
+  'dashboard.pipeline.intake_pending': 'Intake pending',
+  'dashboard.pipeline.intake_complete': 'Intake complete',
+  'dashboard.pipeline.feasibility_done': 'Ready to quote',
+  'dashboard.pipeline.empty': 'No active inquiries',
+  'dashboard.pipeline.qty': 'qty',
+  'dashboard.dueSoon.title': 'Due & blocked',
+  'dashboard.dueSoon.empty': 'No items due within 90 days',
+  'dashboard.dueSoon.overdue': 'Overdue',
+  'dashboard.dueSoon.blocked': 'Blocked',
+  'dashboard.dueSoon.daysLeft': '{n}d left',
+  'dashboard.dueSoon.today': 'Today',
+
   // My tasks
   'tasks.mockUserLine': 'Showing tasks for',
   'tasks.mockUserName': 'Alex Rivers',
@@ -947,6 +967,25 @@ const bg = {
   'dashboard.card.process.trend': '{count} проследени продукта',
   'dashboard.footerNote':
     'KPI се изчисляват от демо базата в паметта (задачи, операции, качествени инциденти, жизнен цикъл).',
+
+  'dashboard.quickActions.title': 'Бързи действия',
+  'dashboard.quickActions.newInquiry': '+ Ново запитване',
+  'dashboard.quickActions.products': 'Продукти',
+  'dashboard.quickActions.planning': 'Планиране',
+  'dashboard.quickActions.quality': 'Качество',
+  'dashboard.pipeline.title': 'Тръбопровод на запитванията',
+  'dashboard.pipeline.received': 'Получено',
+  'dashboard.pipeline.intake_pending': 'Приемане в процес',
+  'dashboard.pipeline.intake_complete': 'Приемането завършено',
+  'dashboard.pipeline.feasibility_done': 'Готово за оферта',
+  'dashboard.pipeline.empty': 'Няма активни запитвания',
+  'dashboard.pipeline.qty': 'бр.',
+  'dashboard.dueSoon.title': 'Срокове и блокирани',
+  'dashboard.dueSoon.empty': 'Няма елементи в рамките на 90 дни',
+  'dashboard.dueSoon.overdue': 'Просрочено',
+  'dashboard.dueSoon.blocked': 'Блокирано',
+  'dashboard.dueSoon.daysLeft': 'остават {n}д',
+  'dashboard.dueSoon.today': 'Днес',
 
   'tasks.mockUserLine': 'Показване на задачи за',
   'tasks.mockUserName': 'Алекс Ривърс',
