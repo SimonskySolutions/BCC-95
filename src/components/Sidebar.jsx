@@ -86,7 +86,7 @@ export default function Sidebar({ items, onSelect }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1.5">
+      <nav className="flex-1 space-y-1.5 overflow-y-auto">
         {items.map((item) => (
           <SidebarItem key={item.id} item={item} onSelect={onSelect} />
         ))}
