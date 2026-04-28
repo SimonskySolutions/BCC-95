@@ -1,11 +1,7 @@
 import { useMemo } from 'react'
 import {
   AlertTriangle,
-  BadgeCheck,
-  CalendarDays,
   Clock,
-  Package,
-  Plus,
 } from 'lucide-react'
 import StatCard from '../components/StatCard.jsx'
 import {
@@ -33,13 +29,9 @@ const STAGE_DOT = {
 }
 
 /**
- * @param {{
- *   db: import('../data/mockDatabase.js').MockDatabase
- *   onNewInquiry: () => void
- *   onNavigate: (page: string) => void
- * }} props
+ * @param {{ db: import('../data/mockDatabase.js').MockDatabase }} props
  */
-export default function DashboardPage({ db, onNewInquiry, onNavigate }) {
+export default function DashboardPage({ db }) {
   const { t } = useLanguage()
   const ref = new Date('2026-04-10')
   const delivery = computeDeliveryMetrics(db, ref)
@@ -165,45 +157,6 @@ export default function DashboardPage({ db, onNewInquiry, onNavigate }) {
 
   return (
     <div className="space-y-6">
-      {/* Quick Actions */}
-      <section className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          {t('dashboard.quickActions.title')}
-        </span>
-        <button
-          type="button"
-          onClick={onNewInquiry}
-          className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition"
-        >
-          <Plus size={14} />
-          {t('dashboard.quickActions.newInquiry')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onNavigate('products')}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-        >
-          <Package size={14} />
-          {t('dashboard.quickActions.products')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onNavigate('planning')}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-        >
-          <CalendarDays size={14} />
-          {t('dashboard.quickActions.planning')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onNavigate('quality')}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-        >
-          <BadgeCheck size={14} />
-          {t('dashboard.quickActions.quality')}
-        </button>
-      </section>
-
       {/* KPI Stat Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((item) => (

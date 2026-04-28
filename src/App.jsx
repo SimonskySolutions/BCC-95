@@ -232,15 +232,17 @@ function App() {
         {renderPage(route, db, actions)}
       </main>
 
-      {/* Floating action button — New Inquiry */}
-      <button
-        type="button"
-        onClick={() => setShowNewInquiry(true)}
-        title={t('dashboard.quickActions.newInquiry')}
-        className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition active:scale-95"
-      >
-        <Plus size={22} />
-      </button>
+      {/* Floating action button — New Inquiry (dashboard only) */}
+      {route.page === 'dashboard' && (
+        <button
+          type="button"
+          onClick={() => setShowNewInquiry(true)}
+          title={t('dashboard.quickActions.newInquiry')}
+          className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition active:scale-95"
+        >
+          <Plus size={22} />
+        </button>
+      )}
 
       {/* New Inquiry modal */}
       {showNewInquiry ? (
