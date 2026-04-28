@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { useLanguage } from '../i18n/useLanguage.js'
-import { PRODUCT_STATUSES } from '../domains/products/model.js'
+import { PRODUCT_STATUSES, PRODUCT_TYPES } from '../domains/products/model.js'
 import NewInquiryForm from '../components/erp/offers/NewInquiryForm.jsx'
 
 /** @param {'draft'|'active'|'archived'} status */
@@ -25,6 +25,7 @@ export default function ProductsPage({ db, onOpenProduct }) {
   const [, forceRerender] = useState(0)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
 
   const clientsById = useMemo(() => {
     /** @type {Record<string, import('../domains/crm/model.js').Client>} */
@@ -37,10 +38,11 @@ export default function ProductsPage({ db, onOpenProduct }) {
     const q = search.trim().toLowerCase()
     return db.products.filter((p) => {
       if (statusFilter !== 'all' && p.status !== statusFilter) return false
+      if (typeFilter !== 'all' && p.type !== typeFilter) return false
       if (!q) return true
       return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
     })
-  }, [db.products, search, statusFilter])
+  }, [db.products, search, statusFilter, typeFilter])
 
   return (
     <div className="space-y-5">
@@ -62,6 +64,16 @@ export default function ProductsPage({ db, onOpenProduct }) {
             <option value="all">{t('products.statusAll')}</option>
             {PRODUCT_STATUSES.map((s) => (
               <option key={s} value={s}>{t(`products.status.${s}`)}</option>
+            ))}
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+          >
+            <option value="all">{t('products.typeAll')}</option>
+            {PRODUCT_TYPES.map((tp) => (
+              <option key={tp} value={tp}>{t(`product.type.${tp}`)}</option>
             ))}
           </select>
           <span className="text-xs text-slate-500">
@@ -91,9 +103,24 @@ export default function ProductsPage({ db, onOpenProduct }) {
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{p.sku}</p>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${badge}`}>
-                    {t(`products.status.${p.status}`)}
-                  </span>
+                  <div className="flex shrink-0 gap-1">
+                    {p.type ? (
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        p.type === 'raw_material'
+                          ? 'bg-amber-100 text-amber-800'
+                          : p.type === 'semi_finished'
+                            ? 'bg-violet-100 text-violet-800'
+                            : p.type === 'finished_good'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {t(`product.type.${p.type}`)}
+                      </span>
+                    ) : null}
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${badge}`}>
+                      {t(`products.status.${p.status}`)}
+                    </span>
+                  </div>
                 </div>
                 <p className="mt-1 font-semibold text-slate-900">{p.name}</p>
                 {customer ? (

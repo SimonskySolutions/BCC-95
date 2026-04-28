@@ -35,6 +35,11 @@ function newProductId() {
  * @property {string} [description]
  * @property {string} [customerId]
  * @property {import('./model.js').ProductStatus} [status]
+ * @property {import('./model.js').ProductType} [type]
+ * @property {string} [uom]
+ * @property {boolean} [canBePurchased]
+ * @property {boolean} [canBeManufactured]
+ * @property {boolean} [canBeSold]
  * @property {string} [lifecyclePhaseId]
  * @property {string} [sku]                — override the auto-generated SKU
  * @property {string} [id]                 — override the auto-generated id (tests only)
@@ -42,7 +47,7 @@ function newProductId() {
 
 /**
  * Append a new product to the DB and return the inserted record.
- * Defaults: `status='draft'`, `lifecyclePhaseId='concept'`, SKU auto-generated.
+ * Defaults: `status='draft'`, `type='finished_good'`, `lifecyclePhaseId='concept'`, SKU auto-generated.
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {ProductCreateInput} input
  * @returns {import('./model.js').Product}
@@ -53,6 +58,11 @@ export function appendProduct(db, input) {
     sku: input.sku ?? nextProductSku(db),
     name: input.name,
     status: input.status ?? 'draft',
+    type: input.type ?? 'finished_good',
+    uom: input.uom ?? 'ea',
+    canBePurchased: input.canBePurchased ?? false,
+    canBeManufactured: input.canBeManufactured ?? true,
+    canBeSold: input.canBeSold ?? true,
     lifecyclePhaseId: input.lifecyclePhaseId ?? 'concept',
     description: input.description,
     customerId: input.customerId,

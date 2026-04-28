@@ -16,6 +16,7 @@ import {
   Settings,
   ShoppingCart,
   Sparkles,
+  Warehouse,
   Truck,
   Users,
 } from 'lucide-react'
@@ -39,6 +40,7 @@ const iconMap = {
   ContactRound,
   BookText,
   Settings,
+  Warehouse,
 }
 
 /**

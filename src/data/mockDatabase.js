@@ -48,6 +48,8 @@ import {
 import { inquiries } from '../domains/inquiries/mockData.js'
 import { auditEntries } from '../domains/audit/mockData.js'
 import { outboundEmails } from '../domains/communications/mockData.js'
+import { bomHeaders, bomLines, bomOperations } from '../domains/bom/mockData.js'
+import { stockLocations, stockQuants, stockMoves } from '../domains/inventory/mockData.js'
 
 /**
  * Single composed in-memory ERP database for UI and services.
@@ -100,6 +102,12 @@ export function createMockDatabase() {
     inquiries: structuredClone(inquiries),
     auditEntries: structuredClone(auditEntries),
     outboundEmails: structuredClone(outboundEmails),
+    bomHeaders: structuredClone(bomHeaders),
+    bomLines: structuredClone(bomLines),
+    bomOperations: structuredClone(bomOperations),
+    stockLocations: structuredClone(stockLocations),
+    stockQuants: structuredClone(stockQuants),
+    stockMoves: structuredClone(stockMoves),
   }
 }
 

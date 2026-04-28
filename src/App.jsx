@@ -19,6 +19,7 @@ import AnalyticsPage from './pages/AnalyticsPage.jsx'
 import PlanningPage from './pages/PlanningPage.jsx'
 import DocumentationPage from './pages/DocumentationPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import InventoryPage from './pages/InventoryPage.jsx'
 import PurchasePage from './pages/PurchasePage.jsx'
 import ShippingPage from './pages/ShippingPage.jsx'
 import CRMPage from './pages/CRMPage.jsx'
@@ -44,6 +45,7 @@ const PAGE_META_KEYS = {
     titleKey: 'page.machineProfile.title',
     subtitleKey: 'page.machineProfile.subtitle',
   },
+  inventory: { titleKey: 'page.inventory.title', subtitleKey: 'page.inventory.subtitle' },
   purchase: { titleKey: 'page.purchase.title', subtitleKey: 'page.purchase.subtitle' },
   shipping: { titleKey: 'page.shipping.title', subtitleKey: 'page.shipping.subtitle' },
   people: { titleKey: 'page.people.title', subtitleKey: 'page.people.subtitle' },
@@ -113,6 +115,8 @@ function renderPage(route, db, actions) {
           onBack={actions.backFromMachine}
         />
       )
+    case 'inventory':
+      return <InventoryPage db={db} />
     case 'purchase':
       return <PurchasePage db={db} />
     case 'shipping':

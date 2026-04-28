@@ -2,6 +2,7 @@ import { useMemo, useReducer, useState } from 'react'
 import PhaseStepper from './PhaseStepper.jsx'
 import TaskTable from './TaskTable.jsx'
 import OperationList from './OperationList.jsx'
+import BomEditor from './BomEditor.jsx'
 import InquiryIntakeForm from './offers/InquiryIntakeForm.jsx'
 import OfferWizard from './offers/OfferWizard.jsx'
 import AuditTimeline from './AuditTimeline.jsx'
@@ -9,7 +10,7 @@ import { useLanguage } from '../../i18n/useLanguage.js'
 import { selectInquiriesByProduct } from '../../domains/inquiries/selectors.js'
 import { selectAuditByProduct } from '../../domains/audit/selectors.js'
 
-const TAB_IDS = /** @type {const} */ (['overview', 'inquiry', 'offer', 'operations', 'tasks', 'timeline'])
+const TAB_IDS = /** @type {const} */ (['overview', 'bom', 'inquiry', 'offer', 'operations', 'tasks', 'timeline'])
 
 /**
  * @param {{
@@ -46,14 +47,32 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{product.sku}</p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{product.sku}</p>
+          {product.type ? (
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              product.type === 'raw_material'
+                ? 'bg-amber-100 text-amber-800'
+                : product.type === 'semi_finished'
+                  ? 'bg-violet-100 text-violet-800'
+                  : product.type === 'finished_good'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-slate-100 text-slate-600'
+            }`}>
+              {t(`product.type.${product.type}`)}
+            </span>
+          ) : null}
+        </div>
         <h2 className="mt-1 text-2xl font-semibold text-slate-900">{product.name}</h2>
         <p className="mt-2 text-sm text-slate-600">{product.description ?? t('pws.noDescription')}</p>
-        {pathTemplate ? (
-          <p className="mt-3 text-xs text-slate-500">
-            {t('pws.pathTemplate')} <span className="font-medium text-slate-700">{pathTemplate.name}</span>
-          </p>
-        ) : null}
+        <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
+          {product.uom ? (
+            <span>{t('pws.uom')} <span className="font-medium text-slate-700">{product.uom}</span></span>
+          ) : null}
+          {pathTemplate ? (
+            <span>{t('pws.pathTemplate')} <span className="font-medium text-slate-700">{pathTemplate.name}</span></span>
+          ) : null}
+        </div>
       </div>
       <PhaseStepper currentPhaseId={lifecycle?.phaseId} blocked={lifecycle?.blocked} />
 
@@ -117,6 +136,13 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
             </div>
           </section>
         </div>
+      ) : null}
+
+      {tab === 'bom' ? (
+        <section>
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">{t('pws.tab.bom')}</h3>
+          <BomEditor db={db} productId={product.id} />
+        </section>
       ) : null}
 
       {tab === 'inquiry' ? (
