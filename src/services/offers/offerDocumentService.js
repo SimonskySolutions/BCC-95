@@ -31,19 +31,37 @@ export function buildOfferPlainText(input) {
   const leadLabel = isBg ? 'Срок на изпълнение (дни)' : 'Lead time (days)'
   const validLabel = isBg ? 'Валидна до' : 'Valid until'
   const linkLabel = isBg ? 'Линк за приемане' : 'Acceptance link'
+  const unitPriceLabel = isBg ? 'Единична продажна цена' : 'Unit selling price'
+  const orderTotalLabel = isBg ? 'Обща стойност на поръчката' : 'Order total'
+  const moqLabel = isBg ? 'Мин. количество' : 'MOQ'
+
+  const unitPrice = version.unitPrice ?? 0
+  const moq = version.moq ?? 1
+  const orderTotal = unitPrice * moq
+
+  const colW = [40, 8, 12, 12]
+  function row(desc, qty, unit, total) {
+    return `  ${desc.padEnd(colW[0])} ${String(qty).padStart(colW[1])} ${String(unit).padStart(colW[2])} ${String(total).padStart(colW[3])}`
+  }
+  const divider = '  ' + '─'.repeat(colW[0] + colW[1] + colW[2] + colW[3] + 3)
+
   const lines = [
     `${header}: ${quote.id} v${version.versionNo}`,
     `${clientLabel}: ${client?.name ?? ''}`,
     `${productLabel}: ${product?.name ?? ''} (${product?.sku ?? ''})`,
     '',
-    '---- Line items ----',
-    ...lineItems.map(
-      (li) =>
-        `• ${li.description} — ${qtyLabel}: ${li.quantity} | ${priceLabel}: ${li.unitPrice.toFixed(2)} ${currency} | ${totalLabel}: ${li.totalPrice.toFixed(2)} ${currency}`,
+    row('Description', qtyLabel, `${priceLabel} (${currency})`, `${totalLabel} (${currency})`),
+    divider,
+    ...lineItems.map((li) =>
+      row(li.description || '—', li.quantity, li.unitPrice.toFixed(2), li.totalPrice.toFixed(2))
     ),
+    divider,
+    row(`${subtotalLabel}`, '', '', version.subtotal.toFixed(2)),
+    row(`${marginLabel} (${version.marginPercent}%)`, '', '', ''),
     '',
-    `${subtotalLabel}: ${version.subtotal.toFixed(2)} ${currency}`,
-    `${marginLabel}: ${version.marginPercent}%`,
+    `★ ${unitPriceLabel}: ${unitPrice.toFixed(2)} ${currency}`,
+    `  ${moqLabel}: ${moq}  |  ${orderTotalLabel}: ${orderTotal.toFixed(2)} ${currency}`,
+    '',
     `${leadLabel}: ${version.leadTimeDays ?? '—'}`,
     `${deliveryLabel}: ${version.deliveryTerms ?? '—'}`,
     `${paymentLabel}: ${version.paymentTerms ?? '—'}`,
@@ -51,7 +69,7 @@ export function buildOfferPlainText(input) {
     '',
     acceptanceLink ? `${linkLabel}: ${acceptanceLink}` : '',
   ]
-  return lines.filter(Boolean).join('\n')
+  return lines.filter((l) => l !== null && l !== undefined).join('\n')
 }
 
 /**

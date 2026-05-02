@@ -63,20 +63,50 @@ function generateToken() {
  * @param {{ productName: string; quoteId: string; versionNo: number; acceptanceLink: string; language?: string; subtotal: number; currency?: string }} input
  */
 export function buildOfferEmailBody(input) {
+  const cur = input.currency ?? 'EUR'
+  const unitLine = input.unitPrice != null
+    ? (input.language === 'bg'
+        ? `Единична цена: ${input.unitPrice.toFixed(2)} ${cur}\n`
+        : `Unit price: ${input.unitPrice.toFixed(2)} ${cur}\n`)
+    : ''
+  const leadLine = input.leadTimeDays != null
+    ? (input.language === 'bg'
+        ? `Срок на изпълнение: ${input.leadTimeDays} дни\n`
+        : `Lead time: ${input.leadTimeDays} days\n`)
+    : ''
+  const validLine = input.validUntil
+    ? (input.language === 'bg'
+        ? `Оферта валидна до: ${input.validUntil}\n`
+        : `Offer valid until: ${input.validUntil}\n`)
+    : ''
+  const moqLine = input.moq
+    ? (input.language === 'bg'
+        ? `Мин. количество (MOQ): ${input.moq} бр.\n`
+        : `Minimum order quantity (MOQ): ${input.moq} units\n`)
+    : ''
+
   if (input.language === 'bg') {
     return (
       `Здравейте,\n\n` +
-      `Изпращаме Ви официална оферта за "${input.productName}" (ID ${input.quoteId}, версия ${input.versionNo}).\n` +
-      `Обща стойност: ${input.subtotal.toFixed(2)} ${input.currency ?? 'EUR'}\n\n` +
-      `За приемане, искане на ценова корекция или отказ, моля, използвайте следния линк:\n${input.acceptanceLink}\n\n` +
+      `Изпращаме Ви официална оферта за „${input.productName}" (ID ${input.quoteId}, версия ${input.versionNo}).\n\n` +
+      unitLine +
+      moqLine +
+      leadLine +
+      validLine +
+      `\nЗа приемане, искане на ценова корекция или отказ, моля, използвайте следния линк:\n${input.acceptanceLink}\n\n` +
+      `Прилагаме офертата в PDF формат.\n\n` +
       `Благодарим за интереса.\n`
     )
   }
   return (
     `Hello,\n\n` +
-    `Please find attached our official offer for "${input.productName}" (ID ${input.quoteId}, version ${input.versionNo}).\n` +
-    `Total: ${input.subtotal.toFixed(2)} ${input.currency ?? 'EUR'}\n\n` +
-    `To accept, request a price revision or decline, please use the following link:\n${input.acceptanceLink}\n\n` +
+    `Please find attached our official offer for "${input.productName}" (ID ${input.quoteId}, version ${input.versionNo}).\n\n` +
+    unitLine +
+    moqLine +
+    leadLine +
+    validLine +
+    `\nTo accept, request a price revision, or decline, please use the link below:\n${input.acceptanceLink}\n\n` +
+    `The offer is also attached as a PDF.\n\n` +
     `Thank you for your interest.\n`
   )
 }

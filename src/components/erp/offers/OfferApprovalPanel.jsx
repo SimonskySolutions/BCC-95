@@ -41,14 +41,23 @@ export default function OfferApprovalPanel({ db, version, approvals, actorId, on
       <p className="text-xs text-slate-500">{t('approval.desc')}</p>
 
       {approvals.length > 0 ? (
-        <ul className="space-y-1 text-xs">
-          {approvals.map((a) => (
-            <li key={a.id} className="rounded bg-slate-50 px-2 py-1 text-slate-700">
-              <span className="font-medium">{t(`approval.decision.${a.decision}`, a.decision)}</span>{' '}
-              by {a.approverEmployeeId} — {a.decidedAt.slice(0, 16).replace('T', ' ')}
-              {a.note ? ` — “${a.note}”` : ''}
-            </li>
-          ))}
+        <ul className=”space-y-1.5 text-xs”>
+          {approvals.map((a) => {
+            const approverName = db.employees.find((e) => e.id === a.approverEmployeeId)?.name ?? a.approverEmployeeId
+            const isApproved = a.decision === 'approved'
+            return (
+              <li key={a.id} className={`rounded-lg px-3 py-2 ${isApproved ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'bg-rose-50 ring-1 ring-rose-200'}`}>
+                <div className=”flex items-center justify-between gap-2”>
+                  <span className={`font-semibold ${isApproved ? 'text-emerald-800' : 'text-rose-800'}`}>
+                    {isApproved ? '✓' : '✗'} {t(`approval.decision.${a.decision}`, a.decision)}
+                  </span>
+                  <span className=”text-slate-500”>{a.decidedAt.slice(0, 16).replace('T', ' ')}</span>
+                </div>
+                <p className=”mt-0.5 text-slate-600”>by {approverName}</p>
+                {a.note ? <p className=”mt-0.5 italic text-slate-500”>”{a.note}”</p> : null}
+              </li>
+            )
+          })}
         </ul>
       ) : null}
 
@@ -78,25 +87,39 @@ export default function OfferApprovalPanel({ db, version, approvals, actorId, on
         </label>
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">{flash ?? ''}</p>
+      <div className="flex items-center justify-between gap-3">
+        {flash ? (
+          <p className={`rounded-lg px-3 py-1.5 text-xs font-medium ${flash.startsWith(t('approval.approved')) ? 'bg-emerald-50 text-emerald-700' : flash.startsWith(t('approval.rejected')) ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'}`}>
+            {flash}
+          </p>
+        ) : <span />}
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => decide('rejected')}
-            className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"
-            disabled={!version || version.status !== 'draft'}
-          >
-            {t('approval.reject')}
-          </button>
-          <button
-            type="button"
-            onClick={() => decide('approved')}
-            className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-            disabled={!version || version.status !== 'draft'}
-          >
-            {t('approval.approve')}
-          </button>
+          {(() => {
+            const isLocked = !version || version.status !== 'draft'
+            const lockedReason = !version ? 'No version selected' : version.status !== 'draft' ? `Version is ${version.status}` : undefined
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={() => decide('rejected')}
+                  className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={isLocked}
+                  title={lockedReason}
+                >
+                  {t('approval.reject')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => decide('approved')}
+                  className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={isLocked}
+                  title={lockedReason}
+                >
+                  {t('approval.approve')}
+                </button>
+              </>
+            )
+          })()}
         </div>
       </div>
     </div>

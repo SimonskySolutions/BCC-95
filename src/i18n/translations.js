@@ -455,6 +455,7 @@ const en = {
   // Phase stepper
   'phase.title': 'Lifecycle phase',
   'phase.blocked': 'Blocked',
+  'phase.blockedHint': 'open items pending',
 
   // Lifecycle phase labels (display) — see Product Workspace extension below for VSM-aligned overrides
 
@@ -546,9 +547,19 @@ const en = {
 
   // Task statuses
   'taskStatus.draft': 'Draft',
+  'taskStatus.pending': 'Pending',
   'taskStatus.in_progress': 'In progress',
   'taskStatus.resolved': 'Resolved',
   'taskStatus.blocked': 'Blocked',
+
+  // Task workstreams
+  'taskWorkstream.planning': 'Planning',
+  'taskWorkstream.quality': 'Quality',
+  'taskWorkstream.operations': 'Operations',
+  'taskWorkstream.engineering': 'Engineering',
+  'taskWorkstream.procurement': 'Procurement',
+  'taskWorkstream.logistics': 'Logistics',
+  'taskWorkstream.admin': 'Admin',
 
   // Quality
   'quality.snapshot': 'Quality snapshot',

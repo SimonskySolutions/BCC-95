@@ -27,33 +27,39 @@ export default function OfferVersionList({ versions, currentVersionId, onSelect 
           </tr>
         </thead>
         <tbody>
-          {versions.map((v) => (
-            <tr
-              key={v.id}
-              className={`border-t border-slate-100 ${v.id === currentVersionId ? 'bg-blue-50/40' : ''}`}
-            >
-              <td className="px-3 py-2 font-medium text-slate-800">v{v.versionNo}</td>
-              <td className="px-3 py-2">
-                <OfferStatusBadge status={v.status} />
-              </td>
-              <td className="px-3 py-2 text-xs text-slate-600">{v.createdAt?.slice(0, 10)}</td>
-              <td className="px-3 py-2 text-xs text-slate-600">{v.sentAt?.slice(0, 10) ?? '—'}</td>
-              <td className="px-3 py-2 text-right text-slate-800">
-                {v.subtotal.toFixed(2)} {v.currency ?? 'EUR'}
-              </td>
-              <td className="px-3 py-2 text-right">
-                {onSelect ? (
-                  <button
-                    type="button"
-                    onClick={() => onSelect(v.id)}
-                    className="text-xs font-medium text-blue-700 hover:text-blue-900"
-                  >
-                    {t('common.select')}
-                  </button>
-                ) : null}
-              </td>
-            </tr>
-          ))}
+          {versions.map((v) => {
+            const isSelected = v.id === currentVersionId
+            return (
+              <tr
+                key={v.id}
+                className={`border-t border-slate-100 transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'hover:bg-slate-50/60'}`}
+              >
+                <td className={`px-3 py-2.5 font-semibold ${isSelected ? 'text-blue-800' : 'text-slate-800'}`}>
+                  v{v.versionNo}
+                  {isSelected && <span className="ml-1.5 text-[10px] font-medium text-blue-500">viewing</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  <OfferStatusBadge status={v.status} />
+                </td>
+                <td className="px-3 py-2.5 text-xs text-slate-600">{v.createdAt?.slice(0, 10)}</td>
+                <td className="px-3 py-2.5 text-xs text-slate-600">{v.sentAt?.slice(0, 10) ?? '—'}</td>
+                <td className="px-3 py-2.5 text-right font-medium text-slate-800">
+                  {v.subtotal.toFixed(2)} {v.currency ?? 'EUR'}
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  {onSelect && !isSelected ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelect(v.id)}
+                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      {t('common.select')}
+                    </button>
+                  ) : null}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

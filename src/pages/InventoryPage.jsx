@@ -52,15 +52,18 @@ export default function InventoryPage({ db }) {
     [summaries],
   )
 
-  const activeQuants = useMemo(
-    () => selectQuantsByLocation(db, activeLocation),
-    [db.stockQuants, activeLocation],
-  )
+  const activeQuants = useMemo(() => {
+    const quants = selectQuantsByLocation(db, activeLocation)
+    if (!lowStockOnly) return quants
+    return quants.filter((q) => q.qty > 0 && q.qty - q.reservedQty <= q.qty * 0.1)
+  }, [db.stockQuants, activeLocation, lowStockOnly])
 
   const recentMoves = useMemo(
     () => selectStockMoves(db, { limit: movesLimit }),
     [db.stockMoves, movesLimit],
   )
+
+  const [lowStockOnly, setLowStockOnly] = useState(false)
 
   const totalSkus = db.stockQuants.filter((q) => q.qty > 0).length
   const lowStockCount = db.stockQuants.filter((q) => q.qty > 0 && q.qty - q.reservedQty <= q.qty * 0.1).length
@@ -72,19 +75,31 @@ export default function InventoryPage({ db }) {
         {[
           { label: t('inventory.kpi.locations'),  value: internalLocations.length, icon: null },
           { label: t('inventory.kpi.totalSkus'),   value: totalSkus,               icon: null },
-          { label: t('inventory.kpi.lowStock'),    value: lowStockCount,            warn: lowStockCount > 0 },
+          { label: t('inventory.kpi.lowStock'), value: lowStockCount, warn: lowStockCount > 0, clickable: true },
           { label: t('inventory.kpi.pendingMoves'),
             value: db.stockMoves.filter((m) => m.state === 'confirmed').length,
             icon: null },
-        ].map(({ label, value, warn }) => (
-          <div
-            key={label}
-            className={`rounded-2xl border bg-white p-4 shadow-card ${warn ? 'border-amber-300' : 'border-slate-200'}`}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-            <p className={`mt-1 text-2xl font-bold ${warn ? 'text-amber-600' : 'text-slate-900'}`}>{value}</p>
-          </div>
-        ))}
+        ].map(({ label, value, warn, clickable }) => {
+          const isActive = clickable && lowStockOnly
+          const El = clickable ? 'button' : 'div'
+          return (
+            <El
+              key={label}
+              type={clickable ? 'button' : undefined}
+              onClick={clickable ? () => setLowStockOnly((v) => !v) : undefined}
+              className={`rounded-2xl border bg-white p-4 shadow-card text-left transition-colors ${
+                isActive ? 'border-amber-400 ring-2 ring-amber-200' : warn ? 'border-amber-300 hover:border-amber-400' : 'border-slate-200'
+              } ${clickable ? 'cursor-pointer' : ''}`}
+              title={clickable ? (lowStockOnly ? 'Show all SKUs' : 'Filter to low-stock only') : undefined}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+              <p className={`mt-1 text-2xl font-bold ${warn ? 'text-amber-600' : 'text-slate-900'}`}>{value}</p>
+              {clickable && warn ? (
+                <p className="mt-0.5 text-[10px] font-medium text-amber-500">{isActive ? 'Filtering — click to reset' : 'Click to filter'}</p>
+              ) : null}
+            </El>
+          )
+        })}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -147,7 +162,7 @@ export default function InventoryPage({ db }) {
                     return (
                       <tr
                         key={q.id}
-                        className={`hover:bg-slate-50/60 ${isLow ? 'bg-amber-50/30' : ''}`}
+                        className={`hover:bg-slate-50/60 ${isLow ? 'bg-amber-100/60' : ''}`}
                       >
                         <td className="px-4 py-3">
                           <p className="font-medium text-slate-900">{prod?.name ?? q.productId}</p>
@@ -170,7 +185,9 @@ export default function InventoryPage({ db }) {
                           {available}
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-500">{q.uom}</td>
-                        <td className="px-4 py-3 text-xs text-slate-400">{q.lastUpdated}</td>
+                        <td className="px-4 py-3 text-xs text-slate-400" title={q.lastUpdated}>
+                          {q.lastUpdated ? q.lastUpdated.slice(0, 10) : '—'}
+                        </td>
                       </tr>
                     )
                   })
@@ -265,7 +282,7 @@ export default function InventoryPage({ db }) {
                 onClick={() => setMovesLimit((n) => n + 10)}
                 className="text-xs font-semibold text-blue-600 hover:text-blue-700"
               >
-                {t('inventory.loadMore')}
+                {t('inventory.loadMore')} ({db.stockMoves.length - movesLimit} remaining)
               </button>
             </div>
           ) : null}

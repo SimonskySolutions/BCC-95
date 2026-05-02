@@ -38,6 +38,9 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
     [db],
   )
 
+  const openTaskCount = bundle?.tasks?.filter((x) => x.status !== 'resolved').length ?? 0
+  const pendingInquiryCount = inquiries.filter((i) => i.status === 'received' || i.status === 'intake_pending').length
+
   if (!bundle) {
     return <p className="text-sm text-slate-500">{t('pws.notFound')}</p>
   }
@@ -78,22 +81,36 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
 
       <div className="sticky top-0 z-10 -mx-4 bg-slate-100/95 px-4 pb-1 pt-2 backdrop-blur md:-mx-0 md:px-0">
         <nav className="flex flex-wrap gap-2" role="tablist">
-          {TAB_IDS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                tab === id
-                  ? 'bg-slate-900 text-white shadow'
-                  : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {t(`pws.tab.${id}`)}
-            </button>
-          ))}
+          {TAB_IDS.map((id) => {
+            const badge = id === 'tasks' && openTaskCount > 0
+              ? openTaskCount
+              : id === 'inquiry' && pendingInquiryCount > 0
+                ? pendingInquiryCount
+                : null
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+                className={`relative rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  tab === id
+                    ? 'bg-slate-900 text-white shadow'
+                    : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {t(`pws.tab.${id}`)}
+                {badge ? (
+                  <span className={`ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold ${
+                    tab === id ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'
+                  }`}>
+                    {badge}
+                  </span>
+                ) : null}
+              </button>
+            )
+          })}
         </nav>
       </div>
 
@@ -102,23 +119,31 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
             <h3 className="text-sm font-semibold text-slate-900">{t('pws.quickStats')}</h3>
             <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
-              <div>
+              <button
+                type="button"
+                onClick={() => setTab('tasks')}
+                className="rounded-xl border border-slate-100 p-2 text-left hover:border-slate-200 hover:bg-slate-50 transition-colors"
+              >
                 <dt className="text-slate-500">{t('pws.openTasks')}</dt>
-                <dd className="text-lg font-semibold text-slate-800">
-                  {tasks.filter((x) => x.status !== 'resolved').length}
+                <dd className={`text-lg font-semibold ${openTaskCount > 0 ? 'text-rose-600' : 'text-slate-800'}`}>
+                  {openTaskCount}
                 </dd>
-              </div>
-              <div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('inquiry')}
+                className="rounded-xl border border-slate-100 p-2 text-left hover:border-slate-200 hover:bg-slate-50 transition-colors"
+              >
                 <dt className="text-slate-500">{t('pws.inquiries')}</dt>
                 <dd className="text-lg font-semibold text-slate-800">{inquiries.length}</dd>
-              </div>
-              <div>
+              </button>
+              <div className="rounded-xl border border-slate-100 p-2">
                 <dt className="text-slate-500">{t('pws.phase')}</dt>
                 <dd className="text-sm font-semibold text-slate-800">
                   {t(`lifecycle.phase.${lifecycle?.phaseId}`, lifecycle?.phaseId ?? '—')}
                 </dd>
               </div>
-              <div>
+              <div className="rounded-xl border border-slate-100 p-2">
                 <dt className="text-slate-500">{t('pws.completion')}</dt>
                 <dd className="text-sm font-semibold text-slate-800">
                   {lifecycle?.completionPercent ?? 0}%

@@ -68,12 +68,19 @@ export default function FeasibilityPanel({ db, inquiry, actorId, onChange }) {
         </label>
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">{flash ?? ''}</p>
+        {flash ? (
+          <p className={`rounded-lg px-3 py-1.5 text-xs font-medium ${flash === t('feasibility.saved') ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+            {flash}
+          </p>
+        ) : <span />}
         <button
           type="button"
           onClick={save}
-          className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={(inquiry.missingFields ?? []).length > 0}
+          title={(inquiry.missingFields ?? []).length > 0
+            ? `Complete intake form first: ${(inquiry.missingFields ?? []).join(', ')}`
+            : undefined}
         >
           {t('feasibility.save')}
         </button>
