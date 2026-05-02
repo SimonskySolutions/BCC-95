@@ -41,20 +41,20 @@ export default function OfferApprovalPanel({ db, version, approvals, actorId, on
       <p className="text-xs text-slate-500">{t('approval.desc')}</p>
 
       {approvals.length > 0 ? (
-        <ul className=”space-y-1.5 text-xs”>
+        <ul className="space-y-1.5 text-xs">
           {approvals.map((a) => {
             const approverName = db.employees.find((e) => e.id === a.approverEmployeeId)?.name ?? a.approverEmployeeId
             const isApproved = a.decision === 'approved'
             return (
               <li key={a.id} className={`rounded-lg px-3 py-2 ${isApproved ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'bg-rose-50 ring-1 ring-rose-200'}`}>
-                <div className=”flex items-center justify-between gap-2”>
+                <div className="flex items-center justify-between gap-2">
                   <span className={`font-semibold ${isApproved ? 'text-emerald-800' : 'text-rose-800'}`}>
                     {isApproved ? '✓' : '✗'} {t(`approval.decision.${a.decision}`, a.decision)}
                   </span>
-                  <span className=”text-slate-500”>{a.decidedAt.slice(0, 16).replace('T', ' ')}</span>
+                  <span className="text-slate-500">{a.decidedAt.slice(0, 16).replace('T', ' ')}</span>
                 </div>
-                <p className=”mt-0.5 text-slate-600”>by {approverName}</p>
-                {a.note ? <p className=”mt-0.5 italic text-slate-500”>&ldquo;{a.note}&rdquo;</p> : null}
+                <p className="mt-0.5 text-slate-600">by {approverName}</p>
+                {a.note ? <p className="mt-0.5 italic text-slate-500">&ldquo;{a.note}&rdquo;</p> : null}
               </li>
             )
           })}
