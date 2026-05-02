@@ -54,7 +54,7 @@ export default function OfferApprovalPanel({ db, version, approvals, actorId, on
                   <span className=”text-slate-500”>{a.decidedAt.slice(0, 16).replace('T', ' ')}</span>
                 </div>
                 <p className=”mt-0.5 text-slate-600”>by {approverName}</p>
-                {a.note ? <p className=”mt-0.5 italic text-slate-500”>”{a.note}”</p> : null}
+                {a.note ? <p className=”mt-0.5 italic text-slate-500”>&ldquo;{a.note}&rdquo;</p> : null}
               </li>
             )
           })}
