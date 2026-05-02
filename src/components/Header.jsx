@@ -1,89 +1,74 @@
-import { CalendarRange, ChevronDown, Download, Filter, UserCircle2 } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useLanguage } from '../i18n/useLanguage.js'
+import { useFactoryConfig } from '../config/useFactoryConfig.js'
 
 /**
- * @param {{ title?: string; subtitle?: string }} props
+ * @param {{ title?: string; subtitle?: string; onMenuOpen: () => void }} props
  */
-export default function Header({ title = 'Welcome back, Yanko Simonsky', subtitle }) {
-  const { language, setLanguage, t } = useLanguage()
+export default function Header({ title, subtitle, onMenuOpen }) {
+  const { language, setLanguage } = useLanguage()
+  const { config, theme } = useFactoryConfig()
 
   return (
-    <header className="mb-6 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-card xl:flex-row xl:items-center xl:justify-between">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {subtitle ?? t('header.subtitleFallback')}
-        </p>
+    <header className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Hamburger — mobile only */}
+        <button
+          type="button"
+          onClick={onMenuOpen}
+          className="shrink-0 rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 md:hidden"
+          aria-label="Open menu"
+        >
+          <Menu size={18} />
+        </button>
+
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold tracking-tight text-slate-900">
+            {title ?? `Welcome, ${config.adminName}`}
+          </h1>
+          {subtitle && (
+            <p className="mt-0.5 truncate text-sm text-slate-400">{subtitle}</p>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex shrink-0 items-center gap-2">
+        {/* Language switcher */}
         <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-0.5">
           <button
             type="button"
             onClick={() => setLanguage('en')}
+            aria-pressed={language === 'en'}
             className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
               language === 'en'
                 ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
-            aria-pressed={language === 'en'}
           >
-            {t('header.langEn')}
+            EN
           </button>
           <button
             type="button"
             onClick={() => setLanguage('bg')}
+            aria-pressed={language === 'bg'}
             className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
               language === 'bg'
                 ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
-            aria-pressed={language === 'bg'}
           >
-            {t('header.langBg')}
+            BG
           </button>
         </div>
 
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
-        >
-          <CalendarRange size={15} />
-          {t('header.dateRange')}
-          <ChevronDown size={14} />
-        </button>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-100"
-        >
-          {t('header.monthly')}
-          <ChevronDown size={14} />
-        </button>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <Filter size={15} />
-          {t('header.filter')}
-        </button>
-
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-        >
-          <Download size={15} />
-          {t('header.export')}
-        </button>
-
-        <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-          <div className="rounded-full bg-white p-1 text-slate-500">
-            <UserCircle2 size={20} />
+        {/* User pill */}
+        <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <div className={`rounded-full ${theme.iconBg} p-1`}>
+            <span className="block h-3.5 w-3.5 rounded-full bg-white/30" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-slate-900">{t('header.userName')}</p>
-            <p className="text-xs text-slate-500">{t('header.userRole')}</p>
+            <p className="text-xs font-semibold text-slate-900 leading-none">{config.adminName}</p>
+            <p className="mt-0.5 text-xs text-slate-400 leading-none">{config.adminRole}</p>
           </div>
         </div>
       </div>

@@ -11,10 +11,15 @@ body,
 body {
   margin: 0;
   font-family: Inter, "Segoe UI", Roboto, sans-serif;
-  background: #f3f6fb;
+  background: #f8fafc;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility used on `hover:bg-white/8` which Tailwind doesn't generate by default */
+.hover\:bg-white\/8:hover {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .vsm-content h2,

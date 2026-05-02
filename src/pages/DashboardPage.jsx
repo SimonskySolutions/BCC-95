@@ -11,6 +11,7 @@ import {
   computeQualityMetrics,
 } from '../services/kpis/kpiCalculator.js'
 import { useLanguage } from '../i18n/useLanguage.js'
+import { useFactoryConfig } from '../config/useFactoryConfig.js'
 
 const PIPELINE_STAGES = ['received', 'intake_pending', 'intake_complete', 'feasibility_done']
 
@@ -33,6 +34,8 @@ const STAGE_DOT = {
  */
 export default function DashboardPage({ db }) {
   const { t } = useLanguage()
+  const { config, theme } = useFactoryConfig()
+  const { kpiTargets } = config
   const ref = new Date('2026-04-10')
   const delivery = computeDeliveryMetrics(db, ref)
   const productivity = computeProductivityMetrics(db)
@@ -46,8 +49,9 @@ export default function DashboardPage({ db }) {
         label: t('dashboard.card.delivery.label'),
         value: `${delivery.onTimeDoneRatioPercent}%`,
         trend: t('dashboard.card.delivery.trend').replace('{overdue}', String(delivery.overdueOpenCount)),
-        positive: delivery.overdueOpenCount === 0,
+        positive: delivery.overdueOpenCount === 0 || delivery.onTimeDoneRatioPercent >= kpiTargets.deliveryPercent,
         icon: 'ClipboardList',
+        color: 'blue',
       },
       {
         id: 'productivity',
@@ -56,8 +60,9 @@ export default function DashboardPage({ db }) {
         trend: t('dashboard.card.productivity.trend')
           .replace('{done}', String(productivity.operationDoneCount))
           .replace('{total}', String(productivity.operationTotal)),
-        positive: productivity.operationThroughputPercent >= 50,
+        positive: productivity.operationThroughputPercent >= kpiTargets.productivityPercent,
         icon: 'FolderKanban',
+        color: 'violet',
       },
       {
         id: 'quality',
@@ -66,19 +71,21 @@ export default function DashboardPage({ db }) {
         trend: t('dashboard.card.quality.trend')
           .replace('{fails}', String(quality.failCount))
           .replace('{samples}', String(quality.sampleCount)),
-        positive: quality.firstPassYieldPercent >= 90,
+        positive: quality.firstPassYieldPercent >= kpiTargets.qualityPercent,
         icon: 'Building2',
+        color: 'emerald',
       },
       {
         id: 'process',
         label: t('dashboard.card.process.label'),
         value: `${process.avgCompletionPercent}%`,
         trend: t('dashboard.card.process.trend').replace('{count}', String(process.productCount)),
-        positive: process.avgCompletionPercent >= 70,
+        positive: process.avgCompletionPercent >= kpiTargets.processPercent,
         icon: 'Users',
+        color: 'amber',
       },
     ],
-    [delivery, productivity, quality, process, t],
+    [delivery, productivity, quality, process, t, kpiTargets],
   )
 
   // Inquiries pipeline grouped by stage
@@ -157,6 +164,16 @@ export default function DashboardPage({ db }) {
 
   return (
     <div className="space-y-6">
+      {/* Gradient hero banner */}
+      <section className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.gradientFrom} ${theme.gradientTo} p-6 text-white shadow-lg`}>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_60%)]" />
+        <div className="relative">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/60">{t('dashboard.hero.label', 'Live operations')}</p>
+          <h2 className="mt-1 text-2xl font-bold">{config.companyName}</h2>
+          <p className="mt-0.5 text-sm text-white/70">{t('dashboard.hero.subtitle', 'Real-time KPI overview — all figures from mock data')}</p>
+        </div>
+      </section>
+
       {/* KPI Stat Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((item) => (

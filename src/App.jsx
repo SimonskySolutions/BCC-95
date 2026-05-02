@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import Sidebar from './components/Sidebar.jsx'
 import Header from './components/Header.jsx'
 import { useLanguage } from './i18n/useLanguage.js'
+import { useFactoryConfig } from './config/useFactoryConfig.js'
 import { getMockDatabase } from './data/mockDatabase.js'
 import DashboardPage from './pages/DashboardPage.jsx'
 import NewInquiryForm from './components/erp/offers/NewInquiryForm.jsx'
@@ -164,6 +165,7 @@ function detectAcceptanceToken() {
 
 function App() {
   const { t } = useLanguage()
+  const { config, theme } = useFactoryConfig()
   const db = useMemo(() => getMockDatabase(), [])
   const [route, setRoute] = useState(
     /** @type {{ page: string; productId: string | null; clientId: string | null; machineId: string | null }} */ ({
@@ -174,23 +176,26 @@ function App() {
     }),
   )
   const [showNewInquiry, setShowNewInquiry] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [, forceRerender] = useState(0)
 
   const publicRoute = useMemo(() => detectAcceptanceToken(), [])
 
   const sidebarItems = useMemo(
     () =>
-      ERP_NAV_ITEMS.map((item) => ({
-        id: item.id,
-        icon: item.icon,
-        label: t(item.labelKey),
-        active:
-          item.id === route.page ||
-          (route.page === 'product-workspace' && item.id === 'products') ||
-          (route.page === 'client-profile' && item.id === 'crm') ||
-          (route.page === 'machine-profile' && item.id === 'machines'),
-      })),
-    [route.page, t],
+      ERP_NAV_ITEMS
+        .filter((item) => config.enabledModules.includes(item.id))
+        .map((item) => ({
+          id: item.id,
+          icon: item.icon,
+          label: t(item.labelKey),
+          active:
+            item.id === route.page ||
+            (route.page === 'product-workspace' && item.id === 'products') ||
+            (route.page === 'client-profile' && item.id === 'crm') ||
+            (route.page === 'machine-profile' && item.id === 'machines'),
+        })),
+    [route.page, t, config.enabledModules],
   )
 
   const metaKeys = PAGE_META_KEYS[route.page] ?? PAGE_META_KEYS.dashboard
@@ -225,14 +230,16 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-100 text-slate-900">
+    <div className="flex min-h-screen bg-slate-50 text-slate-900">
       <Sidebar
         items={sidebarItems}
         onSelect={(id) => setRoute({ page: id, productId: null, clientId: null, machineId: null })}
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
       />
 
-      <main className="flex-1 p-4 md:p-6 xl:p-8">
-        <Header title={meta.title} subtitle={meta.subtitle} />
+      <main className="flex-1 min-w-0 p-4 md:p-6 xl:p-8">
+        <Header title={meta.title} subtitle={meta.subtitle} onMenuOpen={() => setSidebarOpen(true)} />
         {renderPage(route, db, actions)}
       </main>
 
@@ -242,7 +249,7 @@ function App() {
           type="button"
           onClick={() => setShowNewInquiry(true)}
           title={t('dashboard.quickActions.newInquiry')}
-          className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition active:scale-95"
+          className={`fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition active:scale-95 ${theme.primaryBtn}`}
         >
           <Plus size={22} />
         </button>
