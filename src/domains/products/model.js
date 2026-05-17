@@ -10,7 +10,10 @@
  * @property {string}        name
  * @property {ProductStatus} status
  * @property {ProductType}   type
- * @property {string}        uom               — base unit of measure (ea, kg, m, l, …)
+ * @property {string}        uom               — primary unit of measure (ea, kg, m, l, …)
+ * @property {string}        [uom2]            — secondary unit of measure (from old ERP: KeyName2)
+ * @property {number}        [uomCoef]         — conversion factor: 1 uom = uomCoef × uom2 (ResourceCoef)
+ * @property {number}        [priceAverage]    — average cost/purchase price (ResourcePriceAverage)
  * @property {boolean}       canBePurchased
  * @property {boolean}       canBeManufactured
  * @property {boolean}       canBeSold

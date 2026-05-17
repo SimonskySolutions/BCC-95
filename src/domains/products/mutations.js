@@ -37,6 +37,9 @@ function newProductId() {
  * @property {import('./model.js').ProductStatus} [status]
  * @property {import('./model.js').ProductType} [type]
  * @property {string} [uom]
+ * @property {string} [uom2]           — secondary unit of measure (old ERP: KeyName2)
+ * @property {number} [uomCoef]        — conversion: 1 uom = uomCoef × uom2 (old ERP: ResourceCoef)
+ * @property {number} [priceAverage]   — average cost/purchase price (old ERP: ResourcePriceAverage)
  * @property {boolean} [canBePurchased]
  * @property {boolean} [canBeManufactured]
  * @property {boolean} [canBeSold]
@@ -60,6 +63,9 @@ export function appendProduct(db, input) {
     status: input.status ?? 'draft',
     type: input.type ?? 'finished_good',
     uom: input.uom ?? 'ea',
+    uom2: input.uom2,
+    uomCoef: input.uomCoef,
+    priceAverage: input.priceAverage,
     canBePurchased: input.canBePurchased ?? false,
     canBeManufactured: input.canBeManufactured ?? true,
     canBeSold: input.canBeSold ?? true,

@@ -35,16 +35,16 @@ export const bomHeaders = [
 /** @type {import('./model.js').BomLine[]} */
 export const bomLines = [
   // prod-1 (Precision Housing) components
-  { id: 'bl-1', bomId: 'bom-1', sequence: 1, componentId: 'prod-rm-1', qty: 2.4, uom: 'kg',  bomOperationId: 'bop-1', notes: 'Stock-size billet; yield ≈ 85 %' },
-  { id: 'bl-2', bomId: 'bom-1', sequence: 2, componentId: 'prod-rm-2', qty: 8,   uom: 'ea',  bomOperationId: 'bop-3' },
+  { id: 'bl-1', bomId: 'bom-1', sequence: 1, componentId: 'prod-rm-1', qty: 2.4, uom: 'kg',  bomOperationId: 'bop-1', fromStoreId: 'store-raw',  leadTimeDays: 5,  notes: 'Stock-size billet; yield ≈ 85 %' },
+  { id: 'bl-2', bomId: 'bom-1', sequence: 2, componentId: 'prod-rm-2', qty: 8,   uom: 'ea',  bomOperationId: 'bop-3', fromStoreId: 'store-raw',  leadTimeDays: 2  },
 
   // prod-2 (Control Module) components
-  { id: 'bl-3', bomId: 'bom-2', sequence: 1, componentId: 'prod-rm-3', qty: 1, uom: 'ea', bomOperationId: 'bop-5' },
-  { id: 'bl-4', bomId: 'bom-2', sequence: 2, componentId: 'prod-rm-4', qty: 1, uom: 'ea', bomOperationId: 'bop-5' },
+  { id: 'bl-3', bomId: 'bom-2', sequence: 1, componentId: 'prod-rm-3', qty: 1, uom: 'ea', bomOperationId: 'bop-5', fromStoreId: 'store-pcb',  leadTimeDays: 10 },
+  { id: 'bl-4', bomId: 'bom-2', sequence: 2, componentId: 'prod-rm-4', qty: 1, uom: 'ea', bomOperationId: 'bop-5', fromStoreId: 'store-pcb',  leadTimeDays: 7  },
 
   // prod-pkg-1 (Electronics Package A) — manufactured + purchased mix
-  { id: 'bl-5', bomId: 'bom-3', sequence: 1, componentId: 'prod-2',    qty: 1, uom: 'ea', bomOperationId: 'bop-7', notes: 'Manufactured in-house' },
-  { id: 'bl-6', bomId: 'bom-3', sequence: 2, componentId: 'prod-rm-5', qty: 1, uom: 'ea', bomOperationId: 'bop-7', notes: 'Externally sourced' },
+  { id: 'bl-5', bomId: 'bom-3', sequence: 1, componentId: 'prod-2',    qty: 1, uom: 'ea', bomOperationId: 'bop-7', fromStoreId: 'store-wip',  leadTimeDays: 0,  notes: 'Manufactured in-house' },
+  { id: 'bl-6', bomId: 'bom-3', sequence: 2, componentId: 'prod-rm-5', qty: 1, uom: 'ea', bomOperationId: 'bop-7', fromStoreId: 'store-raw',  leadTimeDays: 3,  notes: 'Externally sourced' },
 ]
 
 /** @type {import('./model.js').BomOperation[]} */

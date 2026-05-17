@@ -37,6 +37,8 @@
  * @property {number} qty              — quantity per qtyPerBom units of parent
  * @property {string} uom
  * @property {string} [bomOperationId] — consumed at this routing step (optional)
+ * @property {string} [fromStoreId]    — warehouse/store to pull this component from (old ERP: FromStoreID)
+ * @property {number} [leadTimeDays]   — procurement or sub-production lead time in days (old ERP: DaysToProduce)
  * @property {string} [notes]
  */
 
