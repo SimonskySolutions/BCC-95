@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Plus, ArrowRight, Check, RotateCcw } from 'lucide-react'
+import { X, Plus, ArrowRight, Check, RotateCcw } from 'lucide-react'
 import { selectTasksByEmployee } from '../domains/tasks/selectors.js'
 import { appendTask, patchTask, validateTaskCreate } from '../domains/tasks/mutations.js'
 import { PLANNED_QUARTERS, TASK_WORKSTREAMS } from '../domains/tasks/model.js'
@@ -240,7 +240,14 @@ export default function MyTasksPage({ db }) {
     setVersion((x) => x + 1)
   }
 
-  const inputCls = 'mt-1 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm'
+  const inputCls = 'mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200'
+
+  function closeModal() {
+    setShowForm(false)
+    setFormError(null)
+    setAutofillNote('')
+    setForm((f) => ({ ...f, title: '' }))
+  }
 
   return (
     <div className="space-y-4">
@@ -280,7 +287,6 @@ export default function MyTasksPage({ db }) {
           onChange={(e) => setYearFilter(Number(e.target.value))}
         />
 
-        {/* Stats chips */}
         <div className="ml-auto flex items-center gap-2">
           {overdueCount > 0 && (
             <span className="flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">
@@ -292,147 +298,206 @@ export default function MyTasksPage({ db }) {
           </span>
           <button
             type="button"
-            onClick={() => setShowForm((v) => !v)}
+            onClick={() => setShowForm(true)}
             className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800"
           >
             <Plus size={13} />
-            New task
+            Create task
           </button>
         </div>
       </div>
 
-      {/* Collapsible create form */}
+      {/* Create task modal */}
       {showForm && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-900">{t('tasks.createSection')}</h3>
-            <button type="button" onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600">
-              <ChevronDown size={16} />
-            </button>
-          </div>
-          <form onSubmit={handleCreate} className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            <label className="text-xs font-medium text-slate-600 lg:col-span-2">
-              {t('tasks.fieldTitle')} <span className="text-rose-500">*</span>
-              <input
-                className={inputCls}
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="What needs to be done?"
-                required
-                autoFocus
-              />
-            </label>
-            <label className="text-xs font-medium text-slate-600">
-              {t('tasks.fieldAssignee')}
-              <select className={inputCls} value={form.assigneeId} onChange={(e) => setForm((f) => ({ ...f, assigneeId: e.target.value }))}>
-                {db.employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs font-medium text-slate-600">
-              {t('common.product')}
-              <select
-                className={inputCls}
-                value={form.productId}
-                onChange={(e) => {
-                  const pid = e.target.value
-                  const firstOp = selectOperationsByProduct(db, pid)[0]
-                  setForm((f) => ({ ...f, productId: pid, operationId: firstOp?.id ?? '' }))
-                  if (firstOp) applyOperationDefaults(pid, firstOp.id, form.dueDate)
-                  else setAutofillNote('')
-                }}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}
+        >
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+            {/* Modal header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <h2 className="text-base font-semibold text-slate-900">Create task</h2>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close"
               >
-                {db.products.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs font-medium text-slate-600">
-              {t('tasks.fieldOperation')}
-              <select
-                className={inputCls}
-                value={form.operationId}
-                onChange={(e) => {
-                  const oid = e.target.value
-                  setForm((f) => ({ ...f, operationId: oid }))
-                  if (oid) applyOperationDefaults(form.productId, oid, form.dueDate)
-                  else setAutofillNote('')
-                }}
-              >
-                <option value="">{t('common.none')}</option>
-                {operationOptions.map((op) => (
-                  <option key={op.id} value={op.id}>{op.sequence}. {op.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs font-medium text-slate-600">
-              {t('common.due')}
-              <input
-                type="date"
-                className={inputCls}
-                value={form.dueDate}
-                onChange={(e) => {
-                  const d = e.target.value
-                  setForm((f) => ({ ...f, dueDate: d }))
-                  if (form.operationId) applyOperationDefaults(form.productId, form.operationId, d)
-                }}
-              />
-            </label>
-            <label className="text-xs font-medium text-slate-600">
-              {t('common.quarter')}
-              <select
-                className={inputCls}
-                value={form.plannedQuarter}
-                onChange={(e) => setForm((f) => ({ ...f, plannedQuarter: /** @type {any} */ (e.target.value) }))}
-              >
-                {PLANNED_QUARTERS.map((q) => <option key={q} value={q}>{q} {form.plannedYear}</option>)}
-              </select>
-            </label>
-            <label className="text-xs font-medium text-slate-600">
-              {t('tasks.fieldLifecyclePhase')}
-              <select
-                className={inputCls}
-                value={form.phaseId}
-                onChange={(e) => setForm((f) => ({ ...f, phaseId: /** @type {any} */ (e.target.value) }))}
-              >
-                {LIFECYCLE_PHASE_ORDER.map((pid) => (
-                  <option key={pid} value={pid}>{t(`lifecycle.phase.${pid}`, pid.replace(/_/g, ' '))}</option>
-                ))}
-              </select>
-            </label>
-            <label className="text-xs font-medium text-slate-600">
-              {t('tasks.fieldWorkstream')}
-              <select
-                className={inputCls}
-                value={form.workstream}
-                onChange={(e) => setForm((f) => ({ ...f, workstream: /** @type {any} */ (e.target.value) }))}
-              >
-                {TASK_WORKSTREAMS.map((w) => (
-                  <option key={w} value={w}>{t(`taskWorkstream.${w}`, w.replace(/_/g, ' '))}</option>
-                ))}
-              </select>
-            </label>
-            <div className="flex items-end gap-2">
-              <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                {t('tasks.addTask')}
-              </button>
-              <button type="button" onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
-                Cancel
+                <X size={16} />
               </button>
             </div>
-          </form>
-          {autofillNote && (
-            <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
-              ✓ {autofillNote}
-            </p>
-          )}
-          {formError && (
-            <p className="mt-2 rounded-lg bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700 ring-1 ring-rose-100">
-              {formError}
-            </p>
-          )}
-        </section>
+
+            {/* Modal body */}
+            <form onSubmit={handleCreate} className="space-y-4 px-6 py-5">
+              {/* Title — most prominent field like Jira */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                  {t('tasks.fieldTitle')} <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="What needs to be done?"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              {/* Two-column fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                    {t('tasks.fieldAssignee')}
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={form.assigneeId}
+                    onChange={(e) => setForm((f) => ({ ...f, assigneeId: e.target.value }))}
+                  >
+                    {db.employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>{emp.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                    {t('common.due')}
+                  </label>
+                  <input
+                    type="date"
+                    className={inputCls}
+                    value={form.dueDate}
+                    onChange={(e) => {
+                      const d = e.target.value
+                      setForm((f) => ({ ...f, dueDate: d }))
+                      if (form.operationId) applyOperationDefaults(form.productId, form.operationId, d)
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                    {t('common.product')}
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={form.productId}
+                    onChange={(e) => {
+                      const pid = e.target.value
+                      const firstOp = selectOperationsByProduct(db, pid)[0]
+                      setForm((f) => ({ ...f, productId: pid, operationId: firstOp?.id ?? '' }))
+                      if (firstOp) applyOperationDefaults(pid, firstOp.id, form.dueDate)
+                      else setAutofillNote('')
+                    }}
+                  >
+                    {db.products.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                    {t('tasks.fieldWorkstream')}
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={form.workstream}
+                    onChange={(e) => setForm((f) => ({ ...f, workstream: /** @type {any} */ (e.target.value) }))}
+                  >
+                    {TASK_WORKSTREAMS.map((w) => (
+                      <option key={w} value={w}>{t(`taskWorkstream.${w}`, w.replace(/_/g, ' '))}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                    {t('tasks.fieldOperation')}
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={form.operationId}
+                    onChange={(e) => {
+                      const oid = e.target.value
+                      setForm((f) => ({ ...f, operationId: oid }))
+                      if (oid) applyOperationDefaults(form.productId, oid, form.dueDate)
+                      else setAutofillNote('')
+                    }}
+                  >
+                    <option value="">{t('common.none')}</option>
+                    {operationOptions.map((op) => (
+                      <option key={op.id} value={op.id}>{op.sequence}. {op.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                    {t('tasks.fieldLifecyclePhase')}
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={form.phaseId}
+                    onChange={(e) => setForm((f) => ({ ...f, phaseId: /** @type {any} */ (e.target.value) }))}
+                  >
+                    {LIFECYCLE_PHASE_ORDER.map((pid) => (
+                      <option key={pid} value={pid}>{t(`lifecycle.phase.${pid}`, pid.replace(/_/g, ' '))}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
+                    {t('common.quarter')}
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={form.plannedQuarter}
+                    onChange={(e) => setForm((f) => ({ ...f, plannedQuarter: /** @type {any} */ (e.target.value) }))}
+                  >
+                    {PLANNED_QUARTERS.map((q) => <option key={q} value={q}>{q} {form.plannedYear}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Autofill note */}
+              {autofillNote && (
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+                  ✓ {autofillNote}
+                </p>
+              )}
+
+              {/* Error */}
+              {formError && (
+                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 ring-1 ring-rose-100">
+                  {formError}
+                </p>
+              )}
+
+              {/* Footer actions */}
+              <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Create task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Kanban board */}
@@ -440,15 +505,12 @@ export default function MyTasksPage({ db }) {
         <div className="grid min-w-[700px] grid-cols-3 gap-3">
           {kanbanColumns.map((col) => (
             <div key={col.id} className={`rounded-2xl border ${col.accent} bg-white`}>
-              {/* Column header */}
               <div className={`flex items-center justify-between rounded-t-2xl px-3 py-2.5 ${col.headerBg}`}>
                 <span className="text-sm font-semibold text-slate-800">{col.label}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${col.countBg}`}>
                   {col.tasks.length}
                 </span>
               </div>
-
-              {/* Cards */}
               <div className="space-y-2 p-3">
                 {col.tasks.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-xs text-slate-400">
