@@ -93,7 +93,7 @@ function renderPage(route, db, actions) {
     case 'products':
       return <ProductsPage db={db} onOpenProduct={actions.openProduct} />
     case 'quotations':
-      return <QuotationsPage db={db} onOpenProduct={actions.openProduct} />
+      return <QuotationsPage db={db} onOpenProduct={actions.openProduct} onNewInquiry={actions.openNewInquiry} />
     case 'product-workspace':
       return (
         <ProductWorkspacePage

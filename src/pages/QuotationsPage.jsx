@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { TrendingUp, Clock, CheckCircle, AlertTriangle, BarChart2, ChevronRight } from 'lucide-react'
+import { TrendingUp, Clock, CheckCircle, AlertTriangle, BarChart2, ChevronRight, Plus } from 'lucide-react'
 import { useLanguage } from '../i18n/useLanguage.js'
 import { QUOTE_STATUSES } from '../domains/quotations/model.js'
 import { selectQuoteVersionById } from '../domains/quotations/selectors.js'
@@ -36,9 +36,10 @@ const DECIDED_STATUSES  = ['accepted', 'rejected']
  * @param {{
  *   db: import('../data/mockDatabase.js').MockDatabase
  *   onOpenProduct: (id: string) => void
+ *   onNewInquiry?: () => void
  * }} props
  */
-export default function QuotationsPage({ db, onOpenProduct }) {
+export default function QuotationsPage({ db, onOpenProduct, onNewInquiry }) {
   const { t } = useLanguage()
   const [search, setSearch]         = useState('')
   const [statusFilter, setStatus]   = useState('all')
@@ -120,7 +121,7 @@ export default function QuotationsPage({ db, onOpenProduct }) {
         <KpiCard icon={<BarChart2 size={16} />} label={t('quotations.avgDaysOpen')} value={`${metrics.avgDays}d`} color="text-amber-600" />
       </div>
 
-      {/* Filters */}
+      {/* Filters + actions */}
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="search"
@@ -149,14 +150,26 @@ export default function QuotationsPage({ db, onOpenProduct }) {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        <button
-          type="button"
-          onClick={() => setShowAnalytics((v) => !v)}
-          className="ml-auto flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-        >
-          <BarChart2 size={13} />
-          {t('quotations.analytics.title')}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowAnalytics((v) => !v)}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <BarChart2 size={13} />
+            {t('quotations.analytics.title')}
+          </button>
+          {onNewInquiry && (
+            <button
+              type="button"
+              onClick={onNewInquiry}
+              className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              <Plus size={14} />
+              New inquiry
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Analytics panel */}
@@ -285,6 +298,7 @@ function QuoteCard({ quote, product, client, daysExp, t, onOpen, flat = false })
     <button
       type="button"
       onClick={onOpen}
+      title="Open in product workspace"
       className={`group w-full rounded-lg border text-left transition hover:shadow-md ${flat ? 'border-slate-200 bg-white p-3' : 'border-slate-100 bg-slate-50/60 p-2.5 hover:bg-white'}`}
     >
       <div className="flex items-start justify-between gap-1">
@@ -304,7 +318,10 @@ function QuoteCard({ quote, product, client, daysExp, t, onOpen, flat = false })
         <span className="text-sm font-bold text-slate-900">
           {quote.currency ?? 'EUR'} {(quote.subtotal || 0).toLocaleString()}
         </span>
-        <ChevronRight size={13} className="text-slate-300 group-hover:text-blue-400 transition" />
+        <span className="flex items-center gap-0.5 text-[10px] text-slate-300 group-hover:text-blue-400 transition">
+          <span className="hidden group-hover:inline">Open</span>
+          <ChevronRight size={13} />
+        </span>
       </div>
       {isExpired ? (
         <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-red-600">

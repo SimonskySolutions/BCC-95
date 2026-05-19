@@ -84,6 +84,20 @@ const LINE_TEMPLATES = {
   ],
 }
 
+/** Converts internal blocker codes to readable instructions. */
+function blockerLabel(blocker = '') {
+  if (blocker.startsWith('task:quote-tech-review')) return 'Complete the Technical Review task first'
+  if (blocker.startsWith('task:quote-costing'))     return 'Complete the Costing task first'
+  if (blocker.startsWith('task:'))                  return `Complete the required task: ${blocker.replace('task:', '')}`
+  if (blocker === 'feasibility:not_recorded')        return 'Record a feasibility result above'
+  if (blocker === 'quote:no_version')                return 'Create a quote version in the calculation panel'
+  if (blocker === 'quote:not_approved')              return 'Get the quote approved before sending'
+  if (blocker === 'quote:not_sent')                  return 'Send the quote to the client'
+  if (blocker === 'customer:pending')                return 'Waiting for the client\'s decision'
+  if (blocker.startsWith('intake:'))                 return `Fill in missing inquiry fields: ${blocker.replace('intake:', '')}`
+  return blocker
+}
+
 /**
  * Main "Offer" tab in Product Workspace. Orchestrates:
  *   - Feasibility check (VSM 1.3)
@@ -262,7 +276,8 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         </div>
         {progress.blockers.length > 0 && progress.nextStep ? (
           <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">
-            {t('offer.nextStep')}: {t(`offer.step.${progress.nextStep}`, progress.nextStep)} — {progress.blockers[0]}
+            {t('offer.nextStep')}: {t(`offer.step.${progress.nextStep}`, progress.nextStep.replace(/_/g, ' '))}
+            {' — '}{blockerLabel(progress.blockers[0])}
           </p>
         ) : null}
       </div>
