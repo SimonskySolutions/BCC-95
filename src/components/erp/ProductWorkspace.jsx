@@ -72,6 +72,15 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
           {product.uom ? (
             <span>{t('pws.uom')} <span className="font-medium text-slate-700">{product.uom}</span></span>
           ) : null}
+          {product.uom2 ? (
+            <span>{t('pws.uom2')} <span className="font-medium text-slate-700">{product.uom2}</span></span>
+          ) : null}
+          {product.uomCoef != null ? (
+            <span>{t('pws.uomCoef')} <span className="font-medium text-slate-700">{product.uomCoef}</span></span>
+          ) : null}
+          {product.priceAverage != null ? (
+            <span>{t('pws.priceAverage')} <span className="font-medium text-slate-700">{product.priceAverage.toFixed(2)}</span></span>
+          ) : null}
           {pathTemplate ? (
             <span>{t('pws.pathTemplate')} <span className="font-medium text-slate-700">{pathTemplate.name}</span></span>
           ) : null}

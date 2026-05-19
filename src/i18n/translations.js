@@ -645,6 +645,9 @@ const en = {
   'pws.recentActivity': 'Recent activity',
   'pws.timeline': 'Process timeline',
   'pws.uom': 'UoM:',
+  'pws.uom2': 'UoM 2:',
+  'pws.uomCoef': 'Conv. factor:',
+  'pws.priceAverage': 'Avg. price:',
 
   // Product types
   'product.type.raw_material': 'Raw Material',
@@ -669,6 +672,8 @@ const en = {
   'bom.col.qty': 'Qty',
   'bom.col.uom': 'UoM',
   'bom.col.consumedAt': 'Consumed at',
+  'bom.col.store': 'Store',
+  'bom.col.leadDays': 'Lead (days)',
   'bom.col.operation': 'Operation',
   'bom.col.workcenter': 'Work center',
   'bom.col.setup': 'Setup',
@@ -1520,6 +1525,9 @@ const bg = {
   'pws.recentActivity': 'Скорошна активност',
   'pws.timeline': 'Хронология на процеса',
   'pws.uom': 'Мярка:',
+  'pws.uom2': 'Мярка 2:',
+  'pws.uomCoef': 'Коеф.:',
+  'pws.priceAverage': 'Ср. цена:',
 
   // Видове продукти
   'product.type.raw_material': 'Суровина',
@@ -1544,6 +1552,8 @@ const bg = {
   'bom.col.qty': 'Кол.',
   'bom.col.uom': 'Мярка',
   'bom.col.consumedAt': 'Влага се при',
+  'bom.col.store': 'Склад',
+  'bom.col.leadDays': 'Срок (дни)',
   'bom.col.operation': 'Операция',
   'bom.col.workcenter': 'Работен център',
   'bom.col.setup': 'Настройка',

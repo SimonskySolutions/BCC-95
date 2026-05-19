@@ -163,6 +163,8 @@ export default function BomEditor({ db, productId }) {
                 <th className="px-3 py-3 text-right">{t('bom.col.qty')}</th>
                 <th className="px-3 py-3">{t('bom.col.uom')}</th>
                 <th className="px-3 py-3">{t('bom.col.consumedAt')}</th>
+                <th className="px-3 py-3">{t('bom.col.store')}</th>
+                <th className="px-3 py-3 text-right">{t('bom.col.leadDays')}</th>
                 <th className="w-8 px-3 py-3" />
               </tr>
             </thead>
@@ -248,6 +250,31 @@ export default function BomEditor({ db, productId }) {
                           ))}
                         </select>
                       )}
+                    </td>
+                    <td className="px-3 py-3">
+                      <input
+                        type="text"
+                        value={line.fromStoreId ?? ''}
+                        placeholder="—"
+                        onChange={(e) => {
+                          patchBomLine(db, line.id, { fromStoreId: e.target.value || undefined })
+                          refresh()
+                        }}
+                        className="w-24 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      />
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <input
+                        type="number"
+                        min="0"
+                        value={line.leadTimeDays ?? ''}
+                        placeholder="0"
+                        onChange={(e) => {
+                          patchBomLine(db, line.id, { leadTimeDays: e.target.value !== '' ? parseInt(e.target.value) : undefined })
+                          refresh()
+                        }}
+                        className="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      />
                     </td>
                     <td className="px-3 py-3">
                       <button
