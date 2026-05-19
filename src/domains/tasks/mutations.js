@@ -100,3 +100,14 @@ export function validateTaskCreate(db, input) {
 export function appendTask(db, task) {
   db.tasks.push(task)
 }
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} taskId
+ * @param {Partial<import('./model.js').Task>} patch
+ */
+export function patchTask(db, taskId, patch) {
+  const task = db.tasks.find((t) => t.id === taskId)
+  if (!task) return
+  Object.assign(task, patch)
+}
