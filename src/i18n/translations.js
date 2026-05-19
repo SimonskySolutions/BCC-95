@@ -437,7 +437,7 @@ const en = {
   'audit.action.product.created': 'Product created',
 
   // Product workspace page
-  'pw.back': '← Back to products',
+  'pw.back': 'Back to products',
   'pw.phaseControl': 'Phase control',
   'pw.currentPhase': 'Current phase:',
   'pw.setPhase': 'Set phase to',
