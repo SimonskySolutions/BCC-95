@@ -1,9 +1,6 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Plus, ArrowRight, Check, RotateCcw } from 'lucide-react'
-import {
-  selectOverdueTasks,
-  selectTasksByEmployee,
-} from '../domains/tasks/selectors.js'
+import { ChevronDown, Plus, ArrowRight, Check, RotateCcw } from 'lucide-react'
+import { selectTasksByEmployee } from '../domains/tasks/selectors.js'
 import { appendTask, patchTask, validateTaskCreate } from '../domains/tasks/mutations.js'
 import { PLANNED_QUARTERS, TASK_WORKSTREAMS } from '../domains/tasks/model.js'
 import { LIFECYCLE_PHASE_ORDER } from '../domains/lifecycle/model.js'
