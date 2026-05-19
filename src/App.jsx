@@ -248,7 +248,7 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900">
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
       <CommandPalette
         db={db}
         open={cmdOpen}
@@ -264,7 +264,7 @@ function App() {
         onMobileClose={() => setSidebarOpen(false)}
       />
 
-      <main className="flex-1 min-w-0 p-4 md:p-6 xl:p-8">
+      <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6 xl:p-8">
         <Header title={meta.title} subtitle={meta.subtitle} onMenuOpen={() => setSidebarOpen(true)} onSearch={() => setCmdOpen(true)} />
         {renderPage(route, db, actions)}
       </main>

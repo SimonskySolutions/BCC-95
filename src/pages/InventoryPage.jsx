@@ -52,6 +52,8 @@ export default function InventoryPage({ db }) {
     [summaries],
   )
 
+  const [lowStockOnly, setLowStockOnly] = useState(false)
+
   const activeQuants = useMemo(() => {
     const quants = selectQuantsByLocation(db, activeLocation)
     if (!lowStockOnly) return quants
@@ -62,8 +64,6 @@ export default function InventoryPage({ db }) {
     () => selectStockMoves(db, { limit: movesLimit }),
     [db.stockMoves, movesLimit],
   )
-
-  const [lowStockOnly, setLowStockOnly] = useState(false)
 
   const totalSkus = db.stockQuants.filter((q) => q.qty > 0).length
   const lowStockCount = db.stockQuants.filter((q) => q.qty > 0 && q.qty - q.reservedQty <= q.qty * 0.1).length
