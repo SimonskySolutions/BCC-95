@@ -12,7 +12,7 @@ export const DEFAULT_FACTORY_CONFIG = {
   currency: 'BGN',
   accentColor: 'indigo',
   enabledModules: [
-    'dashboard', 'products', 'tasks', 'planning', 'manufacturing',
+    'dashboard', 'products', 'quotations', 'tasks', 'planning', 'manufacturing',
     'machines', 'inventory', 'purchase', 'shipping', 'people',
     'quality', 'analytics', 'reports', 'ai-agents', 'crm',
     'documentation', 'settings',

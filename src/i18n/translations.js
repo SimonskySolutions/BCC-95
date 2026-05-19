@@ -926,6 +926,114 @@ const en = {
   'acceptance.thanks': 'Thanks — your decision has been recorded.',
   'acceptance.alreadyDecided': 'A decision was already recorded for this offer.',
   'acceptance.footer': 'ERP Nexus · Secure customer portal',
+
+  // Quotations module
+  'nav.quotations': 'Quotations',
+  'page.quotations.title': 'Quotations',
+  'page.quotations.subtitle': 'Active offer pipeline and win analytics',
+  'quotations.search': 'Search quotes…',
+  'quotations.filterStatus': 'Status',
+  'quotations.filterClient': 'Client',
+  'quotations.allStatuses': 'All statuses',
+  'quotations.allClients': 'All clients',
+  'quotations.totalActive': 'Active quotes',
+  'quotations.pipelineValue': 'Pipeline value',
+  'quotations.winRate': 'Win rate',
+  'quotations.avgDaysOpen': 'Avg days open',
+  'quotations.empty': 'No quotes match your filters.',
+  'quotations.expiresSoon': 'Expires in {n}d',
+  'quotations.expired': 'Expired',
+  'quotations.analytics.title': 'Offer analytics',
+  'quotations.analytics.decided': 'Decided quotes',
+  'quotations.analytics.won': 'Won',
+  'quotations.analytics.lost': 'Lost',
+  'quotations.analytics.revised': 'Revised',
+
+  // Product CRUD (standalone)
+  'products.newProduct': 'New product',
+  'products.editProduct': 'Edit product',
+  'products.deleteProduct': 'Delete product',
+  'products.deleteConfirm': 'Delete this product? This cannot be undone.',
+  'products.saved': 'Product saved.',
+  'products.created': 'Product created.',
+  'products.deleted': 'Product deleted.',
+  'products.fieldName': 'Name',
+  'products.fieldType': 'Type',
+  'products.fieldStatus': 'Status',
+  'products.fieldUom': 'Unit of measure',
+  'products.fieldUom2': 'Secondary UoM',
+  'products.fieldUomCoef': 'Conv. factor (1 UoM = ? × UoM2)',
+  'products.fieldPriceAverage': 'Average cost price',
+  'products.fieldDescription': 'Description',
+  'products.fieldCustomer': 'Customer (optional)',
+  'products.canBePurchased': 'Can be purchased',
+  'products.canBeManufactured': 'Can be manufactured',
+  'products.canBeSold': 'Can be sold',
+  'products.listView': 'List',
+  'products.gridView': 'Grid',
+
+  // BOM cost roll-up & substitutes
+  'bom.costRollup': 'Material cost estimate',
+  'bom.totalMaterialCost': 'Total material cost',
+  'bom.costPerUnit': '/ unit',
+  'bom.noPriceAverage': 'No price',
+  'bom.substitutes': 'Substitutes',
+  'bom.addSubstitute': 'Add substitute',
+  'bom.noSubstitutes': 'No substitutes defined for this component.',
+  'bom.substituteComponent': 'Substitute component',
+  'bom.substituteQty': 'Qty',
+  'bom.substituteNote': 'Note (optional)',
+  'bom.section.substitutes': 'Substitutes',
+
+  // Offer — post-acceptance
+  'offer.accepted.banner': 'Offer accepted',
+  'offer.accepted.subtitle': 'The customer confirmed the terms. Convert to an order to proceed.',
+  'offer.accepted.createMO': 'Create manufacturing order',
+  'offer.accepted.createPO': 'Create purchase order',
+  'offer.accepted.moCreated': 'Manufacturing order created.',
+  'offer.accepted.poCreated': 'Purchase order created.',
+
+  // Offer — revision request
+  'offer.revision.banner': 'Customer requested a revision',
+  'offer.revision.comment': 'Customer comment:',
+  'offer.revision.createVersion': 'Create new version',
+
+  // Offer — expiration
+  'offer.expiredBanner': 'This offer has expired',
+  'offer.expiresSoon': 'Expires in {n} days',
+
+  // Offer — attachments
+  'offer.attachments': 'Attachments',
+  'offer.attachments.add': 'Add attachment',
+  'offer.attachments.name': 'File name',
+  'offer.attachments.kind': 'Kind',
+  'offer.attachments.empty': 'No attachments yet.',
+  'offer.attachments.added': 'Attachment added.',
+
+  // Offer — version comparison
+  'offer.compare': 'Compare',
+  'offer.compare.title': 'Version comparison',
+  'offer.compare.vA': 'Version A',
+  'offer.compare.vB': 'Version B',
+  'offer.compare.field': 'Field',
+  'offer.compare.unchanged': 'Unchanged',
+  'offer.compare.changed': 'Changed',
+
+  // Offer — line item templates
+  'offer.templates': 'Templates',
+  'offer.applyTemplate': 'Apply template',
+  'offer.template.standard': 'Standard manufacturing',
+  'offer.template.toolingLabor': 'Tooling + labor',
+  'offer.template.materialsOnly': 'Materials only',
+  'offer.templateApplied': 'Template applied.',
+
+  // Command palette
+  'cmd.placeholder': 'Search products, clients, quotes…',
+  'cmd.group.products': 'Products',
+  'cmd.group.clients': 'Clients',
+  'cmd.group.quotes': 'Quotes',
+  'cmd.noResults': 'No results for this search.',
+  'cmd.hint': '↑↓ navigate · Enter open · Esc close',
 }
 
 /** @type {Record<string, string>} */
@@ -1795,6 +1903,114 @@ const bg = {
   'acceptance.thanks': 'Благодарим — решението Ви е записано.',
   'acceptance.alreadyDecided': 'Вече е регистрирано решение за тази оферта.',
   'acceptance.footer': 'ERP Nexus · Защитен клиентски портал',
+
+  // Quotations module (BG)
+  'nav.quotations': 'Оферти',
+  'page.quotations.title': 'Оферти',
+  'page.quotations.subtitle': 'Активен тръбопровод на оферти и анализи',
+  'quotations.search': 'Търсене на оферти…',
+  'quotations.filterStatus': 'Статус',
+  'quotations.filterClient': 'Клиент',
+  'quotations.allStatuses': 'Всички статуси',
+  'quotations.allClients': 'Всички клиенти',
+  'quotations.totalActive': 'Активни оферти',
+  'quotations.pipelineValue': 'Стойност на тръбопровода',
+  'quotations.winRate': 'Дял спечелени',
+  'quotations.avgDaysOpen': 'Средно дни отворена',
+  'quotations.empty': 'Няма оферти за избраните филтри.',
+  'quotations.expiresSoon': 'Изтича след {n}д',
+  'quotations.expired': 'Изтекла',
+  'quotations.analytics.title': 'Анализ на оферти',
+  'quotations.analytics.decided': 'Решени оферти',
+  'quotations.analytics.won': 'Спечелени',
+  'quotations.analytics.lost': 'Изгубени',
+  'quotations.analytics.revised': 'Ревизирани',
+
+  // Product CRUD (BG)
+  'products.newProduct': 'Нов продукт',
+  'products.editProduct': 'Редакция на продукт',
+  'products.deleteProduct': 'Изтрий продукт',
+  'products.deleteConfirm': 'Изтрий този продукт? Действието не може да се отмени.',
+  'products.saved': 'Продуктът е записан.',
+  'products.created': 'Продуктът е създаден.',
+  'products.deleted': 'Продуктът е изтрит.',
+  'products.fieldName': 'Наименование',
+  'products.fieldType': 'Тип',
+  'products.fieldStatus': 'Статус',
+  'products.fieldUom': 'Мерна единица',
+  'products.fieldUom2': 'Вторична мерна единица',
+  'products.fieldUomCoef': 'Коефициент (1 МЕ = ? × МЕ2)',
+  'products.fieldPriceAverage': 'Средна цена на доставка',
+  'products.fieldDescription': 'Описание',
+  'products.fieldCustomer': 'Клиент (по избор)',
+  'products.canBePurchased': 'Може да се закупи',
+  'products.canBeManufactured': 'Може да се произведе',
+  'products.canBeSold': 'Може да се продаде',
+  'products.listView': 'Списък',
+  'products.gridView': 'Мрежа',
+
+  // BOM cost roll-up (BG)
+  'bom.costRollup': 'Оценка на материален разход',
+  'bom.totalMaterialCost': 'Общ материален разход',
+  'bom.costPerUnit': '/ бр.',
+  'bom.noPriceAverage': 'Без цена',
+  'bom.substitutes': 'Заместители',
+  'bom.addSubstitute': 'Добави заместител',
+  'bom.noSubstitutes': 'Няма дефинирани заместители за тази компонента.',
+  'bom.substituteComponent': 'Заместваща компонента',
+  'bom.substituteQty': 'Количество',
+  'bom.substituteNote': 'Бележка (по избор)',
+  'bom.section.substitutes': 'Заместители',
+
+  // Offer — post-acceptance (BG)
+  'offer.accepted.banner': 'Офертата е приета',
+  'offer.accepted.subtitle': 'Клиентът потвърди условията. Конвертирайте в поръчка, за да продължите.',
+  'offer.accepted.createMO': 'Създай производствена поръчка',
+  'offer.accepted.createPO': 'Създай поръчка за покупка',
+  'offer.accepted.moCreated': 'Производствената поръчка е създадена.',
+  'offer.accepted.poCreated': 'Поръчката за покупка е създадена.',
+
+  // Offer — revision request (BG)
+  'offer.revision.banner': 'Клиентът поиска ревизия',
+  'offer.revision.comment': 'Коментар на клиента:',
+  'offer.revision.createVersion': 'Създай нова версия',
+
+  // Offer — expiration (BG)
+  'offer.expiredBanner': 'Тази оферта е изтекла',
+  'offer.expiresSoon': 'Изтича след {n} дни',
+
+  // Offer — attachments (BG)
+  'offer.attachments': 'Прикачени файлове',
+  'offer.attachments.add': 'Добави файл',
+  'offer.attachments.name': 'Наименование',
+  'offer.attachments.kind': 'Тип',
+  'offer.attachments.empty': 'Няма прикачени файлове.',
+  'offer.attachments.added': 'Файлът е добавен.',
+
+  // Offer — version comparison (BG)
+  'offer.compare': 'Сравни',
+  'offer.compare.title': 'Сравнение на версии',
+  'offer.compare.vA': 'Версия A',
+  'offer.compare.vB': 'Версия B',
+  'offer.compare.field': 'Поле',
+  'offer.compare.unchanged': 'Непроменено',
+  'offer.compare.changed': 'Променено',
+
+  // Offer — line item templates (BG)
+  'offer.templates': 'Шаблони',
+  'offer.applyTemplate': 'Приложи шаблон',
+  'offer.template.standard': 'Стандартно производство',
+  'offer.template.toolingLabor': 'Инструментална оснастка + труд',
+  'offer.template.materialsOnly': 'Само материали',
+  'offer.templateApplied': 'Шаблонът е приложен.',
+
+  // Command palette (BG)
+  'cmd.placeholder': 'Търсене на продукти, клиенти, оферти…',
+  'cmd.group.products': 'Продукти',
+  'cmd.group.clients': 'Клиенти',
+  'cmd.group.quotes': 'Оферти',
+  'cmd.noResults': 'Няма резултати за това търсене.',
+  'cmd.hint': '↑↓ навигация · Enter отваряне · Esc затваряне',
 }
 
 export const TRANSLATIONS = { en, bg }

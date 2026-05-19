@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import Sidebar from './components/Sidebar.jsx'
 import Header from './components/Header.jsx'
+import CommandPalette from './components/CommandPalette.jsx'
 import { useLanguage } from './i18n/useLanguage.js'
 import { useFactoryConfig } from './config/useFactoryConfig.js'
 import { getMockDatabase } from './data/mockDatabase.js'
@@ -9,6 +10,7 @@ import DashboardPage from './pages/DashboardPage.jsx'
 import NewInquiryForm from './components/erp/offers/NewInquiryForm.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductWorkspacePage from './pages/ProductWorkspacePage.jsx'
+import QuotationsPage from './pages/QuotationsPage.jsx'
 import MyTasksPage from './pages/MyTasksPage.jsx'
 import TeamWorkloadPage from './pages/TeamWorkloadPage.jsx'
 import ManufacturingPage from './pages/ManufacturingPage.jsx'
@@ -33,6 +35,7 @@ import { ERP_NAV_ITEMS } from './config/erpNav.js'
 const PAGE_META_KEYS = {
   dashboard: { titleKey: 'page.dashboard.title', subtitleKey: 'page.dashboard.subtitle' },
   products: { titleKey: 'page.products.title', subtitleKey: 'page.products.subtitle' },
+  quotations: { titleKey: 'page.quotations.title', subtitleKey: 'page.quotations.subtitle' },
   'product-workspace': {
     titleKey: 'page.productWorkspace.title',
     subtitleKey: 'page.productWorkspace.subtitle',
@@ -89,6 +92,8 @@ function renderPage(route, db, actions) {
       )
     case 'products':
       return <ProductsPage db={db} onOpenProduct={actions.openProduct} />
+    case 'quotations':
+      return <QuotationsPage db={db} onOpenProduct={actions.openProduct} />
     case 'product-workspace':
       return (
         <ProductWorkspacePage
@@ -198,6 +203,19 @@ function App() {
     [route.page, t, config.enabledModules],
   )
 
+  const [cmdOpen, setCmdOpen] = useState(false)
+
+  useEffect(() => {
+    function onKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setCmdOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const metaKeys = PAGE_META_KEYS[route.page] ?? PAGE_META_KEYS.dashboard
   const meta = { title: t(metaKeys.titleKey), subtitle: t(metaKeys.subtitleKey) }
 
@@ -231,6 +249,14 @@ function App() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
+      <CommandPalette
+        db={db}
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        onOpenProduct={actions.openProduct}
+        onOpenClient={actions.openClient}
+        onNavigate={actions.navigate}
+      />
       <Sidebar
         items={sidebarItems}
         onSelect={(id) => setRoute({ page: id, productId: null, clientId: null, machineId: null })}
@@ -239,7 +265,7 @@ function App() {
       />
 
       <main className="flex-1 min-w-0 p-4 md:p-6 xl:p-8">
-        <Header title={meta.title} subtitle={meta.subtitle} onMenuOpen={() => setSidebarOpen(true)} />
+        <Header title={meta.title} subtitle={meta.subtitle} onMenuOpen={() => setSidebarOpen(true)} onSearch={() => setCmdOpen(true)} />
         {renderPage(route, db, actions)}
       </main>
 

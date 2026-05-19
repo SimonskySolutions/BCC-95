@@ -90,3 +90,16 @@ export function patchProduct(db, productId, patch) {
   db.products[idx] = { ...db.products[idx], ...patch }
   return db.products[idx]
 }
+
+/**
+ * Remove a product by id. Returns true if found and deleted.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} productId
+ * @returns {boolean}
+ */
+export function deleteProduct(db, productId) {
+  const idx = db.products.findIndex((p) => p.id === productId)
+  if (idx < 0) return false
+  db.products.splice(idx, 1)
+  return true
+}

@@ -1,6 +1,7 @@
 export const ERP_NAV_ITEMS = [
   { id: 'dashboard', labelKey: 'nav.dashboard', icon: 'LayoutDashboard' },
   { id: 'products', labelKey: 'nav.products', icon: 'Package' },
+  { id: 'quotations', labelKey: 'nav.quotations', icon: 'FileText' },
   { id: 'tasks', labelKey: 'nav.tasks', icon: 'ClipboardList' },
   { id: 'planning', labelKey: 'nav.planning', icon: 'CalendarDays' },
   { id: 'manufacturing', labelKey: 'nav.manufacturing', icon: 'Factory' },

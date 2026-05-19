@@ -1,11 +1,11 @@
-import { Menu } from 'lucide-react'
+import { Menu, Search } from 'lucide-react'
 import { useLanguage } from '../i18n/useLanguage.js'
 import { useFactoryConfig } from '../config/useFactoryConfig.js'
 
 /**
- * @param {{ title?: string; subtitle?: string; onMenuOpen: () => void }} props
+ * @param {{ title?: string; subtitle?: string; onMenuOpen: () => void; onSearch?: () => void }} props
  */
-export default function Header({ title, subtitle, onMenuOpen }) {
+export default function Header({ title, subtitle, onMenuOpen, onSearch }) {
   const { language, setLanguage } = useLanguage()
   const { config, theme } = useFactoryConfig()
 
@@ -33,6 +33,18 @@ export default function Header({ title, subtitle, onMenuOpen }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {/* Search trigger */}
+        {onSearch ? (
+          <button
+            type="button"
+            onClick={onSearch}
+            className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-400 hover:bg-white hover:border-slate-300 transition"
+          >
+            <Search size={13} />
+            <span>Search…</span>
+            <kbd className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-mono text-slate-400">⌘K</kbd>
+          </button>
+        ) : null}
         {/* Language switcher */}
         <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-0.5">
           <button
