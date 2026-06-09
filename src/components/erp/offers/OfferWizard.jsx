@@ -1,9 +1,12 @@
-import { useMemo, useReducer, useState } from 'react'
-import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Layers, Trash2, Plus } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Layers, Plus, ChevronDown, Check } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
+import { useDb } from '../../../data/useDb.js'
+import { APP_TODAY } from '../../../lib/clock.js'
 import {
   computeOfferProgress,
 } from '../../../services/offers/offerSubStateMachine.js'
+import { convertAcceptedOfferToOrder } from '../../../services/offers/orderHandoffService.js'
 import {
   selectQuoteApprovals,
   selectQuoteDocuments,
@@ -23,6 +26,7 @@ import {
 } from '../../../domains/quotations/mutations.js'
 import OfferStepper from './OfferStepper.jsx'
 import OfferCalculationPanel from './OfferCalculationPanel.jsx'
+import OfferDetailsPanel from './OfferDetailsPanel.jsx'
 import OfferVersionList from './OfferVersionList.jsx'
 import OfferApprovalPanel from './OfferApprovalPanel.jsx'
 import OfferPreview from './OfferPreview.jsx'
@@ -30,9 +34,6 @@ import OfferSendDialog from './OfferSendDialog.jsx'
 import OfferStatusBadge from './OfferStatusBadge.jsx'
 import FeasibilityPanel from './FeasibilityPanel.jsx'
 
-const TODAY = new Date('2026-05-19')
-
-/** @type {Record<string,'material'|'tooling'|'labor'|'operation'|'logistics'>[][]} */
 function VersionDelta({ vA, vB, t }) {
   if (!vA || !vB) return null
   const FIELDS = ['subtotal', 'marginPercent', 'unitPrice', 'toolingCost', 'leadTimeDays', 'validUntil', 'moq', 'deliveryTerms', 'paymentTerms']
@@ -90,7 +91,7 @@ function blockerLabel(blocker = '') {
   if (blocker.startsWith('task:quote-costing'))     return 'Complete the Costing task first'
   if (blocker.startsWith('task:'))                  return `Complete the required task: ${blocker.replace('task:', '')}`
   if (blocker === 'feasibility:not_recorded')        return 'Record a feasibility result above'
-  if (blocker === 'quote:no_version')                return 'Create a quote version in the calculation panel'
+  if (blocker === 'quote:no_version')                return 'Create a quote version in the costing step'
   if (blocker === 'quote:not_approved')              return 'Get the quote approved before sending'
   if (blocker === 'quote:not_sent')                  return 'Send the quote to the client'
   if (blocker === 'customer:pending')                return 'Waiting for the client\'s decision'
@@ -99,12 +100,47 @@ function blockerLabel(blocker = '') {
 }
 
 /**
- * Main "Offer" tab in Product Workspace. Orchestrates:
- *   - Feasibility check (VSM 1.3)
- *   - Cost calculation & versioning (VSM 1.4)
- *   - Approval gate
- *   - Send offer (email + acceptance link)
- *   - Preview & audit
+ * One collapsible accordion section.
+ * @param {{
+ *   index: number
+ *   title: string
+ *   summary?: string
+ *   done?: boolean
+ *   open: boolean
+ *   onToggle: () => void
+ *   children: import('react').ReactNode
+ * }} props
+ */
+function Section({ index, title, summary, done, open, onToggle, children }) {
+  return (
+    <div className={`overflow-hidden rounded-2xl border bg-white shadow-card transition ${open ? 'border-blue-200' : 'border-slate-200'}`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50"
+      >
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+          done ? 'bg-emerald-100 text-emerald-700' : open ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
+        }`}>
+          {done ? <Check size={14} /> : index}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-slate-900">{title}</span>
+          {!open && summary ? <span className="block truncate text-xs text-slate-500">{summary}</span> : null}
+        </span>
+        <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open ? <div className="border-t border-slate-100 p-4">{children}</div> : null}
+    </div>
+  )
+}
+
+/**
+ * Main "Offer" tab in Product Workspace — a 4-step accordion:
+ *   1. Feasibility (VSM 1.3)
+ *   2. Costing — internal cost rollup that drives the sell price
+ *   3. Offer — customer-facing terms + offer lines
+ *   4. Approve & send — approval gate, preview, send, versions
  *
  * @param {{
  *   db: import('../../../data/mockDatabase.js').MockDatabase
@@ -115,8 +151,8 @@ function blockerLabel(blocker = '') {
  */
 export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   const { t } = useLanguage()
-  const [, forceRefresh] = useReducer((x) => x + 1, 0)
-  const onChange = () => forceRefresh()
+  const { commit, version: dbVersion } = useDb()
+  const onChange = () => commit()
   const [sendOpen, setSendOpen] = useState(false)
   const [selectedVersionId, setSelectedVersionId] = useState(/** @type {string | null} */ (null))
   const [compareMode, setCompareMode] = useState(false)
@@ -125,14 +161,14 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   const [attachForm, setAttachForm] = useState(false)
   const [attachName, setAttachName] = useState('')
   const [attachKind, setAttachKind] = useState(/** @type {'drawing'|'spec'|'other'} */ ('drawing'))
-  const [moCreated, setMoCreated] = useState(false)
-  const [poCreated, setPoCreated] = useState(false)
+  const [openSection, setOpenSection] = useState(/** @type {string | null} */ (null))
+  const [orderFlash, setOrderFlash] = useState('')
 
-  const progress = useMemo(() => computeOfferProgress(db, productId), [db, productId])
+  const progress = useMemo(() => computeOfferProgress(db, productId), [db, productId, dbVersion])
   const activeQuote = progress.activeQuote
   const versions = useMemo(
     () => (activeQuote ? selectQuoteVersions(db, activeQuote.id) : []),
-    [db, activeQuote],
+    [db, activeQuote, dbVersion],
   )
   const chosenVersionId = selectedVersionId ?? activeQuote?.currentVersionId
   const version = chosenVersionId ? selectQuoteVersionById(db, chosenVersionId) : undefined
@@ -144,10 +180,21 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
     .filter((m) => m.productId === productId)
     .slice(-1)[0]
 
+  // Which section should be open by default
+  const activeSection = !progress.status.feasibility_done
+    ? 'feasibility'
+    : !version
+      ? 'costing'
+      : !progress.status.approved
+        ? 'offer'
+        : 'send'
+  const effectiveOpen = openSection ?? activeSection
+  const toggle = (id) => setOpenSection((cur) => ((cur ?? activeSection) === id ? '__none__' : id))
+
   // Expiration
   const validUntilStr = version?.validUntil ?? activeQuote?.validUntil
   const daysUntilExpiry = validUntilStr
-    ? Math.round((new Date(validUntilStr) - TODAY) / 86400000)
+    ? Math.round((new Date(validUntilStr) - APP_TODAY) / 86400000)
     : null
 
   function applyTemplate(key) {
@@ -183,6 +230,19 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
     onChange()
   }
 
+  function handleCreateOrder() {
+    if (!activeQuote) return
+    const res = convertAcceptedOfferToOrder(db, activeQuote.id)
+    if (res.ok) {
+      setOrderFlash(res.created ? t('offer.accepted.orderCreated') : t('offer.accepted.orderExists'))
+      onChange()
+    } else {
+      setOrderFlash(t('offer.error'))
+    }
+  }
+
+  const clientId = activeQuote?.clientId ?? progress.inquiry?.customerId ?? db.clients[0]?.id ?? ''
+
   return (
     <div className="space-y-4">
 
@@ -194,21 +254,15 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
             <div className="flex-1">
               <p className="text-sm font-semibold text-emerald-900">{t('offer.accepted.banner')}</p>
               <p className="mt-0.5 text-xs text-emerald-700">{t('offer.accepted.subtitle')}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => { setMoCreated(true); setPoCreated(false) }}
+                  onClick={handleCreateOrder}
                   className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                 >
-                  {moCreated ? '✓ ' + t('offer.accepted.moCreated') : t('offer.accepted.createMO')}
+                  {t('offer.accepted.createOrder')}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => { setPoCreated(true); setMoCreated(false) }}
-                  className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
-                >
-                  {poCreated ? '✓ ' + t('offer.accepted.poCreated') : t('offer.accepted.createPO')}
-                </button>
+                {orderFlash ? <span className="text-xs font-medium text-emerald-800">{orderFlash}</span> : null}
               </div>
             </div>
           </div>
@@ -252,6 +306,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         ) : null
       ) : null}
 
+      {/* Progress header */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -282,39 +337,56 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         ) : null}
       </div>
 
-      {progress.inquiry ? (
-        <FeasibilityPanel
-          db={db}
-          inquiry={progress.inquiry}
-          actorId={actorId}
-          onChange={onChange}
-        />
-      ) : null}
+      {/* Step 1 — Feasibility */}
+      <Section
+        index={1}
+        title={t('offer.section.feasibility')}
+        done={progress.status.feasibility_done}
+        summary={progress.inquiry?.feasibilityResult && progress.inquiry.feasibilityResult !== 'not_assessed'
+          ? t(`feasibility.${progress.inquiry.feasibilityResult}`, progress.inquiry.feasibilityResult)
+          : t('offer.section.feasibility.todo')}
+        open={effectiveOpen === 'feasibility'}
+        onToggle={() => toggle('feasibility')}
+      >
+        {progress.inquiry ? (
+          <FeasibilityPanel db={db} inquiry={progress.inquiry} actorId={actorId} onChange={onChange} />
+        ) : (
+          <p className="text-xs text-slate-500">{t('offer.section.feasibility.noInquiry')}</p>
+        )}
+      </Section>
 
-      {/* Line item templates */}
-      {version && version.status === 'draft' ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1 text-xs text-slate-500">
-            <Layers size={12} /> {t('offer.templates')}:
-          </span>
-          {['standard', 'toolingLabor', 'materialsOnly'].map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => applyTemplate(key)}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-700 transition"
-            >
-              {t(`offer.template.${key}`)}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      {/* Step 2 — Costing (internal) */}
+      <Section
+        index={2}
+        title={t('offer.section.costing')}
+        done={Boolean(version)}
+        summary={version
+          ? `${t('offer.section.costing.sell')}: ${(version.unitPrice ?? 0).toFixed(2)} ${version.currency ?? 'EUR'}`
+          : t('offer.section.costing.todo')}
+        open={effectiveOpen === 'costing'}
+        onToggle={() => toggle('costing')}
+      >
+        {version && version.status === 'draft' ? (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-xs text-slate-500">
+              <Layers size={12} /> {t('offer.templates')}:
+            </span>
+            {['standard', 'toolingLabor', 'materialsOnly'].map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => applyTemplate(key)}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-700 transition"
+              >
+                {t(`offer.template.${key}`)}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <OfferCalculationPanel
           db={db}
           productId={productId}
-          clientId={activeQuote?.clientId ?? progress.inquiry?.customerId ?? db.clients[0]?.id ?? ''}
+          clientId={clientId}
           inquiryId={progress.inquiry?.id}
           quote={activeQuote}
           version={version}
@@ -322,186 +394,221 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
           actorId={actorId}
           onChange={onChange}
         />
-        {version ? (
-          <OfferApprovalPanel
-            db={db}
-            version={version}
-            approvals={approvals}
-            actorId={actorId}
-            onChange={onChange}
-          />
-        ) : null}
-      </div>
+      </Section>
 
-      <section className="space-y-3">
-        <header className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">{t('offer.versions')}</h3>
-          <div className="flex items-center gap-2">
-            {versions.length >= 2 ? (
-              <button
-                type="button"
-                onClick={() => { setCompareMode((v) => !v); setCompareA(null); setCompareB(null) }}
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${compareMode ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-              >
-                <GitCompare size={12} /> {t('offer.compare')}
-              </button>
-            ) : null}
-            {version && version.status === 'approved' ? (
-              <button
-                type="button"
-                onClick={() => setSendOpen(true)}
-                className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                {t('offer.send')}
-              </button>
-            ) : null}
-          </div>
-        </header>
-
-        {compareMode && versions.length >= 2 ? (
-          <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
-            <p className="text-xs font-semibold text-slate-700">{t('offer.compare.title')}</p>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex-1 min-w-[140px]">
-                <label className="block text-[10px] text-slate-500 mb-1">{t('offer.compare.vA')}</label>
-                <select value={compareA ?? ''} onChange={(e) => setCompareA(e.target.value || null)}
-                  className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs focus:outline-none">
-                  <option value="">— select —</option>
-                  {versions.map((v) => <option key={v.id} value={v.id}>v{v.versionNo} ({v.status})</option>)}
-                </select>
-              </div>
-              <div className="flex-1 min-w-[140px]">
-                <label className="block text-[10px] text-slate-500 mb-1">{t('offer.compare.vB')}</label>
-                <select value={compareB ?? ''} onChange={(e) => setCompareB(e.target.value || null)}
-                  className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs focus:outline-none">
-                  <option value="">— select —</option>
-                  {versions.map((v) => <option key={v.id} value={v.id}>v{v.versionNo} ({v.status})</option>)}
-                </select>
-              </div>
-            </div>
-            {compareA && compareB && compareA !== compareB ? (
-              <VersionDelta
-                vA={versions.find((v) => v.id === compareA)}
-                vB={versions.find((v) => v.id === compareB)}
-                t={t}
-              />
-            ) : null}
-          </div>
-        ) : null}
-
-        <OfferVersionList
-          versions={versions}
-          currentVersionId={chosenVersionId ?? undefined}
-          onSelect={setSelectedVersionId}
-        />
-      </section>
-
-      {/* Attachments */}
-      {version ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <Paperclip size={14} className="text-slate-400" />
-              {t('offer.attachments')} {attachments.length > 0 ? `(${attachments.length})` : ''}
-            </h3>
-            <button
-              type="button"
-              onClick={() => setAttachForm((v) => !v)}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-            >
-              <Plus size={11} /> {t('offer.attachments.add')}
-            </button>
-          </div>
-          {attachments.length === 0 && !attachForm ? (
-            <p className="text-xs text-slate-400">{t('offer.attachments.empty')}</p>
-          ) : null}
-          {attachments.length > 0 ? (
-            <div className="space-y-1.5 mb-3">
-              {attachments.map((doc) => (
-                <div key={doc.id} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    doc.kind === 'drawing' ? 'bg-blue-100 text-blue-700'
-                    : doc.kind === 'spec' ? 'bg-violet-100 text-violet-700'
-                    : 'bg-slate-100 text-slate-600'
-                  }`}>{doc.kind}</span>
-                  <span className="flex-1 text-xs font-medium text-slate-800 truncate">{doc.name}</span>
-                  <span className="text-[10px] text-slate-400">{doc.createdAt.slice(0, 10)}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {attachForm ? (
-            <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
-              <div className="flex-1 min-w-[160px]">
-                <label className="block text-[10px] text-slate-500 mb-1">{t('offer.attachments.name')}</label>
-                <input type="text" value={attachName} onChange={(e) => setAttachName(e.target.value)}
-                  placeholder="e.g. Drawing_rev2.pdf"
-                  className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300" />
-              </div>
-              <div className="w-28">
-                <label className="block text-[10px] text-slate-500 mb-1">{t('offer.attachments.kind')}</label>
-                <select value={attachKind} onChange={(e) => setAttachKind(/** @type {any} */ (e.target.value))}
-                  className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs focus:outline-none">
-                  {['drawing', 'spec', 'other'].map((k) => <option key={k} value={k}>{k}</option>)}
-                </select>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!attachName.trim()) return
-                  appendQuoteDocument(db, { quoteVersionId: version.id, kind: attachKind, name: attachName.trim() })
-                  setAttachName('')
-                  setAttachForm(false)
-                  onChange()
-                }}
-                className="h-8 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700"
-              >
-                {t('offer.attachments.add')}
-              </button>
-              <button type="button" onClick={() => setAttachForm(false)}
-                className="h-8 rounded-lg border border-slate-200 px-2.5 text-xs text-slate-500 hover:bg-slate-50">
-                {t('common.cancel')}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {version && activeQuote ? (
-        <OfferPreview
+      {/* Step 3 — Offer (customer-facing) */}
+      <Section
+        index={3}
+        title={t('offer.section.offer')}
+        done={Boolean(version) && progress.status.approved}
+        summary={version
+          ? t('offer.section.offer.summary')
+          : t('offer.section.offer.todo')}
+        open={effectiveOpen === 'offer'}
+        onToggle={() => toggle('offer')}
+      >
+        <OfferDetailsPanel
           db={db}
-          quote={activeQuote}
           version={version}
-          lineItems={lineItems}
-          acceptanceLink={lastSentEmail?.acceptanceLink}
+          clientId={clientId}
+          actorId={actorId}
+          onChange={onChange}
         />
-      ) : null}
+      </Section>
 
-      {lastSentEmail ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-          <h3 className="text-sm font-semibold text-slate-900">{t('offer.lastEmail')}</h3>
-          <p className="mt-1 text-xs text-slate-500">
-            {t('offer.sentAt')}: {lastSentEmail.sentAt.replace('T', ' ').slice(0, 16)} →{' '}
-            {lastSentEmail.to.join(', ')}
-          </p>
-          <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs text-slate-800">
+      {/* Step 4 — Approve & send */}
+      <Section
+        index={4}
+        title={t('offer.section.send')}
+        done={progress.status.sent}
+        summary={progress.status.sent
+          ? t('offer.section.send.sent')
+          : progress.status.approved
+            ? t('offer.section.send.readyToSend')
+            : t('offer.section.send.todo')}
+        open={effectiveOpen === 'send'}
+        onToggle={() => toggle('send')}
+      >
+        <div className="space-y-4">
+          {version ? (
+            <OfferApprovalPanel
+              db={db}
+              version={version}
+              approvals={approvals}
+              actorId={actorId}
+              onChange={onChange}
+            />
+          ) : (
+            <p className="text-xs text-slate-500">{t('offer.section.send.needVersion')}</p>
+          )}
+
+          <section className="space-y-3">
+            <header className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900">{t('offer.versions')}</h3>
+              <div className="flex items-center gap-2">
+                {versions.length >= 2 ? (
+                  <button
+                    type="button"
+                    onClick={() => { setCompareMode((v) => !v); setCompareA(null); setCompareB(null) }}
+                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${compareMode ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <GitCompare size={12} /> {t('offer.compare')}
+                  </button>
+                ) : null}
+                {version && version.status === 'approved' ? (
+                  <button
+                    type="button"
+                    onClick={() => setSendOpen(true)}
+                    className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                  >
+                    {t('offer.send')}
+                  </button>
+                ) : null}
+              </div>
+            </header>
+
+            {compareMode && versions.length >= 2 ? (
+              <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
+                <p className="text-xs font-semibold text-slate-700">{t('offer.compare.title')}</p>
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="block text-[10px] text-slate-500 mb-1">{t('offer.compare.vA')}</label>
+                    <select value={compareA ?? ''} onChange={(e) => setCompareA(e.target.value || null)}
+                      className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs focus:outline-none">
+                      <option value="">— select —</option>
+                      {versions.map((v) => <option key={v.id} value={v.id}>v{v.versionNo} ({v.status})</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="block text-[10px] text-slate-500 mb-1">{t('offer.compare.vB')}</label>
+                    <select value={compareB ?? ''} onChange={(e) => setCompareB(e.target.value || null)}
+                      className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs focus:outline-none">
+                      <option value="">— select —</option>
+                      {versions.map((v) => <option key={v.id} value={v.id}>v{v.versionNo} ({v.status})</option>)}
+                    </select>
+                  </div>
+                </div>
+                {compareA && compareB && compareA !== compareB ? (
+                  <VersionDelta
+                    vA={versions.find((v) => v.id === compareA)}
+                    vB={versions.find((v) => v.id === compareB)}
+                    t={t}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+
+            <OfferVersionList
+              versions={versions}
+              currentVersionId={chosenVersionId ?? undefined}
+              onSelect={setSelectedVersionId}
+            />
+          </section>
+
+          {/* Attachments */}
+          {version ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <Paperclip size={14} className="text-slate-400" />
+                  {t('offer.attachments')} {attachments.length > 0 ? `(${attachments.length})` : ''}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setAttachForm((v) => !v)}
+                  className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  <Plus size={11} /> {t('offer.attachments.add')}
+                </button>
+              </div>
+              {attachments.length === 0 && !attachForm ? (
+                <p className="text-xs text-slate-400">{t('offer.attachments.empty')}</p>
+              ) : null}
+              {attachments.length > 0 ? (
+                <div className="space-y-1.5 mb-3">
+                  {attachments.map((doc) => (
+                    <div key={doc.id} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        doc.kind === 'drawing' ? 'bg-blue-100 text-blue-700'
+                        : doc.kind === 'spec' ? 'bg-violet-100 text-violet-700'
+                        : 'bg-slate-100 text-slate-600'
+                      }`}>{doc.kind}</span>
+                      <span className="flex-1 text-xs font-medium text-slate-800 truncate">{doc.name}</span>
+                      <span className="text-[10px] text-slate-400">{doc.createdAt.slice(0, 10)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {attachForm ? (
+                <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
+                  <div className="flex-1 min-w-[160px]">
+                    <label className="block text-[10px] text-slate-500 mb-1">{t('offer.attachments.name')}</label>
+                    <input type="text" value={attachName} onChange={(e) => setAttachName(e.target.value)}
+                      placeholder="e.g. Drawing_rev2.pdf"
+                      className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                  </div>
+                  <div className="w-28">
+                    <label className="block text-[10px] text-slate-500 mb-1">{t('offer.attachments.kind')}</label>
+                    <select value={attachKind} onChange={(e) => setAttachKind(/** @type {any} */ (e.target.value))}
+                      className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs focus:outline-none">
+                      {['drawing', 'spec', 'other'].map((k) => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!attachName.trim()) return
+                      appendQuoteDocument(db, { quoteVersionId: version.id, kind: attachKind, name: attachName.trim() })
+                      setAttachName('')
+                      setAttachForm(false)
+                      onChange()
+                    }}
+                    className="h-8 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700"
+                  >
+                    {t('offer.attachments.add')}
+                  </button>
+                  <button type="button" onClick={() => setAttachForm(false)}
+                    className="h-8 rounded-lg border border-slate-200 px-2.5 text-xs text-slate-500 hover:bg-slate-50">
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {version && activeQuote ? (
+            <OfferPreview
+              db={db}
+              quote={activeQuote}
+              version={version}
+              acceptanceLink={lastSentEmail?.acceptanceLink}
+            />
+          ) : null}
+
+          {lastSentEmail ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+              <h3 className="text-sm font-semibold text-slate-900">{t('offer.lastEmail')}</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {t('offer.sentAt')}: {lastSentEmail.sentAt.replace('T', ' ').slice(0, 16)} →{' '}
+                {lastSentEmail.to.join(', ')}
+              </p>
+              <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs text-slate-800">
 {`${t('send.subject')}: ${lastSentEmail.subject}
 
 ${lastSentEmail.body}`}
-          </pre>
-          {lastSentEmail.acceptanceLink ? (
-            <p className="mt-2 text-xs">
-              {t('offer.acceptanceLink')}:{' '}
-              <a
-                href={lastSentEmail.acceptanceLink}
-                className="font-medium text-blue-700 hover:text-blue-900"
-              >
-                {lastSentEmail.acceptanceLink}
-              </a>
-            </p>
+              </pre>
+              {lastSentEmail.acceptanceLink ? (
+                <p className="mt-2 text-xs">
+                  {t('offer.acceptanceLink')}:{' '}
+                  <a href={lastSentEmail.acceptanceLink} className="font-medium text-blue-700 hover:text-blue-900">
+                    {lastSentEmail.acceptanceLink}
+                  </a>
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
-      ) : null}
+      </Section>
 
       <OfferSendDialog
         db={db}

@@ -35,6 +35,20 @@ import {
 } from '../src/domains/shifts/mutations.js'
 import { computeDailyOperationKpis } from '../src/services/operations/dailyOperationKpiService.js'
 import { buildTaskDefaultsFromOperation } from '../src/services/tasks/taskAutofillService.js'
+import {
+  appendQuote,
+  appendQuoteVersion,
+  buildQuoteVersion,
+  patchQuote,
+  appendQuoteOfferLine,
+  appendTerm,
+} from '../src/domains/quotations/mutations.js'
+import {
+  selectQuoteOfferLines,
+  selectOfferLinesTotal,
+  selectTermsOfDelivery,
+} from '../src/domains/quotations/selectors.js'
+import { convertAcceptedOfferToOrder } from '../src/services/offers/orderHandoffService.js'
 
 const db = createMockDatabase()
 
@@ -237,5 +251,41 @@ const op3Row = kpisSeed.find((k) => k.operationId === 'op-3')
 assert.ok(op3Row)
 assert.ok(op3Row.actualGoodQty >= 88, 'seed actual should roll into op-3 KPI')
 console.log('shift / execution / operation KPI: OK')
+
+console.log('--- Offer lines, terms lookups, costing→offer bridge, order handoff ---')
+const dbOffer = createMockDatabase()
+const oq = appendQuote(dbOffer, { clientId: 'client-1', productId: 'prod-1', unitPrice: 5 })
+const ov = buildQuoteVersion(oq.id, 1, { unitPrice: 5, currency: 'EUR' })
+appendQuoteVersion(dbOffer, ov)
+patchQuote(dbOffer, oq.id, { currentVersionId: ov.id, currentVersionNo: 1 })
+
+// terms lookups start empty, then add
+assert.equal(selectTermsOfDelivery(dbOffer).length, 0, 'terms seed empty')
+const td = appendTerm(dbOffer, 'termsOfDelivery', { code: 'FCA', label: 'FCA Plovdiv' })
+assert.ok(td.id)
+assert.equal(selectTermsOfDelivery(dbOffer).length, 1)
+
+// costing→offer bridge: new line defaults to the version's costed unit price
+appendQuoteOfferLine(dbOffer, { quoteVersionId: ov.id, description: 'Bracket', requestedQty: 100, unitPrice: ov.unitPrice })
+appendQuoteOfferLine(dbOffer, { quoteVersionId: ov.id, description: 'Plate', requestedQty: 10, confirmedQty: 8, unitPrice: 2 })
+const offerLines = selectQuoteOfferLines(dbOffer, ov.id)
+assert.equal(offerLines.length, 2)
+assert.equal(offerLines[0].unitPrice, 5, 'first line inherits costed sell price')
+// total prefers confirmed qty when present: 100*5 + 8*2 = 516
+assert.equal(selectOfferLinesTotal(dbOffer, ov.id), 516)
+
+// handoff is blocked until accepted, then idempotent
+let handoff = convertAcceptedOfferToOrder(dbOffer, oq.id)
+assert.equal(handoff.ok, false)
+assert.equal(handoff.code, 'not_accepted')
+patchQuote(dbOffer, oq.id, { status: 'accepted' })
+handoff = convertAcceptedOfferToOrder(dbOffer, oq.id)
+assert.equal(handoff.ok, true)
+assert.equal(handoff.created, true)
+assert.ok(dbOffer.clientOrders.some((o) => o.quoteId === oq.id))
+assert.equal(dbOffer.orderLines.filter((l) => l.orderId === handoff.order.id).length, 2)
+const handoff2 = convertAcceptedOfferToOrder(dbOffer, oq.id)
+assert.equal(handoff2.created, false, 'handoff is idempotent per quote')
+console.log('offer lines / terms / bridge / handoff: OK')
 
 console.log('\nAll functional checks passed.')

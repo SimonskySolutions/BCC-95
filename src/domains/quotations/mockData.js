@@ -268,3 +268,18 @@ export const quoteDecisions = [
     token: 'tok-seed-qv-4-1',
   },
 ]
+
+/**
+ * Customer-facing offer lines. Seeded empty — lines are created in the Offer tab.
+ * @type {import('./model.js').QuoteOfferLine[]}
+ */
+export const quoteOfferLines = []
+
+/**
+ * Managed terms lookups. Seeded empty per requirements — populated via Settings → Offer terms.
+ * @type {import('./model.js').TermsOfDelivery[]}
+ */
+export const termsOfDelivery = []
+
+/** @type {import('./model.js').TermsOfPayment[]} */
+export const termsOfPayment = []

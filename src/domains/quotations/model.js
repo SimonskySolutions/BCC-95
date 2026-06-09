@@ -60,6 +60,17 @@
  * @property {QuoteCurrency} [currency]
  * @property {string} [language]
  * @property {string} [notes]
+ *
+ * Customer-facing header (mapped from the legacy GS "Order Confirmation"):
+ * @property {string} [customerOrderRef]              — customer's own PO ref ("Ваша Поръчка #")
+ * @property {string} [contactPersonId]               — FK → ClientContact.id
+ * @property {string} [contactName]                   — snapshot for the printed offer
+ * @property {string} [contactTitle]
+ * @property {string} [deliveryAddress]               — free-text shipping address
+ * @property {string} [termsOfDeliveryId]             — FK → TermsOfDelivery.id
+ * @property {string} [termsOfPaymentId]              — FK → TermsOfPayment.id
+ * @property {string} [orderDate]                     — ISO date
+ * @property {string} [dispatchDate]                  — ISO date (planned shipment)
  */
 
 /**
@@ -146,5 +157,44 @@ export const QUOTE_LINE_ITEM_KINDS = [
   'logistics',
   'other',
 ]
+
+/**
+ * A customer-facing offer line — the actual product/quantity/price quoted to the
+ * customer (distinct from internal cost lines `QuoteLineItem`). Mapped from the
+ * legacy GS `PartnerOrderResource`: requested vs. confirmed quantity & date, unit
+ * of measure, requirements and dual-currency price.
+ *
+ * @typedef {Object} QuoteOfferLine
+ * @property {string} id
+ * @property {string} quoteVersionId
+ * @property {string} [productId]                      — FK → Product.id (optional for ad-hoc lines)
+ * @property {string} description                      — product name snapshot / free text
+ * @property {string} [uom]                            — unit of measure (defaults from the product)
+ * @property {number} requestedQty                     — what the customer asked for (CustomerQuantity)
+ * @property {string} [requestedDate]                  — ISO date (ExpeditionDate)
+ * @property {number} [confirmedQty]                   — what we commit to (OriginalQuantity)
+ * @property {string} [confirmedDate]                  — ISO date (OriginalDate)
+ * @property {number} unitPrice                        — price per unit in the quote currency
+ * @property {number} [priceCurrency]                  — secondary-currency price (PriceCurrency)
+ * @property {string} [requirements]                   — spec / requirements (ResourceRequiments)
+ * @property {string} [remark]                         — line remark (ResourceRemarks)
+ * @property {number} [sortOrder]
+ */
+
+/**
+ * Managed lookup — incoterm / delivery condition (legacy GS `TermsOfDelivery`).
+ * @typedef {Object} TermsOfDelivery
+ * @property {string} id
+ * @property {string} [code]                           — e.g. "FCA", "EXW"
+ * @property {string} label
+ */
+
+/**
+ * Managed lookup — payment condition (legacy GS `TermsOfPayment`).
+ * @typedef {Object} TermsOfPayment
+ * @property {string} id
+ * @property {string} [code]
+ * @property {string} label
+ */
 
 export {}

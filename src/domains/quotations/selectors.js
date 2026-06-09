@@ -49,6 +49,39 @@ export function selectQuoteLineItems(db, versionId) {
 }
 
 /**
+ * Customer-facing offer lines for a version, in display order.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} versionId
+ */
+export function selectQuoteOfferLines(db, versionId) {
+  return (db.quoteOfferLines ?? [])
+    .filter((l) => l.quoteVersionId === versionId)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+}
+
+/**
+ * Total of the customer-facing offer lines (qty × unit price).
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} versionId
+ */
+export function selectOfferLinesTotal(db, versionId) {
+  return selectQuoteOfferLines(db, versionId).reduce(
+    (sum, l) => sum + (Number(l.confirmedQty ?? l.requestedQty) || 0) * (Number(l.unitPrice) || 0),
+    0,
+  )
+}
+
+/** @param {import('../../data/mockDatabase.js').MockDatabase} db */
+export function selectTermsOfDelivery(db) {
+  return db.termsOfDelivery ?? []
+}
+
+/** @param {import('../../data/mockDatabase.js').MockDatabase} db */
+export function selectTermsOfPayment(db) {
+  return db.termsOfPayment ?? []
+}
+
+/**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {string} versionId
  */

@@ -1,12 +1,42 @@
 /**
+ * A named contact at a customer (the old GS ERP `ContactPerson`).
+ * @typedef {Object} ClientContact
+ * @property {string} id
+ * @property {string} name
+ * @property {string} [title]                    — e.g. "Mr.", "Ms.", "Purchasing"
+ * @property {string} [email]
+ * @property {string} [phone]
+ */
+
+/**
+ * A postal address (used as the delivery / shipping address on offers).
+ * @typedef {Object} ClientAddress
+ * @property {string} id
+ * @property {string} [label]                     — e.g. "HQ", "Warehouse 2"
+ * @property {string} [address]
+ * @property {string} [city]
+ * @property {string} [postCode]
+ * @property {string} [country]
+ */
+
+/**
  * @typedef {Object} Client
  * @property {string} id
  * @property {string} name
  * @property {string} segment
  * @property {string} region
  * @property {string} [notes]
- * @property {string} [contactName]
+ * @property {string} [contactName]               — legacy single-contact fields (kept for back-compat)
  * @property {string} [contactEmail]
+ * @property {string} [companyName]               — legal name printed on the offer (defaults to `name`)
+ * @property {string} [vat]
+ * @property {string} [address]
+ * @property {string} [city]
+ * @property {string} [postCode]
+ * @property {string} [country]
+ * @property {string} [email]
+ * @property {ClientContact[]} [contacts]
+ * @property {ClientAddress[]} [addresses]
  */
 
 /**

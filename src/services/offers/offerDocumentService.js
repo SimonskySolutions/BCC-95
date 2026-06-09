@@ -73,6 +73,108 @@ export function buildOfferPlainText(input) {
 }
 
 /**
+ * Bilingual label set for the Order Confirmation document (legacy GS layout).
+ * @param {boolean} isBg
+ */
+export function orderConfirmationLabels(isBg) {
+  return {
+    docTitle: isBg ? 'ПОТВЪРЖДЕНИЕ НА ПОРЪЧКА' : 'ORDER CONFIRMATION',
+    to: isBg ? 'ДО:' : 'TO:',
+    yourOrder: isBg ? 'Ваша Поръчка №' : 'Your Order #',
+    attention: isBg ? 'На вниманието на' : 'To the attention of',
+    intro1: isBg ? 'Благодарим Ви за поръчката!' : 'Thank You for your order!',
+    intro2: isBg
+      ? 'Ние потвърждаваме Вашата поръчка и доставката, както следва:'
+      : 'We confirm your order and the delivery as follows:',
+    no: '№',
+    articles: isBg ? 'Артикул' : 'Articles',
+    quantity: isBg ? 'Кол-во' : 'Quantity',
+    dispatchDate: isBg ? 'Дата на изпращане' : 'Dispatch Date',
+    price: isBg ? 'Цена' : 'Price',
+    addressOfDelivery: isBg ? 'Адрес на доставка:' : 'Shipping address:',
+    termsOfDelivery: isBg ? 'Условия на доставка:' : 'Terms of Delivery:',
+    termsOfPayment: isBg ? 'Условия на плащане:' : 'Terms of payments:',
+    notes: isBg ? 'Забележки:' : 'Notes:',
+    issuedBy: isBg ? 'Издадена от:' : 'Issued by:',
+    approvedBy: isBg ? 'Одобрена от:' : 'Approved by:',
+    total: isBg ? 'Общо' : 'Total',
+    vat: isBg ? 'ДДС №' : 'VAT',
+    acceptanceLink: isBg ? 'Линк за приемане' : 'Acceptance link',
+  }
+}
+
+/**
+ * Build a structured, render-ready Order Confirmation model from already-resolved
+ * entities (so it stays pure and testable). Mirrors the legacy GS document.
+ *
+ * @param {{
+ *   quote: import('../../domains/quotations/model.js').QuoteDraft
+ *   version: import('../../domains/quotations/model.js').QuoteVersion
+ *   client?: import('../../domains/crm/model.js').Client
+ *   offerLines: import('../../domains/quotations/model.js').QuoteOfferLine[]
+ *   termsOfDeliveryLabel?: string
+ *   termsOfPaymentLabel?: string
+ *   firm?: { name?: string; subtitle?: string; address?: string; vat?: string }
+ *   issuedByName?: string
+ *   approvedByName?: string
+ *   acceptanceLink?: string
+ * }} input
+ */
+export function buildOrderConfirmationModel(input) {
+  const { quote, version, client, offerLines, firm, acceptanceLink } = input
+  const isBg = version.language === 'bg'
+  const currency = version.currency ?? 'EUR'
+  const labels = orderConfirmationLabels(isBg)
+
+  const rows = offerLines.map((l, i) => {
+    const qty = Number(l.confirmedQty ?? l.requestedQty) || 0
+    const date = l.confirmedDate ?? l.requestedDate ?? version.dispatchDate ?? ''
+    return {
+      no: i + 1,
+      article: l.description || '—',
+      requirements: l.requirements ?? '',
+      qty,
+      uom: l.uom ?? '',
+      dispatchDate: date,
+      unitPrice: Number(l.unitPrice) || 0,
+      lineTotal: qty * (Number(l.unitPrice) || 0),
+    }
+  })
+  const total = rows.reduce((s, r) => s + r.lineTotal, 0)
+
+  return {
+    isBg,
+    currency,
+    labels,
+    firm: {
+      name: firm?.name ?? '',
+      subtitle: firm?.subtitle ?? '',
+      address: firm?.address ?? '',
+      vat: firm?.vat ?? '',
+    },
+    customer: {
+      companyName: client?.companyName ?? client?.name ?? '',
+      address: client?.address ?? '',
+      cityLine: [client?.postCode, client?.city].filter(Boolean).join(' '),
+      country: client?.country ?? '',
+      vat: client?.vat ?? '',
+    },
+    contact: [version.contactTitle, version.contactName].filter(Boolean).join(' '),
+    customerOrderRef: version.customerOrderRef ?? quote.id,
+    orderDate: version.orderDate ?? version.createdAt?.slice(0, 10) ?? '',
+    rows,
+    total,
+    deliveryAddress: version.deliveryAddress ?? '',
+    termsOfDelivery: input.termsOfDeliveryLabel ?? version.deliveryTerms ?? '',
+    termsOfPayment: input.termsOfPaymentLabel ?? version.paymentTerms ?? '',
+    notes: version.notes ?? '',
+    issuedBy: input.issuedByName ?? '',
+    approvedBy: input.approvedByName ?? '',
+    acceptanceLink: acceptanceLink ?? '',
+  }
+}
+
+/**
  * Build a "PDF-like" blob reference. Release 1 cannot synchronously depend on
  * a PDF library from services, so the UI layer can render the text via jsPDF.
  * Here we just return a base64 data URI with the text payload so the audit

@@ -5,7 +5,7 @@ import Header from './components/Header.jsx'
 import CommandPalette from './components/CommandPalette.jsx'
 import { useLanguage } from './i18n/useLanguage.js'
 import { useFactoryConfig } from './config/useFactoryConfig.js'
-import { getMockDatabase } from './data/mockDatabase.js'
+import { useDb } from './data/useDb.js'
 import DashboardPage from './pages/DashboardPage.jsx'
 import NewInquiryForm from './components/erp/offers/NewInquiryForm.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
@@ -171,7 +171,7 @@ function detectAcceptanceToken() {
 function App() {
   const { t } = useLanguage()
   const { config, theme } = useFactoryConfig()
-  const db = useMemo(() => getMockDatabase(), [])
+  const { db } = useDb()
   const [route, setRoute] = useState(
     /** @type {{ page: string; productId: string | null; clientId: string | null; machineId: string | null }} */ ({
       page: 'dashboard',
@@ -182,7 +182,6 @@ function App() {
   )
   const [showNewInquiry, setShowNewInquiry] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [, forceRerender] = useState(0)
 
   const publicRoute = useMemo(() => detectAcceptanceToken(), [])
 
@@ -309,7 +308,6 @@ function App() {
               onCancel={() => setShowNewInquiry(false)}
               onCreated={(productId) => {
                 setShowNewInquiry(false)
-                forceRerender((v) => v + 1)
                 setRoute({ page: 'product-workspace', productId, clientId: null, machineId: null })
               }}
             />

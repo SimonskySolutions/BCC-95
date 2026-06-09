@@ -1,13 +1,18 @@
 import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Trash2, Plus } from 'lucide-react'
 import { useFactoryConfig } from '../config/useFactoryConfig.js'
 import { ACCENT_THEMES, CURRENCIES, DEFAULT_FACTORY_CONFIG } from '../config/factoryConfig.js'
 import { ERP_NAV_ITEMS } from '../config/erpNav.js'
+import { useDb } from '../data/useDb.js'
+import { useLanguage } from '../i18n/useLanguage.js'
+import { selectTermsOfDelivery, selectTermsOfPayment } from '../domains/quotations/selectors.js'
+import { appendTerm, patchTerm, removeTerm } from '../domains/quotations/mutations.js'
 
 const TABS = [
   { id: 'company', label: 'Company' },
   { id: 'modules', label: 'Modules' },
   { id: 'kpi', label: 'KPI Targets' },
+  { id: 'terms', label: 'Offer terms' },
   { id: 'appearance', label: 'Appearance' },
 ]
 
@@ -295,6 +300,91 @@ function AppearanceTab({ config, onSave }) {
   )
 }
 
+// ── Offer terms tab ─────────────────────────────────────────────────────────
+/**
+ * @param {{ title: string; table: 'termsOfDelivery'|'termsOfPayment'; terms: { id: string; code?: string; label: string }[]; db: import('../data/mockDatabase.js').MockDatabase; commit: (fn: (db: any) => void) => void }} props
+ */
+function TermsList({ title, table, terms, db, commit }) {
+  const { t } = useLanguage()
+  const [code, setCode] = useState('')
+  const [label, setLabel] = useState('')
+
+  const add = () => {
+    if (!label.trim()) return
+    commit(() => appendTerm(db, table, { code: code.trim() || undefined, label: label.trim() }))
+    setCode('')
+    setLabel('')
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+      <div className="mt-3 space-y-2">
+        {terms.length === 0 ? (
+          <p className="text-xs text-slate-400">{t('settings.terms.empty')}</p>
+        ) : null}
+        {terms.map((tm) => (
+          <div key={tm.id} className="flex items-center gap-2">
+            <input
+              className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+              value={tm.code ?? ''}
+              placeholder={t('settings.terms.code')}
+              onChange={(e) => commit(() => patchTerm(db, table, tm.id, { code: e.target.value }))}
+            />
+            <input
+              className="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+              value={tm.label}
+              onChange={(e) => commit(() => patchTerm(db, table, tm.id, { label: e.target.value }))}
+            />
+            <button
+              type="button"
+              onClick={() => commit(() => removeTerm(db, table, tm.id))}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+              title={t('settings.terms.remove')}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+        <input
+          className="w-24 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+          value={code}
+          placeholder={t('settings.terms.code')}
+          onChange={(e) => setCode(e.target.value)}
+        />
+        <input
+          className="flex-1 rounded-lg border border-slate-200 px-2 py-1.5 text-sm"
+          value={label}
+          placeholder={t('settings.terms.labelPlaceholder')}
+          onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') add() }}
+        />
+        <button
+          type="button"
+          onClick={add}
+          className="flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+        >
+          <Plus size={13} /> {t('settings.terms.add')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function OfferTermsTab() {
+  const { t } = useLanguage()
+  const { db, commit } = useDb()
+  return (
+    <div className="space-y-8">
+      <p className="text-xs text-slate-500">{t('settings.terms.intro')}</p>
+      <TermsList title={t('offer.details.termsOfDelivery')} table="termsOfDelivery" terms={selectTermsOfDelivery(db)} db={db} commit={commit} />
+      <TermsList title={t('offer.details.termsOfPayment')} table="termsOfPayment" terms={selectTermsOfPayment(db)} db={db} commit={commit} />
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { config, updateConfig } = useFactoryConfig()
@@ -335,6 +425,7 @@ export default function SettingsPage() {
         {tab === 'company'    && <CompanyTab    config={config} onSave={handleSave} />}
         {tab === 'modules'    && <ModulesTab    config={config} onSave={handleSave} />}
         {tab === 'kpi'        && <KpiTab        config={config} onSave={handleSave} />}
+        {tab === 'terms'      && <OfferTermsTab />}
         {tab === 'appearance' && <AppearanceTab config={config} onSave={handleSave} />}
       </div>
     </div>

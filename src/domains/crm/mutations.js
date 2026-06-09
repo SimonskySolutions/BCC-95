@@ -39,6 +39,50 @@ export function appendClient(db, input) {
   return client
 }
 
+let orderCounter = 40000
+let orderLineCounter = 40000
+
+/**
+ * Create a client order header.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {{ id?: string; clientId: string; productId: string; orderedAt?: string; status?: import('./model.js').ClientOrder['status']; quoteId?: string }} input
+ * @returns {import('./model.js').ClientOrder}
+ */
+export function appendClientOrder(db, input) {
+  if (!db.clientOrders) db.clientOrders = []
+  /** @type {import('./model.js').ClientOrder} */
+  const order = {
+    id: input.id ?? `ord-${++orderCounter}`,
+    clientId: input.clientId,
+    productId: input.productId,
+    orderedAt: input.orderedAt ?? new Date().toISOString().slice(0, 10),
+    status: input.status ?? 'open',
+    quoteId: input.quoteId,
+  }
+  db.clientOrders.push(order)
+  return order
+}
+
+/**
+ * Add a line to a client order.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {{ id?: string; orderId: string; description: string; qty: number; unitPrice: number }} input
+ * @returns {import('./model.js').OrderLine}
+ */
+export function appendOrderLine(db, input) {
+  if (!db.orderLines) db.orderLines = []
+  /** @type {import('./model.js').OrderLine} */
+  const line = {
+    id: input.id ?? `ol-${++orderLineCounter}`,
+    orderId: input.orderId,
+    description: input.description,
+    qty: input.qty,
+    unitPrice: input.unitPrice,
+  }
+  db.orderLines.push(line)
+  return line
+}
+
 /**
  * Find a client by case-insensitive name match (used to avoid duplicate inline
  * creations when the same customer submits multiple inquiries).

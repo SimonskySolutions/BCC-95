@@ -3,21 +3,7 @@ import { TrendingUp, Clock, CheckCircle, AlertTriangle, BarChart2, ChevronRight,
 import { useLanguage } from '../i18n/useLanguage.js'
 import { QUOTE_STATUSES } from '../domains/quotations/model.js'
 import { selectQuoteVersionById } from '../domains/quotations/selectors.js'
-
-const TODAY = new Date('2026-05-19')
-
-/** @param {string} iso */
-function daysUntil(iso) {
-  if (!iso) return null
-  const d = new Date(iso)
-  return Math.round((d - TODAY) / 86400000)
-}
-
-/** @param {string} iso */
-function daysAgo(iso) {
-  const d = new Date(iso)
-  return Math.round((TODAY - d) / 86400000)
-}
+import { daysUntil, daysAgo } from '../lib/clock.js'
 
 const STATUS_CONFIG = {
   draft:              { label: 'Draft',              color: 'bg-sky-100 text-sky-700',     border: 'border-sky-200',   header: 'bg-sky-50'  },

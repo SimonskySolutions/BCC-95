@@ -1,7 +1,50 @@
 /** @type {import('./model.js').Client[]} */
 export const clients = [
-  { id: 'client-1', name: 'Nordic Rail AS', segment: 'OEM', region: 'NO', notes: 'Prefers quarterly billing.' },
-  { id: 'client-2', name: 'BrightCell Energy', segment: 'Energy', region: 'DE' },
+  {
+    id: 'client-1',
+    name: 'Nordic Rail AS',
+    segment: 'OEM',
+    region: 'NO',
+    notes: 'Prefers quarterly billing.',
+    companyName: 'Nordic Rail AS',
+    vat: 'NO123456789MVA',
+    address: 'Jernbaneveien 12',
+    city: 'Oslo',
+    postCode: '0154',
+    country: 'Norway',
+    email: 'orders@nordicrail.no',
+    contactName: 'Astrid Hansen',
+    contactEmail: 'astrid.hansen@nordicrail.no',
+    contacts: [
+      { id: 'cct-1-1', name: 'Astrid Hansen', title: 'Ms.', email: 'astrid.hansen@nordicrail.no', phone: '+47 22 00 11 22' },
+      { id: 'cct-1-2', name: 'Lars Berg', title: 'Mr.', email: 'lars.berg@nordicrail.no' },
+    ],
+    addresses: [
+      { id: 'cad-1-1', label: 'HQ', address: 'Jernbaneveien 12', city: 'Oslo', postCode: '0154', country: 'Norway' },
+      { id: 'cad-1-2', label: 'Warehouse', address: 'Havnegata 4', city: 'Drammen', postCode: '3040', country: 'Norway' },
+    ],
+  },
+  {
+    id: 'client-2',
+    name: 'BrightCell Energy',
+    segment: 'Energy',
+    region: 'DE',
+    companyName: 'BrightCell Energy GmbH',
+    vat: 'DE298765432',
+    address: 'Industriestraße 88',
+    city: 'München',
+    postCode: '80339',
+    country: 'Germany',
+    email: 'procurement@brightcell.de',
+    contactName: 'Markus Weber',
+    contactEmail: 'markus.weber@brightcell.de',
+    contacts: [
+      { id: 'cct-2-1', name: 'Markus Weber', title: 'Mr.', email: 'markus.weber@brightcell.de', phone: '+49 89 555 0100' },
+    ],
+    addresses: [
+      { id: 'cad-2-1', label: 'Plant', address: 'Industriestraße 88', city: 'München', postCode: '80339', country: 'Germany' },
+    ],
+  },
 ]
 
 /** @type {import('./model.js').ClientOrder[]} */

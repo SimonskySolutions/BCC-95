@@ -4,6 +4,8 @@ let lineItemCounter = 30000
 let approvalCounter = 30000
 let documentCounter = 30000
 let decisionCounter = 30000
+let offerLineCounter = 30000
+let termCounter = 30000
 
 /**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
@@ -164,6 +166,105 @@ export function appendQuoteDecision(db, input) {
   }
   db.quoteDecisions.push(decision)
   return decision
+}
+
+/* ── Customer-facing offer lines ─────────────────────────────────────────── */
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {Omit<import('./model.js').QuoteOfferLine, 'id'> & { id?: string }} input
+ * @returns {import('./model.js').QuoteOfferLine}
+ */
+export function appendQuoteOfferLine(db, input) {
+  if (!db.quoteOfferLines) db.quoteOfferLines = []
+  /** @type {import('./model.js').QuoteOfferLine} */
+  const line = {
+    id: input.id ?? `qol-${++offerLineCounter}`,
+    quoteVersionId: input.quoteVersionId,
+    productId: input.productId,
+    description: input.description ?? '',
+    uom: input.uom,
+    requestedQty: input.requestedQty ?? 0,
+    requestedDate: input.requestedDate,
+    confirmedQty: input.confirmedQty,
+    confirmedDate: input.confirmedDate,
+    unitPrice: input.unitPrice ?? 0,
+    priceCurrency: input.priceCurrency,
+    requirements: input.requirements,
+    remark: input.remark,
+    sortOrder: input.sortOrder ?? db.quoteOfferLines.filter((l) => l.quoteVersionId === input.quoteVersionId).length,
+  }
+  db.quoteOfferLines.push(line)
+  return line
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} lineId
+ * @param {Partial<import('./model.js').QuoteOfferLine>} patch
+ */
+export function patchQuoteOfferLine(db, lineId, patch) {
+  if (!db.quoteOfferLines) return null
+  const idx = db.quoteOfferLines.findIndex((l) => l.id === lineId)
+  if (idx < 0) return null
+  db.quoteOfferLines[idx] = { ...db.quoteOfferLines[idx], ...patch }
+  return db.quoteOfferLines[idx]
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} lineId
+ */
+export function removeQuoteOfferLine(db, lineId) {
+  if (!db.quoteOfferLines) return
+  db.quoteOfferLines = db.quoteOfferLines.filter((l) => l.id !== lineId)
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} versionId
+ */
+export function clearQuoteOfferLines(db, versionId) {
+  if (!db.quoteOfferLines) return
+  db.quoteOfferLines = db.quoteOfferLines.filter((l) => l.quoteVersionId !== versionId)
+}
+
+/* ── Terms lookups ───────────────────────────────────────────────────────── */
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {'termsOfDelivery'|'termsOfPayment'} table
+ * @param {{ id?: string; code?: string; label: string }} input
+ */
+export function appendTerm(db, table, input) {
+  if (!db[table]) db[table] = []
+  const term = { id: input.id ?? `term-${++termCounter}`, code: input.code, label: input.label }
+  db[table].push(term)
+  return term
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {'termsOfDelivery'|'termsOfPayment'} table
+ * @param {string} id
+ * @param {{ code?: string; label?: string }} patch
+ */
+export function patchTerm(db, table, id, patch) {
+  if (!db[table]) return null
+  const idx = db[table].findIndex((tm) => tm.id === id)
+  if (idx < 0) return null
+  db[table][idx] = { ...db[table][idx], ...patch }
+  return db[table][idx]
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {'termsOfDelivery'|'termsOfPayment'} table
+ * @param {string} id
+ */
+export function removeTerm(db, table, id) {
+  if (!db[table]) return
+  db[table] = db[table].filter((tm) => tm.id !== id)
 }
 
 /**
