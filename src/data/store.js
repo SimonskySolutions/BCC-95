@@ -42,7 +42,7 @@ export function subscribe(listener) {
 
 /**
  * Run a mutation against the db, then notify subscribers.
- * The mutator typically calls one or more `domains/*/mutations.js` functions.
+ * The mutator typically calls one or more domain mutation helpers.
  * Returns whatever the mutator returns, so call sites can use created records.
  *
  * @template T
