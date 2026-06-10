@@ -12,6 +12,7 @@ import {
 } from '../domains/crm/mutations.js'
 import { useDb } from '../data/useDb.js'
 import { useLanguage } from '../i18n/useLanguage.js'
+import { COUNTRY_NAMES, regionForCountry } from '../lib/countries.js'
 
 const inputCls =
   'w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300'
@@ -94,12 +95,21 @@ function ClientDetailsEditor({ client }) {
               <label key={key} className="block text-xs font-medium text-slate-600">
                 {t(labelKey)}
                 <input
+                  list={key === 'country' ? 'cli-countries' : undefined}
                   className={`mt-1 ${inputCls}`}
                   value={form[key] ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setForm((f) => key === 'country'
+                      ? { ...f, country: value, region: regionForCountry(value) || f.region }
+                      : { ...f, [key]: value })
+                  }}
                 />
               </label>
             ))}
+            <datalist id="cli-countries">
+              {COUNTRY_NAMES.map((c) => <option key={c} value={c} />)}
+            </datalist>
             <label className="block text-xs font-medium text-slate-600 md:col-span-3">
               {t('client.field.notes')}
               <textarea

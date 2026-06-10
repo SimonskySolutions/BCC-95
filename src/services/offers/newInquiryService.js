@@ -11,6 +11,8 @@ import { registerInquiry } from './inquiryIntakeService.js'
  * @property {string} [contactEmail]
  * @property {string} [segment]
  * @property {string} [region]
+ * @property {string} [country]
+ * @property {string} [city]
  */
 
 /**
@@ -85,6 +87,8 @@ export function startNewInquiry(db, input) {
         contactEmail: input.client.contactEmail,
         segment: input.client.segment,
         region: input.client.region,
+        country: input.client.country,
+        city: input.client.city,
       })
   }
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { startNewInquiry } from '../../../services/offers/newInquiryService.js'
+import { COUNTRY_NAMES, REGIONS, regionForCountry } from '../../../lib/countries.js'
 
 /**
  * Inquiry-first entry form: captures client + product + quantity in one
@@ -20,6 +21,8 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
     clientName: '',
     contactName: '',
     contactEmail: '',
+    country: '',
+    city: '',
     region: '',
     productName: '',
     productDescription: '',
@@ -57,7 +60,9 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
                 name: form.clientName.trim(),
                 contactName: form.contactName.trim() || undefined,
                 contactEmail: form.contactEmail.trim() || undefined,
-                region: form.region.trim() || undefined,
+                country: form.country.trim() || undefined,
+                city: form.city.trim() || undefined,
+                region: form.region.trim() || regionForCountry(form.country) || undefined,
               },
         product: {
           name: form.productName.trim(),
@@ -157,14 +162,42 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
                 onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
               />
             </label>
+            <label className="block text-xs font-medium text-slate-600">
+              {t('newInquiry.country')}
+              <input
+                list="niq-countries"
+                className={inputCls}
+                value={form.country}
+                onChange={(e) => {
+                  const country = e.target.value
+                  setForm((f) => ({ ...f, country, region: regionForCountry(country) || f.region }))
+                }}
+                placeholder={t('newInquiry.countryPlaceholder')}
+              />
+              <datalist id="niq-countries">
+                {COUNTRY_NAMES.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </label>
+            <label className="block text-xs font-medium text-slate-600">
+              {t('newInquiry.city')}
+              <input
+                className={inputCls}
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+              />
+            </label>
             <label className="block text-xs font-medium text-slate-600 md:col-span-2">
               {t('newInquiry.region')}
               <input
+                list="niq-regions"
                 className={inputCls}
                 value={form.region}
                 onChange={(e) => setForm({ ...form, region: e.target.value })}
-                placeholder="EU / US / ..."
+                placeholder={t('newInquiry.regionAuto')}
               />
+              <datalist id="niq-regions">
+                {REGIONS.map((r) => <option key={r} value={r} />)}
+              </datalist>
             </label>
           </div>
         )}

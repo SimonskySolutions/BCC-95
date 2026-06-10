@@ -15,6 +15,8 @@ function newClientId() {
  * @property {string} [region]        — defaults to 'unknown'
  * @property {string} [contactName]
  * @property {string} [contactEmail]
+ * @property {string} [country]
+ * @property {string} [city]
  * @property {string} [notes]
  * @property {string} [id]            — tests only
  */
@@ -33,6 +35,8 @@ export function appendClient(db, input) {
     region: input.region ?? 'unknown',
     contactName: input.contactName,
     contactEmail: input.contactEmail,
+    country: input.country,
+    city: input.city,
     notes: input.notes,
   })
   db.clients.push(client)
