@@ -1,7 +1,239 @@
+import { useState } from 'react'
+import { Pencil, Plus, Trash2, Check } from 'lucide-react'
 import { selectClientProfileBundle } from '../domains/crm/selectors.js'
 import { selectProductById } from '../domains/products/selectors.js'
 import { selectMachineById } from '../domains/machines/selectors.js'
+import {
+  patchClient,
+  appendClientContact,
+  removeClientContact,
+  appendClientAddress,
+  removeClientAddress,
+} from '../domains/crm/mutations.js'
+import { useDb } from '../data/useDb.js'
 import { useLanguage } from '../i18n/useLanguage.js'
+
+const inputCls =
+  'w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300'
+
+const CLIENT_FIELDS = [
+  ['companyName', 'client.field.companyName'],
+  ['vat', 'client.field.vat'],
+  ['email', 'client.field.email'],
+  ['address', 'client.field.address'],
+  ['city', 'client.field.city'],
+  ['postCode', 'client.field.postCode'],
+  ['country', 'client.field.country'],
+  ['segment', 'client.field.segment'],
+  ['region', 'client.field.region'],
+]
+
+/**
+ * Editable company details + contacts + addresses. These fields feed the
+ * offer header and the printed Order Confirmation.
+ * @param {{ client: import('../domains/crm/model.js').Client }} props
+ */
+function ClientDetailsEditor({ client }) {
+  const { t } = useLanguage()
+  const { db, commit } = useDb()
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(/** @type {Record<string, string>} */ ({}))
+  const [newContact, setNewContact] = useState({ name: '', title: '', email: '', phone: '' })
+  const [newAddress, setNewAddress] = useState({ label: '', address: '', city: '', postCode: '', country: '' })
+
+  const startEdit = () => {
+    const initial = {}
+    for (const [key] of CLIENT_FIELDS) initial[key] = client[key] ?? ''
+    initial.notes = client.notes ?? ''
+    setForm(initial)
+    setEditing(true)
+  }
+
+  const save = () => {
+    commit(() => patchClient(db, client.id, { ...form }))
+    setEditing(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Company details */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900">{t('client.details')}</h3>
+          {editing ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={save}
+                className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                <Check size={12} /> {t('client.saveDetails')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={startEdit}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              <Pencil size={11} /> {t('client.edit')}
+            </button>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {CLIENT_FIELDS.map(([key, labelKey]) => (
+              <label key={key} className="block text-xs font-medium text-slate-600">
+                {t(labelKey)}
+                <input
+                  className={`mt-1 ${inputCls}`}
+                  value={form[key] ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                />
+              </label>
+            ))}
+            <label className="block text-xs font-medium text-slate-600 md:col-span-3">
+              {t('client.field.notes')}
+              <textarea
+                rows={2}
+                className={`mt-1 ${inputCls}`}
+                value={form.notes ?? ''}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              />
+            </label>
+          </div>
+        ) : (
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm md:grid-cols-3">
+            {CLIENT_FIELDS.map(([key, labelKey]) => (
+              <div key={key}>
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{t(labelKey)}</dt>
+                <dd className="text-slate-800">{client[key] || '—'}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
+
+      {/* Contacts & addresses */}
+      <section className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+          <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('client.contacts')}</h3>
+          <ul className="space-y-1.5">
+            {(client.contacts ?? []).map((c) => (
+              <li key={c.id} className="group flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                <span className="min-w-0 flex-1">
+                  <span className="font-medium text-slate-800">{[c.title, c.name].filter(Boolean).join(' ')}</span>
+                  <span className="ml-2 text-slate-500">{[c.email, c.phone].filter(Boolean).join(' · ')}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => commit(() => removeClientContact(db, client.id, c.id))}
+                  className="text-slate-300 opacity-0 transition-opacity hover:text-rose-600 group-hover:opacity-100"
+                  title={t('common.remove')}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </li>
+            ))}
+            {(client.contacts ?? []).length === 0 ? (
+              <li className="text-xs text-slate-400">{t('client.noContacts')}</li>
+            ) : null}
+          </ul>
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+            <input className={inputCls} placeholder={t('client.contact.name')} value={newContact.name}
+              onChange={(e) => setNewContact((f) => ({ ...f, name: e.target.value }))} />
+            <input className={inputCls} placeholder={t('client.contact.title')} value={newContact.title}
+              onChange={(e) => setNewContact((f) => ({ ...f, title: e.target.value }))} />
+            <input className={inputCls} placeholder={t('client.field.email')} value={newContact.email}
+              onChange={(e) => setNewContact((f) => ({ ...f, email: e.target.value }))} />
+            <input className={inputCls} placeholder={t('client.contact.phone')} value={newContact.phone}
+              onChange={(e) => setNewContact((f) => ({ ...f, phone: e.target.value }))} />
+            <button
+              type="button"
+              onClick={() => {
+                if (!newContact.name.trim()) return
+                commit(() => appendClientContact(db, client.id, {
+                  name: newContact.name.trim(),
+                  title: newContact.title.trim() || undefined,
+                  email: newContact.email.trim() || undefined,
+                  phone: newContact.phone.trim() || undefined,
+                }))
+                setNewContact({ name: '', title: '', email: '', phone: '' })
+              }}
+              className="col-span-2 flex items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 py-1.5 text-xs font-medium text-slate-500 hover:border-blue-300 hover:text-blue-700"
+            >
+              <Plus size={12} /> {t('client.addContact')}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+          <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('client.addresses')}</h3>
+          <ul className="space-y-1.5">
+            {(client.addresses ?? []).map((a) => (
+              <li key={a.id} className="group flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                <span className="min-w-0 flex-1">
+                  {a.label ? <span className="font-medium text-slate-800">{a.label}: </span> : null}
+                  <span className="text-slate-600">
+                    {[a.address, [a.postCode, a.city].filter(Boolean).join(' '), a.country].filter(Boolean).join(', ')}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => commit(() => removeClientAddress(db, client.id, a.id))}
+                  className="text-slate-300 opacity-0 transition-opacity hover:text-rose-600 group-hover:opacity-100"
+                  title={t('common.remove')}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </li>
+            ))}
+            {(client.addresses ?? []).length === 0 ? (
+              <li className="text-xs text-slate-400">{t('client.noAddresses')}</li>
+            ) : null}
+          </ul>
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+            <input className={inputCls} placeholder={t('client.address.label')} value={newAddress.label}
+              onChange={(e) => setNewAddress((f) => ({ ...f, label: e.target.value }))} />
+            <input className={inputCls} placeholder={t('client.field.address')} value={newAddress.address}
+              onChange={(e) => setNewAddress((f) => ({ ...f, address: e.target.value }))} />
+            <input className={inputCls} placeholder={t('client.field.city')} value={newAddress.city}
+              onChange={(e) => setNewAddress((f) => ({ ...f, city: e.target.value }))} />
+            <input className={inputCls} placeholder={t('client.field.postCode')} value={newAddress.postCode}
+              onChange={(e) => setNewAddress((f) => ({ ...f, postCode: e.target.value }))} />
+            <input className={inputCls} placeholder={t('client.field.country')} value={newAddress.country}
+              onChange={(e) => setNewAddress((f) => ({ ...f, country: e.target.value }))} />
+            <button
+              type="button"
+              onClick={() => {
+                if (!newAddress.address.trim() && !newAddress.city.trim()) return
+                commit(() => appendClientAddress(db, client.id, {
+                  label: newAddress.label.trim() || undefined,
+                  address: newAddress.address.trim() || undefined,
+                  city: newAddress.city.trim() || undefined,
+                  postCode: newAddress.postCode.trim() || undefined,
+                  country: newAddress.country.trim() || undefined,
+                }))
+                setNewAddress({ label: '', address: '', city: '', postCode: '', country: '' })
+              }}
+              className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 py-1.5 text-xs font-medium text-slate-500 hover:border-blue-300 hover:text-blue-700"
+            >
+              <Plus size={12} /> {t('client.addAddress')}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
 
 /**
  * @param {{
@@ -49,6 +281,8 @@ export default function ClientProfilePage({ db, clientId, onBack }) {
       </div>
 
       {client.notes ? <p className="text-sm text-slate-600">{client.notes}</p> : null}
+
+      <ClientDetailsEditor client={client} />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('client.ordersPrices')}</h3>
