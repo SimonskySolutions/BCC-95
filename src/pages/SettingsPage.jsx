@@ -4,6 +4,7 @@ import { useFactoryConfig } from '../config/useFactoryConfig.js'
 import { ACCENT_THEMES, CURRENCIES, DEFAULT_FACTORY_CONFIG } from '../config/factoryConfig.js'
 import { ERP_NAV_ITEMS } from '../config/erpNav.js'
 import { useDb } from '../data/useDb.js'
+import { resetDemoData } from '../data/store.js'
 import { useLanguage } from '../i18n/useLanguage.js'
 import { selectTermsOfDelivery, selectTermsOfPayment } from '../domains/quotations/selectors.js'
 import { appendTerm, patchTerm, removeTerm } from '../domains/quotations/mutations.js'
@@ -413,6 +414,7 @@ function OfferTermsTab() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
+  const { t } = useLanguage()
   const { config, updateConfig } = useFactoryConfig()
   const [tab, setTab] = useState('company')
   const [saved, setSaved] = useState(false)
@@ -453,6 +455,21 @@ export default function SettingsPage() {
         {tab === 'kpi'        && <KpiTab        config={config} onSave={handleSave} />}
         {tab === 'terms'      && <OfferTermsTab />}
         {tab === 'appearance' && <AppearanceTab config={config} onSave={handleSave} />}
+      </div>
+
+      {/* Demo data reset */}
+      <div className="flex items-center justify-between rounded-2xl border border-rose-100 bg-rose-50/50 px-6 py-4">
+        <div>
+          <p className="text-sm font-semibold text-rose-900">{t('settings.resetData')}</p>
+          <p className="text-xs text-rose-600">{t('settings.resetData.hint')}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { if (window.confirm(t('settings.resetData.confirm'))) resetDemoData() }}
+          className="rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+        >
+          {t('settings.resetData')}
+        </button>
       </div>
     </div>
   )

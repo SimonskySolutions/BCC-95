@@ -1,4 +1,5 @@
-import { useMemo, useReducer, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useDb } from '../../data/useDb.js'
 import { ChevronRight } from 'lucide-react'
 import TaskTable from './TaskTable.jsx'
 import OperationList from './OperationList.jsx'
@@ -61,7 +62,8 @@ function blockerHint(blocker = '') {
  */
 export default function ProductWorkspace({ db, bundle, onOpenReports }) {
   const { t } = useLanguage()
-  const [, forceRefresh] = useReducer((x) => x + 1, 0)
+  const { commit } = useDb()
+  const forceRefresh = () => commit()
   const [transitionMsg, setTransitionMsg] = useState(/** @type {string | null} */ (null))
 
   const productId = bundle?.product?.id ?? null
@@ -104,7 +106,7 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
   const progress = productId ? computeOfferProgress(db, productId) : null
 
   function handleMoveToPhase(targetPhaseId) {
-    const result = attemptPhaseTransition(db, productId, targetPhaseId)
+    const result = commit(() => attemptPhaseTransition(db, productId, targetPhaseId))
     setTransitionMsg(result.ok ? `Phase advanced to ${targetPhaseId}.` : (result.message ?? 'Unable to change phase.'))
   }
 

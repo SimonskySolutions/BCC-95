@@ -1,4 +1,5 @@
-import { useMemo, useReducer, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useDb } from '../data/useDb.js'
 import { X, LayoutGrid, List, Pencil, Trash2, Plus } from 'lucide-react'
 import { useLanguage } from '../i18n/useLanguage.js'
 import { PRODUCT_STATUSES, PRODUCT_TYPES } from '../domains/products/model.js'
@@ -32,7 +33,8 @@ function typeStyle(type) {
  */
 export default function ProductsPage({ db, onOpenProduct }) {
   const { t } = useLanguage()
-  const [, refresh] = useReducer((x) => x + 1, 0)
+  const { commit } = useDb()
+  const refresh = () => commit()
   const [showNewInquiry, setShowNewInquiry] = useState(false)
   const [showProductForm, setShowProductForm] = useState(/** @type {'new'|null} */ (null))
   const [editingProduct, setEditingProduct] = useState(/** @type {import('../domains/products/model.js').Product|null} */ (null))

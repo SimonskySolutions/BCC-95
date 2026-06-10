@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { commit } from '../../data/store.js'
 import { useLanguage } from '../../i18n/useLanguage.js'
 import {
   resolveAcceptanceToken,
@@ -35,13 +36,13 @@ export default function OfferAcceptancePage({ db, token }) {
 
   function submit() {
     if (!resolved) return
-    const res = submitCustomerDecision(db, {
+    const res = commit(() => submitCustomerDecision(db, {
       token,
       decision: outcome,
       customerContactName: name,
       customerContactEmail: email,
       comment,
-    })
+    }))
     if (res.ok) {
       setResult({ ok: true, message: t('acceptance.thanks') })
     } else if (res.code === 'already_decided') {

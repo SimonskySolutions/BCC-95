@@ -599,6 +599,9 @@ const en = {
   'settings.terms.labelPlaceholder': 'e.g. FCA Plovdiv (Incoterms 2020)',
   'settings.terms.add': 'Add',
   'settings.terms.remove': 'Remove',
+  'settings.resetData': 'Reset demo data',
+  'settings.resetData.hint': 'Clears everything saved in this browser and reloads the seeded IKEA demo data.',
+  'settings.resetData.confirm': 'Delete all locally saved data and restore the demo seed?',
 
   // Documentation panel
   'doc.hubTitle': 'Documentation Hub',
@@ -1715,6 +1718,9 @@ const bg = {
   'settings.terms.labelPlaceholder': 'напр. FCA Пловдив (Incoterms 2020)',
   'settings.terms.add': 'Добави',
   'settings.terms.remove': 'Премахни',
+  'settings.resetData': 'Нулирай демо данните',
+  'settings.resetData.hint': 'Изтрива всичко записано в този браузър и зарежда отново демо данните за IKEA.',
+  'settings.resetData.confirm': 'Да изтрия ли всички локално записани данни и да възстановя демото?',
 
   'doc.hubTitle': 'Център за документация',
   'doc.hubSubtitle':

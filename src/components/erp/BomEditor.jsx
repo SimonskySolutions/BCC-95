@@ -1,4 +1,5 @@
-import { useMemo, useReducer, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useDb } from '../../data/useDb.js'
 import { Plus, Trash2, Clock, Package, Wrench, DollarSign, ArrowLeftRight } from 'lucide-react'
 import { useLanguage } from '../../i18n/useLanguage.js'
 import {
@@ -79,7 +80,8 @@ function fmtMins(mins) {
  */
 export default function BomEditor({ db, productId }) {
   const { t } = useLanguage()
-  const [, refresh] = useReducer((x) => x + 1, 0)
+  const { commit } = useDb()
+  const refresh = () => commit()
   const [activeSection, setActiveSection] = useState(/** @type {'components'|'routing'|'substitutes'} */ ('components'))
   // substitutes: { [bomLineId]: Array<{componentId, qty, note}> }
   const [substitutes, setSubstitutes] = useState(/** @type {Record<string, Array<{componentId:string,qty:number,note:string}>>} */ ({}))
