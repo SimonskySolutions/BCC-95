@@ -15,8 +15,11 @@ export function mandatoryQuotationTaskKeysForProduct(productId) {
  */
 export function evaluateQuotationTaskReadiness(db, { quoteId, productId }) {
   const requiredKeys = mandatoryQuotationTaskKeysForProduct(productId)
+  // Auto-created gate tasks carry only productId (no quote exists yet at
+  // inquiry time), so match on either anchor — quoteId-only matching left
+  // new products permanently blocked even after resolving both tasks.
   const quoteTasks = db.tasks.filter(
-    (t) => t.quoteId === quoteId && t.workstream === 'quotation',
+    (t) => (t.quoteId === quoteId || t.productId === productId) && t.workstream === 'quotation',
   )
   const pending = []
   for (const key of requiredKeys) {

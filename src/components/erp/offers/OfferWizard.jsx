@@ -87,8 +87,8 @@ const LINE_TEMPLATES = {
 
 /** Converts internal blocker codes to readable instructions. */
 function blockerLabel(blocker = '') {
-  if (blocker.startsWith('task:quote-tech-review')) return 'Complete the Technical Review task first'
-  if (blocker.startsWith('task:quote-costing'))     return 'Complete the Costing task first'
+  if (blocker.startsWith('task:quote-tech-review')) return 'Complete the "Technical review (VSM 1.3)" task first — see the Tasks tab (it may be assigned to the engineer)'
+  if (blocker.startsWith('task:quote-costing'))     return 'Complete the "Costing rollup (VSM 1.4)" task first — see the Tasks tab (it may be assigned to the planner)'
   if (blocker.startsWith('task:'))                  return `Complete the required task: ${blocker.replace('task:', '')}`
   if (blocker === 'feasibility:not_recorded')        return 'Record a feasibility result above'
   if (blocker === 'quote:no_version')                return 'Create a quote version in the costing step'

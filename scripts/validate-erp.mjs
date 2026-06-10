@@ -269,6 +269,13 @@ appendQuoteVersion(dbOffer, ov)
 patchQuote(dbOffer, oq.id, { currentVersionId: ov.id, currentVersionNo: 1 })
 appendQuoteLineItem(dbOffer, { quoteVersionId: ov.id, kind: 'material', description: 'm', quantity: 10, unitPrice: 10 })
 
+// gate tasks anchored by productId (no quoteId) must still count toward readiness
+const readinessNewQuote = evaluateQuotationTaskReadiness(dbOffer, { quoteId: oq.id, productId: 'prod-1' })
+assert.ok(
+  !readinessNewQuote.pendingKeys.includes('quote-tech-review-prod-1'),
+  'resolved product-anchored tech review task satisfies a new quote',
+)
+
 // terms lookups start empty, then add
 assert.equal(selectTermsOfDelivery(dbOffer).length, 0, 'terms seed empty')
 const td = appendTerm(dbOffer, 'termsOfDelivery', { code: 'FCA', label: 'FCA Plovdiv' })
