@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { startNewInquiry } from '../../../services/offers/newInquiryService.js'
 import { COUNTRY_NAMES, REGIONS, regionForCountry } from '../../../lib/countries.js'
+import AttachmentEditor from './AttachmentEditor.jsx'
 
 /**
  * Inquiry-first entry form: captures client + product + quantity in one
@@ -31,6 +32,7 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
     requestedDeadline: '',
     summary: '',
     specificationNote: '',
+    attachments: /** @type {import('../../../domains/inquiries/model.js').InquiryAttachment[]} */ ([]),
   }))
   const [error, setError] = useState(/** @type {string | null} */ (null))
   const [submitting, setSubmitting] = useState(false)
@@ -74,6 +76,7 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
           requestedDeadline: form.requestedDeadline || undefined,
           summary: form.summary.trim() || undefined,
           specificationNote: form.specificationNote.trim() || undefined,
+          attachments: form.attachments,
         },
       })
       if (!result.ok) {
@@ -290,6 +293,11 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
             />
           </label>
         </div>
+
+        <AttachmentEditor
+          attachments={form.attachments}
+          onChange={(attachments) => setForm((f) => ({ ...f, attachments }))}
+        />
       </section>
 
       <footer className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
