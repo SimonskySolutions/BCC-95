@@ -38,6 +38,11 @@ export function appendClient(db, input) {
     country: input.country,
     city: input.city,
     notes: input.notes,
+    // Seed the structured contacts list too — the offer header's contact
+    // dropdown reads contacts[], not the legacy flat fields.
+    contacts: input.contactName
+      ? [{ id: `cct-${Date.now().toString(36)}`, name: input.contactName, email: input.contactEmail }]
+      : [],
   })
   db.clients.push(client)
   return client

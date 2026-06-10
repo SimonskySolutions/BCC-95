@@ -87,17 +87,17 @@ const LINE_TEMPLATES = {
   ],
 }
 
-/** Converts internal blocker codes to readable instructions. */
-function blockerLabel(blocker = '') {
-  if (blocker.startsWith('task:quote-tech-review')) return 'Complete the "Technical review (VSM 1.3)" task first — see the Tasks tab (it may be assigned to the engineer)'
-  if (blocker.startsWith('task:quote-costing'))     return 'Complete the "Costing rollup (VSM 1.4)" task first — see the Tasks tab (it may be assigned to the planner)'
-  if (blocker.startsWith('task:'))                  return `Complete the required task: ${blocker.replace('task:', '')}`
-  if (blocker === 'feasibility:not_recorded')        return 'Record a feasibility result above'
-  if (blocker === 'quote:no_version')                return 'Create a quote version in the costing step'
-  if (blocker === 'quote:not_approved')              return 'Get the quote approved before sending'
-  if (blocker === 'quote:not_sent')                  return 'Send the quote to the client'
-  if (blocker === 'customer:pending')                return 'Waiting for the client\'s decision'
-  if (blocker.startsWith('intake:'))                 return `Fill in missing inquiry fields: ${blocker.replace('intake:', '')}`
+/** Converts internal blocker codes to readable, localised instructions. */
+function blockerLabel(blocker = '', t) {
+  if (blocker.startsWith('task:quote-tech-review')) return t('offer.blocker.techReview')
+  if (blocker.startsWith('task:quote-costing'))     return t('offer.blocker.costing')
+  if (blocker.startsWith('task:'))                  return `${t('offer.blocker.task')}: ${blocker.replace('task:', '')}`
+  if (blocker === 'feasibility:not_recorded')        return t('offer.blocker.feasibility')
+  if (blocker === 'quote:no_version')                return t('offer.blocker.noVersion')
+  if (blocker === 'quote:not_approved')              return t('offer.blocker.notApproved')
+  if (blocker === 'quote:not_sent')                  return t('offer.blocker.notSent')
+  if (blocker === 'customer:pending')                return t('offer.blocker.customerPending')
+  if (blocker.startsWith('intake:'))                 return `${t('offer.blocker.intake')}: ${blocker.replace('intake:', '')}`
   return blocker
 }
 
@@ -456,7 +456,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         </div>
         {progress.blockers.length > 0 && progress.nextStep ? (
           <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">
-            {blockerLabel(progress.blockers[0])}
+            {blockerLabel(progress.blockers[0], t)}
           </p>
         ) : null}
       </div>

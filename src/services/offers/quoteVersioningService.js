@@ -82,6 +82,26 @@ export function draftQuoteVersion(db, input) {
   const lastSent = [...existingVersions].reverse().find((v) => v.status === 'sent')
   const nextVersionNo = existingVersions.reduce((max, v) => Math.max(max, v.versionNo), 0) + 1
 
+  // Pre-fill the customer-facing header from what we already know: the
+  // inquiry's contact, the client's contact list and primary address, and the
+  // requested deadline as the planned dispatch date. All remain editable.
+  const inquiry =
+    (db.inquiries ?? []).find((i) => i.id === quote.inquiryId) ??
+    [...(db.inquiries ?? [])].reverse().find((i) => i.productId === quote.productId)
+  const client = db.clients.find((c) => c.id === quote.clientId)
+  const contacts = client?.contacts ?? []
+  const matchedContact =
+    contacts.find((c) => inquiry?.customerContactName && c.name === inquiry.customerContactName) ??
+    contacts[0]
+  const primaryAddress = client?.addresses?.[0]
+  const deliveryAddress = primaryAddress
+    ? [primaryAddress.address, [primaryAddress.postCode, primaryAddress.city].filter(Boolean).join(' '), primaryAddress.country]
+        .filter(Boolean)
+        .join(', ')
+    : [client?.address, [client?.postCode, client?.city].filter(Boolean).join(' '), client?.country]
+        .filter(Boolean)
+        .join(', ') || undefined
+
   const subtotal = input.lineItems.reduce(
     (sum, li) => sum + Math.round(li.quantity * li.unitPrice * 100) / 100,
     0,
@@ -103,6 +123,12 @@ export function draftQuoteVersion(db, input) {
     supersedesVersionId: lastSent?.id,
     notes: input.notes,
     createdBy: input.actorId,
+    contactPersonId: matchedContact?.id,
+    contactName: inquiry?.customerContactName ?? matchedContact?.name,
+    contactTitle: matchedContact?.title,
+    deliveryAddress,
+    orderDate: new Date().toISOString().slice(0, 10),
+    dispatchDate: inquiry?.requestedDeadline,
   })
   appendQuoteVersion(db, version)
   input.lineItems.forEach((li) =>

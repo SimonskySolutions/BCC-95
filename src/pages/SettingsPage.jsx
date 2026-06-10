@@ -10,11 +10,11 @@ import { selectTermsOfDelivery, selectTermsOfPayment } from '../domains/quotatio
 import { appendTerm, patchTerm, removeTerm } from '../domains/quotations/mutations.js'
 
 const TABS = [
-  { id: 'company', label: 'Company' },
-  { id: 'modules', label: 'Modules' },
-  { id: 'kpi', label: 'KPI Targets' },
-  { id: 'terms', label: 'Offer terms' },
-  { id: 'appearance', label: 'Appearance' },
+  { id: 'company', labelKey: 'settings.tab.company' },
+  { id: 'modules', labelKey: 'settings.tab.modules' },
+  { id: 'kpi', labelKey: 'settings.tab.kpi' },
+  { id: 'terms', labelKey: 'settings.tab.terms' },
+  { id: 'appearance', labelKey: 'settings.tab.appearance' },
 ]
 
 const ALWAYS_ON = new Set(['dashboard', 'settings'])
@@ -440,7 +440,7 @@ export default function SettingsPage() {
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            {tabItem.label}
+            {t(tabItem.labelKey)}
           </button>
         ))}
       </div>

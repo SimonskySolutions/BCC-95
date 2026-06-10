@@ -208,6 +208,9 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                 </option>
               ))}
             </select>
+            {version.contactName && !(client?.contacts ?? []).some((c) => c.id === version.contactPersonId) ? (
+              <p className="mt-1 text-[10px] text-slate-400">{t('offer.details.contactOnDoc')}: {version.contactName}</p>
+            ) : null}
           </div>
 
           <div>

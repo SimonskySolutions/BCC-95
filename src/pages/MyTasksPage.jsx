@@ -13,9 +13,9 @@ const CURRENT_USER_ID = 'emp-1'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 const KANBAN_COLS = [
-  { id: 'todo',        label: 'To do',       statuses: ['draft', 'blocked'], accent: 'border-slate-300', headerBg: 'bg-slate-100', countBg: 'bg-slate-200 text-slate-700' },
-  { id: 'in_progress', label: 'In progress',  statuses: ['in_progress'],      accent: 'border-blue-300',  headerBg: 'bg-blue-50',    countBg: 'bg-blue-100 text-blue-700' },
-  { id: 'done',        label: 'Done',         statuses: ['resolved'],          accent: 'border-emerald-300', headerBg: 'bg-emerald-50', countBg: 'bg-emerald-100 text-emerald-700' },
+  { id: 'todo',        labelKey: 'tasks.col.todo',       statuses: ['draft', 'blocked'], accent: 'border-slate-300', headerBg: 'bg-slate-100', countBg: 'bg-slate-200 text-slate-700' },
+  { id: 'in_progress', labelKey: 'tasks.col.inProgress',  statuses: ['in_progress'],      accent: 'border-blue-300',  headerBg: 'bg-blue-50',    countBg: 'bg-blue-100 text-blue-700' },
+  { id: 'done',        labelKey: 'tasks.col.done',         statuses: ['resolved'],          accent: 'border-emerald-300', headerBg: 'bg-emerald-50', countBg: 'bg-emerald-100 text-emerald-700' },
 ]
 
 const WORKSTREAM_PILL = {
@@ -255,7 +255,7 @@ export default function MyTasksPage({ db }) {
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="search"
-          placeholder="Search tasks…"
+          placeholder={t('tasks.search')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-8 w-48 rounded-lg border border-slate-200 bg-white px-3 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
@@ -302,7 +302,7 @@ export default function MyTasksPage({ db }) {
             className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white hover:bg-slate-800"
           >
             <Plus size={13} />
-            Create task
+            {t('tasks.create')}
           </button>
         </div>
       </div>
@@ -318,7 +318,7 @@ export default function MyTasksPage({ db }) {
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
             {/* Modal header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <h2 className="text-base font-semibold text-slate-900">Create task</h2>
+              <h2 className="text-base font-semibold text-slate-900">{t('tasks.create')}</h2>
               <button
                 type="button"
                 onClick={closeModal}
@@ -340,7 +340,7 @@ export default function MyTasksPage({ db }) {
                   className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  placeholder="What needs to be done?"
+                  placeholder={t('tasks.titlePlaceholder')}
                   required
                   autoFocus
                 />
@@ -492,7 +492,7 @@ export default function MyTasksPage({ db }) {
                   type="submit"
                   className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                 >
-                  Create task
+                  {t('tasks.create')}
                 </button>
               </div>
             </form>
@@ -506,7 +506,7 @@ export default function MyTasksPage({ db }) {
           {kanbanColumns.map((col) => (
             <div key={col.id} className={`rounded-2xl border ${col.accent} bg-white`}>
               <div className={`flex items-center justify-between rounded-t-2xl px-3 py-2.5 ${col.headerBg}`}>
-                <span className="text-sm font-semibold text-slate-800">{col.label}</span>
+                <span className="text-sm font-semibold text-slate-800">{t(col.labelKey)}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${col.countBg}`}>
                   {col.tasks.length}
                 </span>

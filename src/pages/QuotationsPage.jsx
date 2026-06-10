@@ -153,7 +153,7 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
               className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
             >
               <Plus size={14} />
-              New inquiry
+              {t('quotations.newInquiry')}
             </button>
           )}
         </div>
@@ -194,7 +194,7 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
 
       {/* Kanban pipeline */}
       <div>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Active pipeline</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('quotations.activePipeline')}</p>
         <div className="flex gap-3 overflow-x-auto pb-2">
           {columns.map(({ status, items }) => {
             const cfg = STATUS_CONFIG[status]
@@ -230,7 +230,7 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
       {/* Decided (accepted / rejected) */}
       {(statusFilter === 'all' || DECIDED_STATUSES.includes(statusFilter)) && decidedItems.length > 0 ? (
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Decided</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('quotations.decided')}</p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {decidedItems.map(({ q, product, client, daysExp }) => (
               <QuoteCard

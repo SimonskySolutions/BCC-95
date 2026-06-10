@@ -202,7 +202,7 @@ export default function OfferCalculationPanel({
                     value={li.description}
                     onChange={(e) => updateItem(idx, { description: e.target.value })}
                     disabled={isLocked}
-                    placeholder="Describe this cost…"
+                    placeholder={t('offer.calc.describeCost')}
                   />
                 </td>
                 <td className="px-3 py-2">
@@ -263,26 +263,26 @@ export default function OfferCalculationPanel({
       <div className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
         <div className="grid grid-cols-2 divide-x divide-slate-200">
           <div className="space-y-2 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Cost breakdown</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('offer.calc.breakdown')}</p>
             <dl className="space-y-1 text-xs">
               <div className="flex justify-between text-slate-600">
                 <dt>{t('offer.subtotal')}</dt>
                 <dd className="font-medium">{subtotal.toFixed(2)} {currency}</dd>
               </div>
               <div className="flex justify-between text-slate-600">
-                <dt>Cost / unit <span className="text-slate-400">(÷ {effectiveBatchQty})</span></dt>
+                <dt>{t('offer.calc.costPerUnit')} <span className="text-slate-400">(÷ {effectiveBatchQty})</span></dt>
                 <dd className="font-medium">{costPerUnit.toFixed(4)} {currency}</dd>
               </div>
               <div className="flex justify-between text-slate-600">
-                <dt>Margin ({margin}%)</dt>
+                <dt>{t('offer.calc.margin')} ({margin}%)</dt>
                 <dd className="font-medium">+ {marginAmount.toFixed(4)} {currency}</dd>
               </div>
             </dl>
           </div>
           <div className="flex flex-col justify-center gap-1 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Selling price</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('offer.calc.sellingPrice')}</p>
             <p className="text-2xl font-bold text-slate-900">{sellPricePerUnit.toFixed(2)} <span className="text-base font-medium text-slate-500">{currency}</span></p>
-            <p className="text-xs text-slate-500">per unit · order total: <span className="font-semibold text-slate-700">{orderTotal.toFixed(2)} {currency}</span></p>
+            <p className="text-xs text-slate-500">{t('offer.calc.perUnitTotal')} <span className="font-semibold text-slate-700">{orderTotal.toFixed(2)} {currency}</span></p>
           </div>
         </div>
       </div>
@@ -290,7 +290,7 @@ export default function OfferCalculationPanel({
       {/* Terms grid */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <label className="block text-xs font-medium text-slate-600">
-          Margin %
+          {t('offer.calc.marginPct')}
           <input
             type="number"
             className={inputCls}
@@ -300,7 +300,7 @@ export default function OfferCalculationPanel({
           />
         </label>
         <label className="block text-xs font-medium text-slate-600">
-          Batch qty
+          {t('offer.calc.batchQty')}
           <input
             type="number"
             min={1}
@@ -308,7 +308,7 @@ export default function OfferCalculationPanel({
             value={batchQty}
             onChange={(e) => setBatchQty(Number(e.target.value))}
             disabled={isLocked}
-            title="Production batch size — used to compute per-unit cost and selling price"
+            title={t('offer.calc.batchQty.hint')}
           />
         </label>
         <label className="block text-xs font-medium text-slate-600">
