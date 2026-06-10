@@ -1,13 +1,13 @@
 /** @type {import('./model.js').Vendor[]} */
 export const vendors = [
-  { id: 'ven-1', name: 'AluSource Metals', category: 'Raw materials', status: 'preferred' },
-  { id: 'ven-2', name: 'FastFlex Logistics Supplies', category: 'Consumables', status: 'active' },
+  { id: 'ven-1', name: 'Stomana Steel Trade', category: 'Raw materials', status: 'preferred' },
+  { id: 'ven-2', name: 'EuroPack Supplies', category: 'Consumables', status: 'active' },
 ]
 
 /** @type {import('./model.js').Material[]} */
 export const materials = [
-  { id: 'mat-1', sku: 'AL-6061-PL', name: '6061 plate 12mm', uom: 'kg' },
-  { id: 'mat-2', sku: 'PKG-ESD-01', name: 'ESD tray', uom: 'ea' },
+  { id: 'mat-1', sku: 'RM-TUBE-25', name: 'Steel tube Ø25×1.5 S235JR', uom: 'kg' },
+  { id: 'mat-2', sku: 'RM-PACK-01', name: 'Fittings bag + flat-pack carton', uom: 'ea' },
 ]
 
 /** @type {import('./model.js').PurchaseOrder[]} */

@@ -72,16 +72,16 @@ function VersionDelta({ vA, vB, t }) {
 
 const LINE_TEMPLATES = {
   standard: [
-    { kind: 'material',  description: 'Raw materials',          quantity: 1, unitPrice: 0 },
-    { kind: 'labor',     description: 'CNC machining',          quantity: 1, unitPrice: 0 },
-    { kind: 'logistics', description: 'Freight & packaging',    quantity: 1, unitPrice: 0 },
+    { kind: 'material',  description: 'Steel (tube / sheet)',     quantity: 1, unitPrice: 0 },
+    { kind: 'labor',     description: 'Cut + weld + powder coat', quantity: 1, unitPrice: 0 },
+    { kind: 'logistics', description: 'Freight & packaging',      quantity: 1, unitPrice: 0 },
   ],
   toolingLabor: [
-    { kind: 'tooling',   description: 'Tooling setup',          quantity: 1, unitPrice: 0 },
-    { kind: 'labor',     description: 'Labor',                  quantity: 1, unitPrice: 0 },
+    { kind: 'tooling',   description: 'Jig / die setup',          quantity: 1, unitPrice: 0 },
+    { kind: 'labor',     description: 'Labor',                    quantity: 1, unitPrice: 0 },
   ],
   materialsOnly: [
-    { kind: 'material',  description: 'Materials',              quantity: 1, unitPrice: 0 },
+    { kind: 'material',  description: 'Materials',                quantity: 1, unitPrice: 0 },
   ],
 }
 

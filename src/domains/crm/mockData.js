@@ -2,47 +2,47 @@
 export const clients = [
   {
     id: 'client-1',
-    name: 'Nordic Rail AS',
-    segment: 'OEM',
-    region: 'NO',
-    notes: 'Prefers quarterly billing.',
-    companyName: 'Nordic Rail AS',
-    vat: 'NO123456789MVA',
-    address: 'Jernbaneveien 12',
-    city: 'Oslo',
-    postCode: '0154',
-    country: 'Norway',
-    email: 'orders@nordicrail.no',
-    contactName: 'Astrid Hansen',
-    contactEmail: 'astrid.hansen@nordicrail.no',
+    name: 'IKEA Supply AG',
+    segment: 'Retail furniture',
+    region: 'CH',
+    notes: 'Frame agreement; weekly call-offs against rolling forecast.',
+    companyName: 'IKEA Supply AG',
+    vat: 'CHE-116.302.213 MWST',
+    address: 'Grüssenweg 25',
+    city: 'Pratteln',
+    postCode: '4133',
+    country: 'Switzerland',
+    email: 'supply.orders@ikea.com',
+    contactName: 'Ingrid Lund',
+    contactEmail: 'ingrid.lund@ikea.com',
     contacts: [
-      { id: 'cct-1-1', name: 'Astrid Hansen', title: 'Ms.', email: 'astrid.hansen@nordicrail.no', phone: '+47 22 00 11 22' },
-      { id: 'cct-1-2', name: 'Lars Berg', title: 'Mr.', email: 'lars.berg@nordicrail.no' },
+      { id: 'cct-1-1', name: 'Ingrid Lund', title: 'Ms.', email: 'ingrid.lund@ikea.com', phone: '+41 61 555 01 22' },
+      { id: 'cct-1-2', name: 'Johan Pettersson', title: 'Mr.', email: 'johan.pettersson@ikea.com' },
     ],
     addresses: [
-      { id: 'cad-1-1', label: 'HQ', address: 'Jernbaneveien 12', city: 'Oslo', postCode: '0154', country: 'Norway' },
-      { id: 'cad-1-2', label: 'Warehouse', address: 'Havnegata 4', city: 'Drammen', postCode: '3040', country: 'Norway' },
+      { id: 'cad-1-1', label: 'HQ Pratteln', address: 'Grüssenweg 25', city: 'Pratteln', postCode: '4133', country: 'Switzerland' },
+      { id: 'cad-1-2', label: 'DC Älmhult', address: 'Ikeagatan 1', city: 'Älmhult', postCode: '343 81', country: 'Sweden' },
     ],
   },
   {
     id: 'client-2',
-    name: 'BrightCell Energy',
-    segment: 'Energy',
-    region: 'DE',
-    companyName: 'BrightCell Energy GmbH',
-    vat: 'DE298765432',
-    address: 'Industriestraße 88',
-    city: 'München',
-    postCode: '80339',
-    country: 'Germany',
-    email: 'procurement@brightcell.de',
-    contactName: 'Markus Weber',
-    contactEmail: 'markus.weber@brightcell.de',
+    name: 'IKEA Components',
+    segment: 'Retail furniture',
+    region: 'SK',
+    companyName: 'IKEA Components s.r.o.',
+    vat: 'SK2020298551',
+    address: 'Továrenská 2614/19',
+    city: 'Malacky',
+    postCode: '901 01',
+    country: 'Slovakia',
+    email: 'components.orders@ikea.com',
+    contactName: 'Klaus Werner',
+    contactEmail: 'klaus.werner@ikea.com',
     contacts: [
-      { id: 'cct-2-1', name: 'Markus Weber', title: 'Mr.', email: 'markus.weber@brightcell.de', phone: '+49 89 555 0100' },
+      { id: 'cct-2-1', name: 'Klaus Werner', title: 'Mr.', email: 'klaus.werner@ikea.com', phone: '+421 34 555 0100' },
     ],
     addresses: [
-      { id: 'cad-2-1', label: 'Plant', address: 'Industriestraße 88', city: 'München', postCode: '80339', country: 'Germany' },
+      { id: 'cad-2-1', label: 'Plant Malacky', address: 'Továrenská 2614/19', city: 'Malacky', postCode: '901 01', country: 'Slovakia' },
     ],
   },
 ]
@@ -69,16 +69,16 @@ export const clientOrders = [
 
 /** @type {import('./model.js').OrderLine[]} */
 export const orderLines = [
-  { id: 'ol-1', orderId: 'ord-1', description: 'Housing lot A', qty: 120, unitPrice: 48.5 },
-  { id: 'ol-2', orderId: 'ord-1', description: 'Finish option — anodized', qty: 120, unitPrice: 6.2 },
-  { id: 'ol-3', orderId: 'ord-2', description: 'Control module assembly', qty: 80, unitPrice: 112 },
+  { id: 'ol-1', orderId: 'ord-1', description: 'ADILS leg 70 cm — lot A', qty: 120, unitPrice: 48.5 },
+  { id: 'ol-2', orderId: 'ord-1', description: 'Finish option — powder RAL 9016', qty: 120, unitPrice: 6.2 },
+  { id: 'ol-3', orderId: 'ord-2', description: 'LERBERG side frame — batch', qty: 80, unitPrice: 112 },
 ]
 
 /** @type {import('./model.js').OrderExecutionRecord[]} */
 export const orderExecutionRecords = [
   { id: 'ex-1', orderId: 'ord-1', milestone: 'Material release', completedAt: '2025-11-12T08:00:00Z' },
   { id: 'ex-2', orderId: 'ord-1', milestone: 'First article', completedAt: '2025-12-01T14:30:00Z', notes: 'FAIR signed' },
-  { id: 'ex-3', orderId: 'ord-2', milestone: 'PCBA intake', completedAt: '2026-03-05T09:00:00Z' },
+  { id: 'ex-3', orderId: 'ord-2', milestone: 'Sheet blanks intake', completedAt: '2026-03-05T09:00:00Z' },
 ]
 
 /** @type {import('./model.js').OrderMachineUsage[]} */
@@ -90,9 +90,9 @@ export const orderMachineUsages = [
 
 /** @type {import('./model.js').OrderTimeLog[]} */
 export const orderTimeLogs = [
-  { id: 'tl-1', orderId: 'ord-1', phase: 'Machining', plannedHours: 40, actualHours: 44 },
+  { id: 'tl-1', orderId: 'ord-1', phase: 'Cutting & welding', plannedHours: 40, actualHours: 44 },
   { id: 'tl-2', orderId: 'ord-1', phase: 'QC', plannedHours: 8, actualHours: 7 },
-  { id: 'tl-3', orderId: 'ord-2', phase: 'Assembly', plannedHours: 36, actualHours: 30 },
+  { id: 'tl-3', orderId: 'ord-2', phase: 'Press & bend', plannedHours: 36, actualHours: 30 },
 ]
 
 /** @type {import('./model.js').OrderIssue[]} */
@@ -101,7 +101,7 @@ export const orderIssues = [
     id: 'iss-1',
     orderId: 'ord-1',
     severity: 'medium',
-    description: 'Surface porosity on 3% of first article batch',
+    description: 'Powder adhesion defects on 3% of first article batch',
     reportedAt: '2025-11-28',
     status: 'resolved',
   },
@@ -109,7 +109,7 @@ export const orderIssues = [
     id: 'iss-2',
     orderId: 'ord-2',
     severity: 'low',
-    description: 'Label stock mismatch — rework scheduled',
+    description: 'IKEA label stock mismatch — rework scheduled',
     reportedAt: '2026-03-20',
     status: 'open',
   },
@@ -147,16 +147,16 @@ export const schematicDocuments = [
     id: 'sch-1',
     orderId: 'ord-1',
     clientId: 'client-1',
-    title: 'Housing assembly',
+    title: 'ADILS leg weldment',
     revision: 'C',
-    url: 'https://example.com/docs/housing-revC.pdf',
+    url: 'https://example.com/docs/adils-leg-revC.pdf',
   },
   {
     id: 'sch-2',
     orderId: 'ord-2',
     clientId: 'client-2',
-    title: 'Module interconnect',
+    title: 'LERBERG frame bend drawing',
     revision: 'A',
-    url: 'https://example.com/docs/module-interconnect-A.pdf',
+    url: 'https://example.com/docs/lerberg-frame-A.pdf',
   },
 ]

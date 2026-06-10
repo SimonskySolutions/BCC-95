@@ -2,8 +2,8 @@
 export const tasks = [
   {
     id: 'task-1',
-    taskKey: 'bom-housing-q2',
-    title: 'Finalize BOM for housing',
+    taskKey: 'bom-adils-leg-q2',
+    title: 'Finalize BOM for ADILS leg',
     assigneeId: 'emp-1',
     productId: 'prod-1',
     dueDate: '2026-04-20',
@@ -18,7 +18,7 @@ export const tasks = [
   {
     id: 'task-2',
     taskKey: 'fixture-cal-q1',
-    title: 'Fixture calibration',
+    title: 'Weld jig calibration',
     assigneeId: 'emp-2',
     productId: 'prod-1',
     dueDate: '2026-03-01',
@@ -107,7 +107,7 @@ export const tasks = [
   {
     id: 'task-8',
     taskKey: 'carryover-q1-machining',
-    title: 'Rough machining — carryover',
+    title: 'Tube cutting — carryover',
     assigneeId: 'emp-2',
     productId: 'prod-1',
     dueDate: '2026-02-15',
@@ -121,7 +121,7 @@ export const tasks = [
   {
     id: 'task-shop-exec-1',
     taskKey: 'shop-floor-assembly-2026-04-11',
-    title: 'Shop floor: Assembly',
+    title: 'Shop floor: Powder coating',
     assigneeId: 'emp-2',
     productId: 'prod-1',
     dueDate: '2026-04-11',
@@ -146,7 +146,7 @@ export const tasks = [
   {
     id: 'task-shop-owner-1',
     taskKey: 'shop-oversight-assembly-2026-04-11',
-    title: 'Oversight: Assembly (2026-04-11)',
+    title: 'Oversight: Powder coating (2026-04-11)',
     assigneeId: 'emp-1',
     productId: 'prod-1',
     dueDate: '2026-04-11',
