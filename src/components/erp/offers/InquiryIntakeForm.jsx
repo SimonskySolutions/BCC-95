@@ -63,14 +63,20 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
     onChange?.()
   }
 
+  const [attachOpen, setAttachOpen] = useState(false)
+  const [attachName, setAttachName] = useState('')
+  const [attachKind, setAttachKind] = useState('drawing')
+
   function addAttachment() {
-    const name = prompt(t('inquiry.attachmentName'))
+    const name = attachName.trim()
     if (!name) return
-    const kind = prompt(t('inquiry.attachmentKind')) || 'drawing'
     setForm((f) => ({
       ...f,
-      attachments: [...f.attachments, { id: `att-${Date.now()}`, name, kind }],
+      attachments: [...f.attachments, { id: `att-${Date.now()}`, name, kind: attachKind }],
     }))
+    setAttachName('')
+    setAttachKind('drawing')
+    setAttachOpen(false)
   }
 
   function removeAttachment(id) {
@@ -172,12 +178,53 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
           <h4 className="text-xs font-semibold text-slate-700">{t('inquiry.attachments')}</h4>
           <button
             type="button"
-            onClick={addAttachment}
+            onClick={() => setAttachOpen((v) => !v)}
             className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-medium text-white hover:bg-slate-800"
           >
             + {t('inquiry.addAttachment')}
           </button>
         </div>
+        {attachOpen ? (
+          <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+            <div className="flex-1 min-w-[160px]">
+              <label className="block text-[10px] font-medium text-slate-500">{t('inquiry.attachmentName')}</label>
+              <input
+                autoFocus
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                value={attachName}
+                onChange={(e) => setAttachName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addAttachment() }}
+                placeholder="Drawing_rev2.pdf"
+              />
+            </div>
+            <div className="w-32">
+              <label className="block text-[10px] font-medium text-slate-500">{t('inquiry.attachmentKind')}</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                value={attachKind}
+                onChange={(e) => setAttachKind(e.target.value)}
+              >
+                {['drawing', 'spec', 'email', 'other'].map((k) => (
+                  <option key={k} value={k}>{t(`inquiry.kind.${k}`, k)}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={addAttachment}
+              className="h-8 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              {t('inquiry.addAttachment')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAttachOpen(false)}
+              className="h-8 rounded-lg border border-slate-200 px-2.5 text-xs text-slate-500 hover:bg-white"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        ) : null}
         {form.attachments.length === 0 ? (
           <p className="mt-1 text-xs text-slate-500">{t('inquiry.noAttachments')}</p>
         ) : (
@@ -189,7 +236,7 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
               >
                 <span>
                   <span className="font-medium text-slate-800">{a.name}</span>{' '}
-                  <span className="text-slate-500">({a.kind})</span>
+                  <span className="text-slate-500">({t(`inquiry.kind.${a.kind}`, a.kind)})</span>
                 </span>
                 <button
                   type="button"
