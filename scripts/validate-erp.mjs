@@ -38,6 +38,7 @@ import { buildTaskDefaultsFromOperation } from '../src/services/tasks/taskAutofi
 import {
   appendQuote,
   appendQuoteVersion,
+  appendQuoteLineItem,
   buildQuoteVersion,
   patchQuote,
   appendQuoteOfferLine,
@@ -49,6 +50,7 @@ import {
   selectTermsOfDelivery,
 } from '../src/domains/quotations/selectors.js'
 import { convertAcceptedOfferToOrder } from '../src/services/offers/orderHandoffService.js'
+import { submitApproval } from '../src/services/offers/quoteApprovalService.js'
 
 const db = createMockDatabase()
 
@@ -255,9 +257,17 @@ console.log('shift / execution / operation KPI: OK')
 console.log('--- Offer lines, terms lookups, costing→offer bridge, order handoff ---')
 const dbOffer = createMockDatabase()
 const oq = appendQuote(dbOffer, { clientId: 'client-1', productId: 'prod-1', unitPrice: 5 })
-const ov = buildQuoteVersion(oq.id, 1, { unitPrice: 5, currency: 'EUR' })
+const ov = buildQuoteVersion(oq.id, 1, {
+  unitPrice: 5,
+  currency: 'EUR',
+  subtotal: 100,
+  leadTimeDays: 10,
+  validUntil: '2026-12-31',
+  createdBy: 'emp-1',
+})
 appendQuoteVersion(dbOffer, ov)
 patchQuote(dbOffer, oq.id, { currentVersionId: ov.id, currentVersionNo: 1 })
+appendQuoteLineItem(dbOffer, { quoteVersionId: ov.id, kind: 'material', description: 'm', quantity: 10, unitPrice: 10 })
 
 // terms lookups start empty, then add
 assert.equal(selectTermsOfDelivery(dbOffer).length, 0, 'terms seed empty')
@@ -267,12 +277,26 @@ assert.equal(selectTermsOfDelivery(dbOffer).length, 1)
 
 // costing→offer bridge: new line defaults to the version's costed unit price
 appendQuoteOfferLine(dbOffer, { quoteVersionId: ov.id, description: 'Bracket', requestedQty: 100, unitPrice: ov.unitPrice })
-appendQuoteOfferLine(dbOffer, { quoteVersionId: ov.id, description: 'Plate', requestedQty: 10, confirmedQty: 8, unitPrice: 2 })
+appendQuoteOfferLine(dbOffer, { quoteVersionId: ov.id, description: 'Plate', requestedQty: 10, confirmedQty: 8, unitPrice: 2, discountPercent: 25 })
 const offerLines = selectQuoteOfferLines(dbOffer, ov.id)
 assert.equal(offerLines.length, 2)
 assert.equal(offerLines[0].unitPrice, 5, 'first line inherits costed sell price')
-// total prefers confirmed qty when present: 100*5 + 8*2 = 516
-assert.equal(selectOfferLinesTotal(dbOffer, ov.id), 516)
+// total prefers confirmed qty and applies discount: 100*5 + 8*2*0.75 = 512
+assert.equal(selectOfferLinesTotal(dbOffer, ov.id), 512)
+
+// approval role gate: only canApproveQuotes employees, never the author
+let appr = submitApproval(dbOffer, { quoteVersionId: ov.id, approverEmployeeId: 'emp-1', decision: 'approved' })
+assert.equal(appr.ok, false)
+assert.equal(appr.code, 'not_approver')
+appr = submitApproval(dbOffer, { quoteVersionId: ov.id, approverEmployeeId: 'emp-4', decision: 'approved' })
+assert.equal(appr.ok, true, 'manager approves a version drafted by someone else')
+
+const ovSelf = buildQuoteVersion(oq.id, 2, { subtotal: 50, leadTimeDays: 5, validUntil: '2026-12-31', createdBy: 'emp-4' })
+appendQuoteVersion(dbOffer, ovSelf)
+appendQuoteLineItem(dbOffer, { quoteVersionId: ovSelf.id, kind: 'material', description: 'm', quantity: 1, unitPrice: 50 })
+appr = submitApproval(dbOffer, { quoteVersionId: ovSelf.id, approverEmployeeId: 'emp-4', decision: 'approved' })
+assert.equal(appr.ok, false)
+assert.equal(appr.code, 'self_approval')
 
 // handoff is blocked until accepted, then idempotent
 let handoff = convertAcceptedOfferToOrder(dbOffer, oq.id)

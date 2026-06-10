@@ -24,7 +24,7 @@ function orderConfirmationHtml(m) {
         <td>${esc(r.article)}${r.requirements ? `<div class="req">${esc(r.requirements)}</div>` : ''}</td>
         <td class="right">${r.qty}${r.uom ? ' ' + esc(r.uom) : ''}</td>
         <td class="center">${esc(r.dispatchDate)}</td>
-        <td class="right">${money(r.unitPrice)}</td>
+        <td class="right">${money(r.unitPrice)}${r.discountPercent ? ` (−${r.discountPercent}%)` : ''}</td>
       </tr>`,
     )
     .join('')
@@ -118,6 +118,7 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
     const tp = (db.termsOfPayment ?? []).find((x) => x.id === version.termsOfPaymentId)
     const approval = selectQuoteApprovals(db, version.id).find((a) => a.decision === 'approved')
     const approver = approval ? db.employees.find((e) => e.id === approval.approverEmployeeId) : undefined
+    const issuer = version.createdBy ? db.employees.find((e) => e.id === version.createdBy) : undefined
     return buildOrderConfirmationModel({
       quote,
       version,
@@ -126,6 +127,7 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
       termsOfDeliveryLabel: td ? (td.code ? `${td.code} · ${td.label}` : td.label) : undefined,
       termsOfPaymentLabel: tp ? (tp.code ? `${tp.code} · ${tp.label}` : tp.label) : undefined,
       firm: { name: config.companyName, subtitle: config.companySubtitle },
+      issuedByName: issuer?.name,
       approvedByName: approver?.name,
       acceptanceLink,
     })
@@ -199,7 +201,10 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
                 </td>
                 <td className="py-1.5 pr-2 text-right">{r.qty}{r.uom ? ` ${r.uom}` : ''}</td>
                 <td className="py-1.5 pr-2 text-center">{r.dispatchDate || '—'}</td>
-                <td className="py-1.5 text-right">{r.unitPrice.toFixed(2)} {model.currency}</td>
+                <td className="py-1.5 text-right">
+                  {r.unitPrice.toFixed(2)} {model.currency}
+                  {r.discountPercent ? <span className="text-emerald-600"> (−{r.discountPercent}%)</span> : null}
+                </td>
               </tr>
             ))}
           </tbody>

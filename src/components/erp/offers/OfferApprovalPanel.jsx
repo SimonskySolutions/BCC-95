@@ -11,9 +11,10 @@ import { submitApproval } from '../../../services/offers/quoteApprovalService.js
  *   onChange?: () => void
  * }} props
  */
-export default function OfferApprovalPanel({ db, version, approvals, actorId, onChange }) {
+export default function OfferApprovalPanel({ db, version, approvals, onChange }) {
   const { t } = useLanguage()
-  const [approverId, setApproverId] = useState(actorId ?? db.employees[0]?.id ?? '')
+  const approvers = db.employees.filter((e) => e.canApproveQuotes && e.id !== version?.createdBy)
+  const [approverId, setApproverId] = useState(approvers[0]?.id ?? '')
   const [note, setNote] = useState('')
   const [flash, setFlash] = useState(/** @type {string | null} */ (null))
 
@@ -69,12 +70,14 @@ export default function OfferApprovalPanel({ db, version, approvals, actorId, on
             value={approverId}
             onChange={(e) => setApproverId(e.target.value)}
           >
-            {db.employees.map((e) => (
+            {approvers.length === 0 ? <option value="">—</option> : null}
+            {approvers.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.name} ({e.role})
               </option>
             ))}
           </select>
+          <p className="mt-1 text-[10px] text-slate-400">{t('approval.onlyManagers')}</p>
         </label>
         <label className="block text-xs font-medium text-slate-600 md:col-span-2">
           {t('approval.note')}

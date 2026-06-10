@@ -129,6 +129,7 @@ export function buildOrderConfirmationModel(input) {
   const rows = offerLines.map((l, i) => {
     const qty = Number(l.confirmedQty ?? l.requestedQty) || 0
     const date = l.confirmedDate ?? l.requestedDate ?? version.dispatchDate ?? ''
+    const discount = Number(l.discountPercent) || 0
     return {
       no: i + 1,
       article: l.description || '—',
@@ -137,7 +138,8 @@ export function buildOrderConfirmationModel(input) {
       uom: l.uom ?? '',
       dispatchDate: date,
       unitPrice: Number(l.unitPrice) || 0,
-      lineTotal: qty * (Number(l.unitPrice) || 0),
+      discountPercent: discount,
+      lineTotal: qty * (Number(l.unitPrice) || 0) * (1 - discount / 100),
     }
   })
   const total = rows.reduce((s, r) => s + r.lineTotal, 0)

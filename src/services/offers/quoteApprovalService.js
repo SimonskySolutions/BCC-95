@@ -24,6 +24,24 @@ export function submitApproval(db, input) {
     return { ok: /** @type {const} */ (false), code: 'invalid_state', message: 'Only a draft version can be approved' }
   }
 
+  // Soft role gate until real auth: only designated approvers, and never the
+  // employee who drafted the version (GS stamped a distinct ConfirmUser).
+  const approver = db.employees.find((e) => e.id === input.approverEmployeeId)
+  if (!approver?.canApproveQuotes) {
+    return {
+      ok: /** @type {const} */ (false),
+      code: 'not_approver',
+      message: 'Selected employee is not authorised to approve offers',
+    }
+  }
+  if (version.createdBy && version.createdBy === input.approverEmployeeId) {
+    return {
+      ok: /** @type {const} */ (false),
+      code: 'self_approval',
+      message: 'The author of the offer cannot approve it',
+    }
+  }
+
   if (input.decision === 'approved') {
     const lines = selectQuoteLineItems(db, version.id)
     if (lines.length === 0 || version.subtotal <= 0) {

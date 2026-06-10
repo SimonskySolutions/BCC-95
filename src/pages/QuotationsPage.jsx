@@ -22,10 +22,11 @@ const DECIDED_STATUSES  = ['accepted', 'rejected']
  * @param {{
  *   db: import('../data/mockDatabase.js').MockDatabase
  *   onOpenProduct: (id: string) => void
+ *   onOpenOffer?: (id: string) => void
  *   onNewInquiry?: () => void
  * }} props
  */
-export default function QuotationsPage({ db, onOpenProduct, onNewInquiry }) {
+export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewInquiry }) {
   const { t } = useLanguage()
   const [search, setSearch]         = useState('')
   const [statusFilter, setStatus]   = useState('all')
@@ -215,7 +216,7 @@ export default function QuotationsPage({ db, onOpenProduct, onNewInquiry }) {
                         client={client}
                         daysExp={daysExp}
                         t={t}
-                        onOpen={() => onOpenProduct(q.productId)}
+                        onOpen={() => (onOpenOffer ? onOpenOffer(q.id) : onOpenProduct(q.productId))}
                       />
                     ))
                   )}
@@ -239,7 +240,7 @@ export default function QuotationsPage({ db, onOpenProduct, onNewInquiry }) {
                 client={client}
                 daysExp={daysExp}
                 t={t}
-                onOpen={() => onOpenProduct(q.productId)}
+                onOpen={() => (onOpenOffer ? onOpenOffer(q.id) : onOpenProduct(q.productId))}
                 flat
               />
             ))}

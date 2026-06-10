@@ -102,6 +102,7 @@ export function draftQuoteVersion(db, input) {
     language: input.language ?? quote.language ?? 'en',
     supersedesVersionId: lastSent?.id,
     notes: input.notes,
+    createdBy: input.actorId,
   })
   appendQuoteVersion(db, version)
   input.lineItems.forEach((li) =>

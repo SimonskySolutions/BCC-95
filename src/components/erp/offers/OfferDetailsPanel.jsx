@@ -4,6 +4,7 @@ import { useLanguage } from '../../../i18n/useLanguage.js'
 import {
   selectQuoteOfferLines,
   selectOfferLinesTotal,
+  offerLineNetTotal,
   selectTermsOfDelivery,
   selectTermsOfPayment,
 } from '../../../domains/quotations/selectors.js'
@@ -313,6 +314,30 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
               onChange={(e) => patchHeader({ dispatchDate: e.target.value })}
             />
           </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-600">{t('offer.validUntil')}</label>
+            <input
+              type="date"
+              className={`mt-1 ${inputCls}`}
+              value={version.validUntil ?? ''}
+              disabled={isLocked}
+              onChange={(e) => patchHeader({ validUntil: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-600">{t('offer.language')}</label>
+            <select
+              className={`mt-1 ${inputCls}`}
+              value={version.language ?? 'en'}
+              disabled={isLocked}
+              onChange={(e) => patchHeader({ language: e.target.value })}
+            >
+              <option value="en">English</option>
+              <option value="bg">Български</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -347,8 +372,7 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                 </tr>
               ) : null}
               {lines.map((l) => {
-                const qty = Number(l.confirmedQty ?? l.requestedQty) || 0
-                const lineTotal = qty * (Number(l.unitPrice) || 0)
+                const lineTotal = offerLineNetTotal(l)
                 const open = expandedLine === l.id
                 return (
                   <Fragment key={l.id}>
@@ -381,7 +405,7 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                             className="mt-1 flex items-center gap-1 text-[10px] font-medium text-slate-400 hover:text-blue-600"
                           >
                             {open ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                            {t('offer.details.requirements')}
+                            {t('offer.details.lineExtras')}
                           </button>
                         ) : null}
                       </td>
@@ -445,6 +469,11 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                       </td>
                       <td className="px-2 py-2 text-right font-semibold text-slate-800">
                         {lineTotal.toFixed(2)}
+                        {Number(l.discountPercent) > 0 ? (
+                          <span className="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700">
+                            −{l.discountPercent}%
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-2 py-2">
                         {!isLocked ? (
@@ -479,6 +508,30 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                                 className={`mt-1 ${inputCls}`}
                                 value={l.remark ?? ''}
                                 onChange={(e) => editLine(l.id, { remark: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-medium text-slate-500">{t('offer.details.discount')}</label>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                className={`mt-1 ${inputCls}`}
+                                value={l.discountPercent ?? ''}
+                                placeholder="0"
+                                onChange={(e) => editLine(l.id, { discountPercent: e.target.value === '' ? undefined : Number(e.target.value) })}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-medium text-slate-500">{t('offer.details.priceCurrency')}</label>
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                className={`mt-1 ${inputCls}`}
+                                value={l.priceCurrency ?? ''}
+                                placeholder="—"
+                                onChange={(e) => editLine(l.id, { priceCurrency: e.target.value === '' ? undefined : Number(e.target.value) })}
                               />
                             </div>
                           </div>

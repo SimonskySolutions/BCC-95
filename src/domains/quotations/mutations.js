@@ -77,6 +77,16 @@ export function buildQuoteVersion(quoteId, versionNo, data) {
     currency: data.currency ?? 'EUR',
     language: data.language ?? 'en',
     notes: data.notes,
+    customerOrderRef: data.customerOrderRef,
+    contactPersonId: data.contactPersonId,
+    contactName: data.contactName,
+    contactTitle: data.contactTitle,
+    deliveryAddress: data.deliveryAddress,
+    termsOfDeliveryId: data.termsOfDeliveryId,
+    termsOfPaymentId: data.termsOfPaymentId,
+    orderDate: data.orderDate,
+    dispatchDate: data.dispatchDate,
+    createdBy: data.createdBy,
   })
 }
 
@@ -190,6 +200,7 @@ export function appendQuoteOfferLine(db, input) {
     confirmedDate: input.confirmedDate,
     unitPrice: input.unitPrice ?? 0,
     priceCurrency: input.priceCurrency,
+    discountPercent: input.discountPercent,
     requirements: input.requirements,
     remark: input.remark,
     sortOrder: input.sortOrder ?? db.quoteOfferLines.filter((l) => l.quoteVersionId === input.quoteVersionId).length,

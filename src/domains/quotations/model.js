@@ -71,6 +71,7 @@
  * @property {string} [termsOfPaymentId]              — FK → TermsOfPayment.id
  * @property {string} [orderDate]                     — ISO date
  * @property {string} [dispatchDate]                  — ISO date (planned shipment)
+ * @property {string} [createdBy]                     — employee id of the issuer (GS `UserName`); also drives the approval self-check
  */
 
 /**
@@ -176,6 +177,7 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {string} [confirmedDate]                  — ISO date (OriginalDate)
  * @property {number} unitPrice                        — price per unit in the quote currency
  * @property {number} [priceCurrency]                  — secondary-currency price (PriceCurrency)
+ * @property {number} [discountPercent]                — per-line discount (e.g. volume discount)
  * @property {string} [requirements]                   — spec / requirements (ResourceRequiments)
  * @property {string} [remark]                         — line remark (ResourceRemarks)
  * @property {number} [sortOrder]

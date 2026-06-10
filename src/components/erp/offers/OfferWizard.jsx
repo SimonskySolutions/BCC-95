@@ -14,6 +14,7 @@ import {
   selectQuoteLineItems,
   selectQuoteVersions,
   selectQuoteVersionById,
+  selectOfferLinesTotal,
 } from '../../../domains/quotations/selectors.js'
 import {
   appendQuoteDocument,
@@ -24,7 +25,6 @@ import {
   appendQuoteVersion,
   patchQuoteVersion,
 } from '../../../domains/quotations/mutations.js'
-import OfferStepper from './OfferStepper.jsx'
 import OfferCalculationPanel from './OfferCalculationPanel.jsx'
 import OfferDetailsPanel from './OfferDetailsPanel.jsx'
 import OfferVersionList from './OfferVersionList.jsx'
@@ -105,13 +105,14 @@ function blockerLabel(blocker = '') {
  *   index: number
  *   title: string
  *   summary?: string
+ *   progressLabel?: string
  *   done?: boolean
  *   open: boolean
  *   onToggle: () => void
  *   children: import('react').ReactNode
  * }} props
  */
-function Section({ index, title, summary, done, open, onToggle, children }) {
+function Section({ index, title, summary, progressLabel, done, open, onToggle, children }) {
   return (
     <div className={`overflow-hidden rounded-2xl border bg-white shadow-card transition ${open ? 'border-blue-200' : 'border-slate-200'}`}>
       <button
@@ -128,11 +129,37 @@ function Section({ index, title, summary, done, open, onToggle, children }) {
           <span className="block text-sm font-semibold text-slate-900">{title}</span>
           {!open && summary ? <span className="block truncate text-xs text-slate-500">{summary}</span> : null}
         </span>
+        {progressLabel ? (
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+            done ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+          }`}>
+            {progressLabel}
+          </span>
+        ) : null}
         <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open ? <div className="border-t border-slate-100 p-4">{children}</div> : null}
     </div>
   )
+}
+
+/** Maps a sub-state-machine step to the accordion section that resolves it. */
+const STEP_TO_SECTION = {
+  inquiry_received: 'feasibility',
+  intake_complete: 'feasibility',
+  feasibility_done: 'feasibility',
+  tech_review_done: 'costing',
+  costing_done: 'costing',
+  quote_drafted: 'costing',
+  approved: 'send',
+  sent: 'send',
+  decided_accepted: 'send',
+}
+
+const SECTION_STEPS = {
+  feasibility: ['inquiry_received', 'intake_complete', 'feasibility_done'],
+  costing: ['tech_review_done', 'costing_done', 'quote_drafted'],
+  send: ['approved', 'sent', 'decided_accepted'],
 }
 
 /**
@@ -242,6 +269,33 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   }
 
   const clientId = activeQuote?.clientId ?? progress.inquiry?.customerId ?? db.clients[0]?.id ?? ''
+  const clientName = db.clients.find((c) => c.id === clientId)?.name
+  const offerTotal = version ? selectOfferLinesTotal(db, version.id) : 0
+
+  /** Per-section "x/y" sub-progress from the state machine. */
+  function sectionProgress(sectionId) {
+    const steps = SECTION_STEPS[sectionId]
+    if (!steps) return undefined
+    const done = steps.filter((s) => progress.status[s]).length
+    return `${done}/${steps.length}`
+  }
+
+  // Between drafting and approval the customer-facing offer must be completed
+  // (validity + at least one line) — route the primary action there first.
+  const offerIncomplete = Boolean(version) && (!version.validUntil || offerTotal === 0)
+
+  /** The one primary button: open the section that resolves the next step. */
+  function goToNextStep() {
+    const next = progress.nextStep
+    if (!next) return
+    if (next === 'approved' && offerIncomplete) {
+      setOpenSection('offer')
+      return
+    }
+    const target = STEP_TO_SECTION[next] ?? 'feasibility'
+    setOpenSection(target)
+    if (next === 'sent' && version?.status === 'approved') setSendOpen(true)
+  }
 
   return (
     <div className="space-y-4">
@@ -306,15 +360,20 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         ) : null
       ) : null}
 
-      {/* Progress header */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+      {/* Sticky summary + guided action bar */}
+      <div className="sticky top-0 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-card backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">{t('offer.title')}</h3>
-            <p className="text-xs text-slate-500">{t('offer.desc')}</p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-900">{t('offer.title')}</h3>
+              {activeQuote ? <OfferStatusBadge status={activeQuote.status} /> : null}
+            </div>
+            <p className="mt-0.5 truncate text-xs text-slate-500">
+              {clientName ?? '—'}
+              {version ? <> · {t('offer.details.total')}: <span className="font-semibold text-slate-700">{offerTotal.toFixed(2)} {version.currency ?? 'EUR'}</span> · v{version.versionNo}</> : null}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            {activeQuote ? <OfferStatusBadge status={activeQuote.status} /> : null}
             {onOpenReports ? (
               <button
                 type="button"
@@ -324,15 +383,22 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
                 {t('offer.openReports')}
               </button>
             ) : null}
+            {progress.nextStep ? (
+              <button
+                type="button"
+                onClick={goToNextStep}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              >
+                {progress.nextStep === 'approved' && offerIncomplete
+                  ? t('offer.next.fillOffer')
+                  : t(`offer.next.${progress.nextStep}`, t(`offer.step.${progress.nextStep}`, progress.nextStep))} →
+              </button>
+            ) : null}
           </div>
-        </div>
-        <div className="mt-3">
-          <OfferStepper progress={progress} />
         </div>
         {progress.blockers.length > 0 && progress.nextStep ? (
           <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">
-            {t('offer.nextStep')}: {t(`offer.step.${progress.nextStep}`, progress.nextStep.replace(/_/g, ' '))}
-            {' — '}{blockerLabel(progress.blockers[0])}
+            {blockerLabel(progress.blockers[0])}
           </p>
         ) : null}
       </div>
@@ -341,6 +407,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
       <Section
         index={1}
         title={t('offer.section.feasibility')}
+        progressLabel={sectionProgress('feasibility')}
         done={progress.status.feasibility_done}
         summary={progress.inquiry?.feasibilityResult && progress.inquiry.feasibilityResult !== 'not_assessed'
           ? t(`feasibility.${progress.inquiry.feasibilityResult}`, progress.inquiry.feasibilityResult)
@@ -359,6 +426,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
       <Section
         index={2}
         title={t('offer.section.costing')}
+        progressLabel={sectionProgress('costing')}
         done={Boolean(version)}
         summary={version
           ? `${t('offer.section.costing.sell')}: ${(version.unitPrice ?? 0).toFixed(2)} ${version.currency ?? 'EUR'}`
@@ -420,6 +488,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
       <Section
         index={4}
         title={t('offer.section.send')}
+        progressLabel={sectionProgress('send')}
         done={progress.status.sent}
         summary={progress.status.sent
           ? t('offer.section.send.sent')
@@ -430,17 +499,44 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         onToggle={() => toggle('send')}
       >
         <div className="space-y-4">
+          {/* The document is the hero — what the customer will actually see */}
+          {version && activeQuote ? (
+            <OfferPreview
+              db={db}
+              quote={activeQuote}
+              version={version}
+              acceptanceLink={lastSentEmail?.acceptanceLink}
+            />
+          ) : null}
+
           {version ? (
             <OfferApprovalPanel
               db={db}
               version={version}
               approvals={approvals}
-              actorId={actorId}
               onChange={onChange}
             />
           ) : (
             <p className="text-xs text-slate-500">{t('offer.section.send.needVersion')}</p>
           )}
+
+          {version && version.status === 'approved' ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSendOpen(true)}
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                {t('offer.send')} →
+              </button>
+            </div>
+          ) : null}
+
+          <details className="rounded-2xl border border-slate-200 bg-white shadow-card">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              {t('offer.history')}
+            </summary>
+            <div className="space-y-4 border-t border-slate-100 p-4">
 
           <section className="space-y-3">
             <header className="flex items-center justify-between">
@@ -453,15 +549,6 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
                     className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${compareMode ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                   >
                     <GitCompare size={12} /> {t('offer.compare')}
-                  </button>
-                ) : null}
-                {version && version.status === 'approved' ? (
-                  <button
-                    type="button"
-                    onClick={() => setSendOpen(true)}
-                    className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                  >
-                    {t('offer.send')}
                   </button>
                 ) : null}
               </div>
@@ -576,15 +663,6 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
             </div>
           ) : null}
 
-          {version && activeQuote ? (
-            <OfferPreview
-              db={db}
-              quote={activeQuote}
-              version={version}
-              acceptanceLink={lastSentEmail?.acceptanceLink}
-            />
-          ) : null}
-
           {lastSentEmail ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
               <h3 className="text-sm font-semibold text-slate-900">{t('offer.lastEmail')}</h3>
@@ -607,6 +685,8 @@ ${lastSentEmail.body}`}
               ) : null}
             </div>
           ) : null}
+            </div>
+          </details>
         </div>
       </Section>
 

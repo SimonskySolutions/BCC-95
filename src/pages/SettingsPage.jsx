@@ -301,6 +301,23 @@ function AppearanceTab({ config, onSave }) {
 }
 
 // ── Offer terms tab ─────────────────────────────────────────────────────────
+const TERMS_SEEDS = {
+  termsOfDelivery: [
+    { code: 'EXW', label: 'EXW Factory (Incoterms 2020)' },
+    { code: 'FCA', label: 'FCA Plovdiv (Incoterms 2020)' },
+    { code: 'DAP', label: 'DAP Destination (Incoterms 2020)' },
+    { code: 'DDP', label: 'DDP Destination (Incoterms 2020)' },
+    { code: 'CIF', label: 'CIF Port (Incoterms 2020)' },
+  ],
+  termsOfPayment: [
+    { label: '30 days net' },
+    { label: '60 days net' },
+    { label: '50% advance, 50% on delivery' },
+    { label: '100% advance' },
+    { label: 'Letter of credit' },
+  ],
+}
+
 /**
  * @param {{ title: string; table: 'termsOfDelivery'|'termsOfPayment'; terms: { id: string; code?: string; label: string }[]; db: import('../data/mockDatabase.js').MockDatabase; commit: (fn: (db: any) => void) => void }} props
  */
@@ -321,7 +338,16 @@ function TermsList({ title, table, terms, db, commit }) {
       <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
       <div className="mt-3 space-y-2">
         {terms.length === 0 ? (
-          <p className="text-xs text-slate-400">{t('settings.terms.empty')}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-slate-400">{t('settings.terms.empty')}</p>
+            <button
+              type="button"
+              onClick={() => commit(() => { for (const s of TERMS_SEEDS[table]) appendTerm(db, table, s) })}
+              className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+            >
+              {t('settings.terms.seed')}
+            </button>
+          </div>
         ) : null}
         {terms.map((tm) => (
           <div key={tm.id} className="flex items-center gap-2">

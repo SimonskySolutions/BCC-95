@@ -8,43 +8,6 @@ import {
   replaceLineItems,
 } from '../../../services/offers/quoteVersioningService.js'
 
-const DELIVERY_PRESETS = [
-  'FCA Plovdiv (Incoterms 2020)',
-  'EXW Factory (Incoterms 2020)',
-  'DAP Destination (Incoterms 2020)',
-  'DDP Destination (Incoterms 2020)',
-  'CIF Port (Incoterms 2020)',
-]
-
-const PAYMENT_PRESETS = [
-  '30 days net',
-  '50% advance, 50% on delivery',
-  '100% advance',
-  '60 days net',
-  'Letter of credit',
-]
-
-/**
- * @param {{ value: string; onChange: (v: string) => void; presets: string[]; disabled?: boolean; className?: string }} props
- */
-function PresetInput({ value, onChange, presets, disabled, className }) {
-  const id = useMemo(() => `preset-${Math.random().toString(36).slice(2)}`, [])
-  return (
-    <>
-      <input
-        list={id}
-        className={className}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-      />
-      <datalist id={id}>
-        {presets.map((p) => <option key={p} value={p} />)}
-      </datalist>
-    </>
-  )
-}
-
 /**
  * @param {{ type: 'success' | 'error' | 'info'; message: string; onDismiss: () => void }} props
  */
@@ -106,13 +69,12 @@ export default function OfferCalculationPanel({
     return 100
   })
   const [leadTimeDays, setLeadTimeDays] = useState(version?.leadTimeDays ?? 30)
-  const [validUntil, setValidUntil] = useState(version?.validUntil ?? '')
-  const [deliveryTerms, setDeliveryTerms] = useState(version?.deliveryTerms ?? 'FCA Plovdiv (Incoterms 2020)')
-  const [paymentTerms, setPaymentTerms] = useState(version?.paymentTerms ?? '30 days net')
   const [moq, setMoq] = useState(version?.moq ?? '')
-  const [currency, setCurrency] = useState(version?.currency ?? 'EUR')
-  const [language, setLanguageField] = useState(version?.language ?? quote?.language ?? 'en')
   const [flash, setFlash] = useState(/** @type {{ type: 'success'|'error'|'info'; message: string } | null} */ (null))
+
+  // Display-only here — currency/language/validity are offer-header concerns
+  // edited in the Offer step (OfferDetailsPanel).
+  const currency = version?.currency ?? quote?.currency ?? 'EUR'
 
   const subtotal = useMemo(
     () =>
@@ -166,7 +128,7 @@ export default function OfferCalculationPanel({
   }
 
   function createNewVersion() {
-    const theQuote = quote ?? ensureQuoteForProduct(db, { productId, clientId, inquiryId, language, currency, actorId })
+    const theQuote = quote ?? ensureQuoteForProduct(db, { productId, clientId, inquiryId, actorId })
     const res = draftQuoteVersion(db, {
       quoteId: theQuote.id,
       lineItems: items.map((li) => ({
@@ -178,12 +140,7 @@ export default function OfferCalculationPanel({
       marginPercent: Number(margin) || 0,
       unitPrice: Number(sellPricePerUnit.toFixed(2)),
       leadTimeDays: Number(leadTimeDays) || undefined,
-      validUntil: validUntil || undefined,
-      deliveryTerms,
-      paymentTerms,
       moq: moq ? Number(moq) : effectiveBatchQty,
-      currency,
-      language,
       actorId,
     })
     if (res.ok) {
@@ -365,36 +322,6 @@ export default function OfferCalculationPanel({
           />
         </label>
         <label className="block text-xs font-medium text-slate-600">
-          {t('offer.validUntil')}
-          <input
-            type="date"
-            className={inputCls}
-            value={validUntil}
-            onChange={(e) => setValidUntil(e.target.value)}
-            disabled={isLocked}
-          />
-        </label>
-        <label className="block text-xs font-medium text-slate-600 md:col-span-2">
-          {t('offer.deliveryTerms')}
-          <PresetInput
-            className={inputCls}
-            value={deliveryTerms}
-            onChange={setDeliveryTerms}
-            presets={DELIVERY_PRESETS}
-            disabled={isLocked}
-          />
-        </label>
-        <label className="block text-xs font-medium text-slate-600 md:col-span-2">
-          {t('offer.paymentTerms')}
-          <PresetInput
-            className={inputCls}
-            value={paymentTerms}
-            onChange={setPaymentTerms}
-            presets={PAYMENT_PRESETS}
-            disabled={isLocked}
-          />
-        </label>
-        <label className="block text-xs font-medium text-slate-600">
           {t('offer.moq')}
           <input
             type="number"
@@ -404,58 +331,32 @@ export default function OfferCalculationPanel({
             disabled={isLocked}
           />
         </label>
-        <label className="block text-xs font-medium text-slate-600">
-          {t('offer.currency')}
-          <select
-            className={inputCls}
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            disabled={isLocked}
-          >
-            {['EUR', 'BGN', 'USD'].map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-xs font-medium text-slate-600">
-          {t('offer.language')}
-          <select
-            className={inputCls}
-            value={language}
-            onChange={(e) => setLanguageField(e.target.value)}
-            disabled={isLocked}
-          >
-            <option value="en">English</option>
-            <option value="bg">Български</option>
-          </select>
-        </label>
       </div>
+      <p className="text-[11px] text-slate-400">{t('offer.costing.headerHint')}</p>
 
-      {/* Actions */}
+      {/* Actions — one primary button: create the draft, or save changes to it */}
       {!isLocked && (
         <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4">
           {version && version.status === 'draft' ? (
+            <button
+              type="button"
+              onClick={saveDraftChanges}
+              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              {t('offer.saveDraft')}
+            </button>
+          ) : (
             <div>
               <button
                 type="button"
-                onClick={saveDraftChanges}
-                className="rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700"
+                onClick={createNewVersion}
+                className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
               >
-                {t('offer.saveDraft')}
+                {t('offer.createDraft')} →
               </button>
-              <p className="mt-1 text-[11px] text-slate-400">Save edits to current draft</p>
+              <p className="mt-1 text-[11px] text-slate-400">{t('offer.createDraft.hint')}</p>
             </div>
-          ) : null}
-          <div>
-            <button
-              type="button"
-              onClick={createNewVersion}
-              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              {t('offer.createVersion')}
-            </button>
-            <p className="mt-1 text-[11px] text-slate-400">Snapshot into a new immutable version</p>
-          </div>
+          )}
         </div>
       )}
 

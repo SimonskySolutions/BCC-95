@@ -11,6 +11,7 @@ import NewInquiryForm from './components/erp/offers/NewInquiryForm.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductWorkspacePage from './pages/ProductWorkspacePage.jsx'
 import QuotationsPage from './pages/QuotationsPage.jsx'
+import OfferWorkspacePage from './pages/OfferWorkspacePage.jsx'
 import MyTasksPage from './pages/MyTasksPage.jsx'
 import TeamWorkloadPage from './pages/TeamWorkloadPage.jsx'
 import ManufacturingPage from './pages/ManufacturingPage.jsx'
@@ -36,6 +37,7 @@ const PAGE_META_KEYS = {
   dashboard: { titleKey: 'page.dashboard.title', subtitleKey: 'page.dashboard.subtitle' },
   products: { titleKey: 'page.products.title', subtitleKey: 'page.products.subtitle' },
   quotations: { titleKey: 'page.quotations.title', subtitleKey: 'page.quotations.subtitle' },
+  'offer-workspace': { titleKey: 'page.quotations.title', subtitleKey: 'page.quotations.subtitle' },
   'product-workspace': {
     titleKey: 'page.productWorkspace.title',
     subtitleKey: 'page.productWorkspace.subtitle',
@@ -93,7 +95,17 @@ function renderPage(route, db, actions) {
     case 'products':
       return <ProductsPage db={db} onOpenProduct={actions.openProduct} />
     case 'quotations':
-      return <QuotationsPage db={db} onOpenProduct={actions.openProduct} onNewInquiry={actions.openNewInquiry} />
+      return <QuotationsPage db={db} onOpenOffer={actions.openOffer} onOpenProduct={actions.openProduct} onNewInquiry={actions.openNewInquiry} />
+    case 'offer-workspace':
+      return (
+        <OfferWorkspacePage
+          db={db}
+          quoteId={route.quoteId}
+          onBack={actions.backFromOffer}
+          onOpenProduct={actions.openProduct}
+          onOpenReports={actions.openReports}
+        />
+      )
     case 'product-workspace':
       return (
         <ProductWorkspacePage
@@ -196,6 +208,7 @@ function App() {
           active:
             item.id === route.page ||
             (route.page === 'product-workspace' && item.id === 'products') ||
+            (route.page === 'offer-workspace' && item.id === 'quotations') ||
             (route.page === 'client-profile' && item.id === 'crm') ||
             (route.page === 'machine-profile' && item.id === 'machines'),
         })),
@@ -236,6 +249,10 @@ function App() {
         setRoute({ page: 'machines', productId: null, clientId: null, machineId: null }),
       openReports: () =>
         setRoute({ page: 'reports', productId: null, clientId: null, machineId: null }),
+      openOffer: (id) =>
+        setRoute({ page: 'offer-workspace', quoteId: id, productId: null, clientId: null, machineId: null }),
+      backFromOffer: () =>
+        setRoute({ page: 'quotations', quoteId: null, productId: null, clientId: null, machineId: null }),
       openNewInquiry: () => setShowNewInquiry(true),
       navigate: (page) => setRoute({ page, productId: null, clientId: null, machineId: null }),
     }),

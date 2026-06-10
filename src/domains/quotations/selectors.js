@@ -60,15 +60,24 @@ export function selectQuoteOfferLines(db, versionId) {
 }
 
 /**
- * Total of the customer-facing offer lines (qty × unit price).
+ * Net total of one offer line: confirmed (or requested) qty × unit price,
+ * minus the per-line discount.
+ * @param {import('./model.js').QuoteOfferLine} line
+ */
+export function offerLineNetTotal(line) {
+  const qty = Number(line.confirmedQty ?? line.requestedQty) || 0
+  const gross = qty * (Number(line.unitPrice) || 0)
+  const disc = Number(line.discountPercent) || 0
+  return gross * (1 - disc / 100)
+}
+
+/**
+ * Total of the customer-facing offer lines (discount-aware).
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {string} versionId
  */
 export function selectOfferLinesTotal(db, versionId) {
-  return selectQuoteOfferLines(db, versionId).reduce(
-    (sum, l) => sum + (Number(l.confirmedQty ?? l.requestedQty) || 0) * (Number(l.unitPrice) || 0),
-    0,
-  )
+  return selectQuoteOfferLines(db, versionId).reduce((sum, l) => sum + offerLineNetTotal(l), 0)
 }
 
 /** @param {import('../../data/mockDatabase.js').MockDatabase} db */
