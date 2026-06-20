@@ -1,4 +1,4 @@
-import { Sigma } from 'lucide-react'
+import { Layers } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 
 /**
@@ -34,7 +34,7 @@ export default function CombinedSummary({ rollup, sheet, currency, onPatchSheet 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-card">
       <header className="mb-3 flex items-center gap-2">
-        <Sigma size={16} className="text-slate-500" />
+        <Layers size={16} className="text-slate-500" />
         <h3 className="text-sm font-semibold text-slate-900">{t('cost.combined.title')}</h3>
       </header>
 

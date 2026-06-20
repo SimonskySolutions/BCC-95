@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Plus, ChevronDown, Check, Pencil } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Plus, ChevronDown, Check } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { useDb } from '../../../data/useDb.js'
 import { APP_TODAY } from '../../../lib/clock.js'
@@ -553,7 +553,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
                 onClick={handleCreateRevision}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
               >
-                <Pencil size={12} /> {t('offer.sent.edit')}
+                <RotateCcw size={12} /> {t('offer.sent.edit')}
               </button>
             </div>
           ) : null}

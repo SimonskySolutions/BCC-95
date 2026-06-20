@@ -1,4 +1,4 @@
-import { Trash2, Link2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
 
@@ -101,7 +101,7 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
           line.linkNetKg ? (
             <>
               <div className="col-span-2 flex items-center gap-1.5 self-end rounded-lg bg-blue-50 px-2 py-1.5 text-[10px] font-medium text-blue-700">
-                <Link2 size={11} /> {t('cost.f.linkedNetKg')}
+                <span aria-hidden="true">↳</span> {t('cost.f.linkedNetKg')}
               </div>
               <NumField label={`${t('cost.f.costPerKg')} (${currency})`} value={line.costPerKg} onChange={(n) => onPatch({ costPerKg: n })} />
             </>
