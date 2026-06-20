@@ -4,6 +4,13 @@
  * @property {string} name
  * @property {string} category
  * @property {'preferred'|'active'|'on_hold'} status
+ * @property {string} [country]
+ * @property {string} [postCode]
+ * @property {string} [city]
+ * @property {string} [address]
+ * @property {string} [vat]
+ * @property {string} [phone]
+ * @property {string} [email]
  */
 
 /**

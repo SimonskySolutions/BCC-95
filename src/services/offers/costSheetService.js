@@ -22,16 +22,17 @@ import { draftQuoteVersion } from './quoteVersioningService.js'
  * entry so its driver columns and default rate are pre-filled.
  */
 const STARTER_CATALOG_REFS = [
-  'cc-mat-steel-tube',
-  'cc-mat-coating',
-  'cc-mat-packaging',
-  'cc-lab-direct',
-  'cc-op-operations',
-  'cc-op-energy',
-  'cc-bur-overhead',
-  'cc-bur-financial',
-  'cc-tool-press',
-  'cc-log-freight',
+  'cc-mat-01', // Метали тръби
+  'cc-mat-09', // Покритие - прахова боя
+  'cc-mat-20', // Опаковки - кашон, кутия
+  'cc-mat-25', // Енергия, горива (linked to net weight)
+  'cc-lab-01', // Директен труд
+  'cc-op-03',  // Пресоване
+  'cc-op-09',  // Заваряване ръчно
+  'cc-bur-03', // режийни и подръжка
+  'cc-bur-07', // финансови
+  'cc-tool-03', // формоващи за преси
+  'cc-log-03', // Транспорт до клиента с пълен камион
 ]
 
 /**
