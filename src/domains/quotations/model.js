@@ -199,4 +199,105 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {string} label
  */
 
+/* ── Working cost sheet ──────────────────────────────────────────────────────
+ * The cost sheet is the *always-editable* internal calculation that lives on the
+ * quote (not on a version). Drafting/sending an offer snapshots it into the
+ * immutable QuoteVersion line items — so history stays frozen while the
+ * engineer can keep refining costs at any time. Modelled on the «бланка» sheet
+ * of the reference calculation workbook: the cost is split into independent
+ * groups that each roll up separately, then combine into cost price → EXW → DAP.
+ */
+
+/**
+ * The cost groups, each computed by its own engine. Maps 1:1 onto the legacy
+ * QuoteLineItemKind so snapshots stay backward-compatible.
+ * - `material`   — raw material, surface, consumables, fittings, packaging
+ * - `labor`      — direct (human) labour
+ * - `operation`  — machine time + energy
+ * - `other`      — burden: overhead, marketing, financial, amortised tooling
+ * - `tooling`    — one-off tooling ledger (billed separately or amortised)
+ * - `logistics`  — freight that lifts EXW → DAP
+ * @typedef {'material' | 'labor' | 'operation' | 'other' | 'tooling' | 'logistics'} CostGroup
+ */
+
+/**
+ * How a line computes its per-unit amount:
+ * - `count`      — qty × unitCost
+ * - `weight`     — netKg × (1 + scrapPct/100) × costPerKg   (gross from net)
+ * - `surface`    — areaDm2 × gPerDm2 / 1000 × costPerKg      (coating from area)
+ * - `percent`    — percentOfBase % of the cost base (materials+labour+machine)
+ * - `allocation` — fixedTotal ÷ allocationUnits             (fixed cost / volume)
+ * - `pack`       — costPerPack ÷ unitsPerPack                (freight per unit)
+ * @typedef {'count' | 'weight' | 'surface' | 'percent' | 'allocation' | 'pack'} CostDriver
+ */
+
+/**
+ * @typedef {Object} CostSheet
+ * @property {string} id
+ * @property {string} quoteId
+ * @property {string} productId
+ * @property {import('./model.js').QuoteCurrency} currency
+ * @property {number} marginPercent                  — profit % applied to cost price
+ * @property {number} [annualQty]                    — informational (Pcs/year)
+ * @property {'separate' | 'amortise'} toolingMode   — tooling billed separately or amortised into burden
+ * @property {number} [amortisationUnits]            — units the tooling cost is spread over (editable)
+ * @property {string} [notes]                        — free-text note for the whole calculation
+ * @property {string} updatedAt
+ */
+
+/**
+ * @typedef {Object} CostSheetLine
+ * @property {string} id
+ * @property {string} costSheetId
+ * @property {CostGroup} group
+ * @property {CostDriver} driver
+ * @property {string} description
+ * @property {string} [catalogRefId]                 — catalog entry it was picked from
+ * @property {number} [qty]                          — count/pack driver
+ * @property {number} [unitCost]                     — count driver
+ * @property {number} [netKg]                        — weight driver (net mass)
+ * @property {number} [scrapPct]                     — weight driver (scrap uplift %)
+ * @property {number} [costPerKg]                    — weight/surface driver (€/kg)
+ * @property {number} [areaDm2]                      — surface driver
+ * @property {number} [gPerDm2]                      — surface driver (consumption)
+ * @property {boolean} [linkNetKg]                   — weight line reads the sheet's total net kg (energy)
+ * @property {number} [percent]                      — percent driver
+ * @property {number} [fixedTotal]                   — allocation driver
+ * @property {number} [allocationUnits]              — allocation driver
+ * @property {number} [unitsPerPack]                 — pack driver
+ * @property {number} [costPerPack]                  — pack driver (freight per pack)
+ * @property {number} [sortOrder]
+ */
+
+/**
+ * A reusable nomenclature entry — pick it on a line to pre-fill the driver
+ * columns and default rate. Grouped so each cost group shows only its catalog.
+ * @typedef {Object} CostCatalogEntry
+ * @property {string} id
+ * @property {CostGroup} group
+ * @property {CostDriver} driver
+ * @property {string} label
+ * @property {Partial<CostSheetLine>} defaults       — values copied onto the new line
+ * @property {string} [note]
+ */
+
+/** @type {CostGroup[]} */
+export const COST_GROUPS = ['material', 'labor', 'operation', 'other', 'tooling', 'logistics']
+
+/** Cost groups that sum into the product cost price (before profit). */
+export const COST_PRICE_GROUPS = ['material', 'labor', 'operation', 'other']
+
+/** @type {CostDriver[]} */
+export const COST_DRIVERS = ['count', 'weight', 'surface', 'percent', 'allocation', 'pack']
+
+/** Which drivers each group is allowed to use in the UI. */
+export const GROUP_DRIVERS = {
+  material: ['count', 'weight', 'surface'],
+  labor: ['count'],
+  operation: ['count', 'weight'],
+  other: ['percent', 'allocation', 'count'],
+  tooling: ['count'],
+  logistics: ['pack', 'count'],
+}
+
 export {}

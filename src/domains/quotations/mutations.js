@@ -6,6 +6,8 @@ let documentCounter = 30000
 let decisionCounter = 30000
 let offerLineCounter = 30000
 let termCounter = 30000
+let costSheetCounter = 30000
+let costSheetLineCounter = 30000
 
 /**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
@@ -276,6 +278,84 @@ export function patchTerm(db, table, id, patch) {
 export function removeTerm(db, table, id) {
   if (!db[table]) return
   db[table] = db[table].filter((tm) => tm.id !== id)
+}
+
+/* ── Working cost sheet ──────────────────────────────────────────────────── */
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {Omit<import('./model.js').CostSheet, 'id' | 'updatedAt'> & { id?: string; updatedAt?: string }} input
+ */
+export function appendCostSheet(db, input) {
+  if (!db.costSheets) db.costSheets = []
+  /** @type {import('./model.js').CostSheet} */
+  const sheet = {
+    id: input.id ?? `cs-${++costSheetCounter}`,
+    quoteId: input.quoteId,
+    productId: input.productId,
+    currency: input.currency ?? 'EUR',
+    marginPercent: input.marginPercent ?? 10,
+    annualQty: input.annualQty,
+    toolingMode: input.toolingMode ?? 'amortise',
+    amortisationUnits: input.amortisationUnits,
+    notes: input.notes,
+    updatedAt: input.updatedAt ?? new Date().toISOString(),
+  }
+  db.costSheets.push(sheet)
+  return sheet
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} sheetId
+ * @param {Partial<import('./model.js').CostSheet>} patch
+ */
+export function patchCostSheet(db, sheetId, patch) {
+  if (!db.costSheets) return null
+  const idx = db.costSheets.findIndex((s) => s.id === sheetId)
+  if (idx < 0) return null
+  db.costSheets[idx] = { ...db.costSheets[idx], ...patch, updatedAt: new Date().toISOString() }
+  return db.costSheets[idx]
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {Omit<import('./model.js').CostSheetLine, 'id'> & { id?: string }} input
+ */
+export function appendCostSheetLine(db, input) {
+  if (!db.costSheetLines) db.costSheetLines = []
+  /** @type {import('./model.js').CostSheetLine} */
+  const line = {
+    ...input,
+    id: input.id ?? `csl-${++costSheetLineCounter}`,
+    sortOrder:
+      input.sortOrder ??
+      db.costSheetLines.filter((l) => l.costSheetId === input.costSheetId).length,
+  }
+  db.costSheetLines.push(line)
+  return line
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} lineId
+ * @param {Partial<import('./model.js').CostSheetLine>} patch
+ */
+export function patchCostSheetLine(db, lineId, patch) {
+  if (!db.costSheetLines) return null
+  const idx = db.costSheetLines.findIndex((l) => l.id === lineId)
+  if (idx < 0) return null
+  db.costSheetLines[idx] = { ...db.costSheetLines[idx], ...patch }
+  return db.costSheetLines[idx]
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} lineId
+ */
+export function removeCostSheetLine(db, lineId) {
+  if (!db.costSheetLines) return
+  db.costSheetLines = db.costSheetLines.filter((l) => l.id !== lineId)
 }
 
 /**

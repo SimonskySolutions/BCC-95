@@ -283,3 +283,57 @@ export const termsOfDelivery = []
 
 /** @type {import('./model.js').TermsOfPayment[]} */
 export const termsOfPayment = []
+
+/* ── Working cost sheets ─────────────────────────────────────────────────────
+ * Seeded empty — a sheet is created on demand when the Costing step is opened.
+ * The catalog below is seeded from the rows of the reference calculation
+ * workbook so engineers pick standard lines instead of retyping them.
+ */
+
+/** @type {import('./model.js').CostSheet[]} */
+export const costSheets = []
+
+/** @type {import('./model.js').CostSheetLine[]} */
+export const costSheetLines = []
+
+/** @type {import('./model.js').CostCatalogEntry[]} */
+export const costCatalog = [
+  // ── Materials ──────────────────────────────────────────────────────────
+  { id: 'cc-mat-steel-tube', group: 'material', driver: 'weight', label: 'Carbon steel tube',
+    defaults: { scrapPct: 3, costPerKg: 1 }, note: 'NET kg + scrap → gross × €/kg' },
+  { id: 'cc-mat-coating', group: 'material', driver: 'surface', label: 'Powder coating RAL 9005',
+    defaults: { gPerDm2: 1.8, costPerKg: 5 }, note: 'area dm² × g/dm² → kg × €/kg' },
+  { id: 'cc-mat-treatment', group: 'material', driver: 'count', label: 'Other treatment material',
+    defaults: { qty: 1, unitCost: 0.02 } },
+  { id: 'cc-mat-consumable', group: 'material', driver: 'count', label: 'Consumable (edge cutting)',
+    defaults: { qty: 2, unitCost: 0.05 } },
+  { id: 'cc-mat-screw', group: 'material', driver: 'count', label: 'Screws / fittings',
+    defaults: { qty: 2, unitCost: 0.04 } },
+  { id: 'cc-mat-insert', group: 'material', driver: 'count', label: 'Insert nut bushing',
+    defaults: { qty: 2, unitCost: 0.3 } },
+  { id: 'cc-mat-packaging', group: 'material', driver: 'count', label: 'Packaging (PE sleeve / box)',
+    defaults: { qty: 1, unitCost: 0.075 } },
+  // ── Labour ─────────────────────────────────────────────────────────────
+  { id: 'cc-lab-direct', group: 'labor', driver: 'count', label: 'Direct labour incl. coating',
+    defaults: { qty: 1, unitCost: 0.6 }, note: 'cut · bend · press · coat · assemble · pack' },
+  // ── Machine & energy ───────────────────────────────────────────────────
+  { id: 'cc-op-operations', group: 'operation', driver: 'count', label: 'Operation expenses',
+    defaults: { qty: 1, unitCost: 0.3 } },
+  { id: 'cc-op-energy', group: 'operation', driver: 'weight', label: 'Energy',
+    defaults: { costPerKg: 0.1, linkNetKg: true }, note: 'scales with product net weight' },
+  // ── Burden & margin ────────────────────────────────────────────────────
+  { id: 'cc-bur-overhead', group: 'other', driver: 'percent', label: 'Overhead (режийни)',
+    defaults: { percent: 0 } },
+  { id: 'cc-bur-marketing', group: 'other', driver: 'percent', label: 'Marketing',
+    defaults: { percent: 0 } },
+  { id: 'cc-bur-financial', group: 'other', driver: 'count', label: 'Financial & company depreciation',
+    defaults: { qty: 1, unitCost: 0.05 } },
+  // ── Tooling ────────────────────────────────────────────────────────────
+  { id: 'cc-tool-press', group: 'tooling', driver: 'count', label: 'Press / forming equipment',
+    defaults: { qty: 1, unitCost: 2000 } },
+  { id: 'cc-tool-pattern', group: 'tooling', driver: 'count', label: 'Control pattern / gauge',
+    defaults: { qty: 1, unitCost: 0 } },
+  // ── Logistics ──────────────────────────────────────────────────────────
+  { id: 'cc-log-freight', group: 'logistics', driver: 'pack', label: 'Road freight to customer (DAP)',
+    defaults: { unitsPerPack: 40, costPerPack: 0 }, note: 'freight per transport pack ÷ pcs/pack' },
+]

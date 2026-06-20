@@ -47,6 +47,9 @@ import {
   quoteOfferLines,
   termsOfDelivery,
   termsOfPayment,
+  costSheets,
+  costSheetLines,
+  costCatalog,
 } from '../domains/quotations/mockData.js'
 import { inquiries } from '../domains/inquiries/mockData.js'
 import { auditEntries } from '../domains/audit/mockData.js'
@@ -105,6 +108,9 @@ export function createMockDatabase() {
     quoteOfferLines: structuredClone(quoteOfferLines),
     termsOfDelivery: structuredClone(termsOfDelivery),
     termsOfPayment: structuredClone(termsOfPayment),
+    costSheets: structuredClone(costSheets),
+    costSheetLines: structuredClone(costSheetLines),
+    costCatalog: structuredClone(costCatalog),
     inquiries: structuredClone(inquiries),
     auditEntries: structuredClone(auditEntries),
     outboundEmails: structuredClone(outboundEmails),

@@ -28,13 +28,14 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
     customerContactName: inquiry?.customerContactName ?? '',
     customerContactEmail: inquiry?.customerContactEmail ?? '',
     attachments: inquiry?.attachments ?? [],
+    noAttachments: inquiry?.noAttachments ?? false,
   }))
   const [flash, setFlash] = useState(/** @type {string | null} */ (null))
 
   const missing = useMemo(() => {
     const m = /** @type {string[]} */ ([])
     const hasDrawing = form.attachments.some((a) => a.kind === 'drawing')
-    if (!hasDrawing) m.push('drawings')
+    if (!hasDrawing && !form.noAttachments) m.push('drawings')
     if (!form.requestedQuantity || Number(form.requestedQuantity) <= 0) m.push('quantity')
     if (!form.requestedDeadline) m.push('deadline')
     if (!String(form.specificationNote).trim()) m.push('specifications')
@@ -54,6 +55,7 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
       customerContactName: form.customerContactName || undefined,
       customerContactEmail: form.customerContactEmail || undefined,
       attachments: form.attachments,
+      noAttachments: form.noAttachments,
     }
     if (inquiry) {
       updateInquiry(db, inquiry.id, payload)
@@ -158,6 +160,8 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
       <AttachmentEditor
         attachments={form.attachments}
         onChange={(attachments) => setForm((f) => ({ ...f, attachments }))}
+        noAttachments={form.noAttachments}
+        onToggleNoAttachments={(noAttachments) => setForm((f) => ({ ...f, noAttachments }))}
       />
       <section className="rounded-lg bg-slate-50 p-3 text-xs">
         <div className="font-semibold text-slate-700">{t('inquiry.checklist.title')}</div>

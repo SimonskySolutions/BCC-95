@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Layers, Plus, ChevronDown, Check } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Plus, ChevronDown, Check, Pencil } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { useDb } from '../../../data/useDb.js'
 import { APP_TODAY } from '../../../lib/clock.js'
@@ -13,21 +13,18 @@ import {
   selectQuoteApprovals,
   selectQuoteDocuments,
   selectQuoteDecision,
-  selectQuoteLineItems,
   selectQuoteVersions,
   selectQuoteVersionById,
   selectOfferLinesTotal,
 } from '../../../domains/quotations/selectors.js'
 import {
   appendQuoteDocument,
-  appendQuoteLineItem,
-  clearQuoteLineItems,
   patchQuote,
   buildQuoteVersion,
   appendQuoteVersion,
   patchQuoteVersion,
 } from '../../../domains/quotations/mutations.js'
-import OfferCalculationPanel from './OfferCalculationPanel.jsx'
+import CostSheetPanel from './CostSheetPanel.jsx'
 import OfferDetailsPanel from './OfferDetailsPanel.jsx'
 import OfferVersionList from './OfferVersionList.jsx'
 import OfferApprovalPanel from './OfferApprovalPanel.jsx'
@@ -70,21 +67,6 @@ function VersionDelta({ vA, vB, t }) {
       </table>
     </div>
   )
-}
-
-const LINE_TEMPLATES = {
-  standard: [
-    { kind: 'material',  description: 'Steel (tube / sheet)',     quantity: 1, unitPrice: 0 },
-    { kind: 'labor',     description: 'Cut + weld + powder coat', quantity: 1, unitPrice: 0 },
-    { kind: 'logistics', description: 'Freight & packaging',      quantity: 1, unitPrice: 0 },
-  ],
-  toolingLabor: [
-    { kind: 'tooling',   description: 'Jig / die setup',          quantity: 1, unitPrice: 0 },
-    { kind: 'labor',     description: 'Labor',                    quantity: 1, unitPrice: 0 },
-  ],
-  materialsOnly: [
-    { kind: 'material',  description: 'Materials',                quantity: 1, unitPrice: 0 },
-  ],
 }
 
 /** Converts internal blocker codes to readable, localised instructions. */
@@ -257,7 +239,6 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   )
   const chosenVersionId = selectedVersionId ?? activeQuote?.currentVersionId
   const version = chosenVersionId ? selectQuoteVersionById(db, chosenVersionId) : undefined
-  const lineItems = version ? selectQuoteLineItems(db, version.id) : []
   const approvals = version ? selectQuoteApprovals(db, version.id) : []
   const attachments = version ? selectQuoteDocuments(db, version.id) : []
   const decision = version ? selectQuoteDecision(db, version.id) : undefined
@@ -281,16 +262,6 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   const daysUntilExpiry = validUntilStr
     ? Math.round((new Date(validUntilStr) - APP_TODAY) / 86400000)
     : null
-
-  function applyTemplate(key) {
-    if (!version || !activeQuote) return
-    clearQuoteLineItems(db, version.id)
-    const rows = LINE_TEMPLATES[key] ?? []
-    for (const row of rows) {
-      appendQuoteLineItem(db, { ...row, quoteVersionId: version.id, totalPrice: 0 })
-    }
-    onChange()
-  }
 
   function handleCreateRevision() {
     if (!activeQuote || !version) return
@@ -493,31 +464,12 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         onToggle={() => toggle('costing')}
       >
         <GateTasksPanel db={db} productId={productId} onChange={onChange} />
-        {version && version.status === 'draft' ? (
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1 text-xs text-slate-500">
-              <Layers size={12} /> {t('offer.templates')}:
-            </span>
-            {['standard', 'toolingLabor', 'materialsOnly'].map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => applyTemplate(key)}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-700 transition"
-              >
-                {t(`offer.template.${key}`)}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <OfferCalculationPanel
+        <CostSheetPanel
           db={db}
           productId={productId}
           clientId={clientId}
           inquiryId={progress.inquiry?.id}
           quote={activeQuote}
-          version={version}
-          lineItems={lineItems}
           actorId={actorId}
           onChange={onChange}
         />
@@ -587,6 +539,21 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
                 className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
               >
                 {t('offer.send')} →
+              </button>
+            </div>
+          ) : null}
+
+          {/* A sent offer stays revisable — open a new editable draft version,
+              preserving the sent one as immutable history. */}
+          {version && version.status === 'sent' ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs text-slate-600">{t('offer.sent.editHint')}</p>
+              <button
+                type="button"
+                onClick={handleCreateRevision}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+              >
+                <Pencil size={12} /> {t('offer.sent.edit')}
               </button>
             </div>
           ) : null}

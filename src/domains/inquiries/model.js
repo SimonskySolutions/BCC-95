@@ -41,6 +41,7 @@
  * @property {string} [customerContactEmail]
  * @property {IntakeRequirement[]} [missingFields]
  * @property {InquiryAttachment[]} [attachments]
+ * @property {boolean} [noAttachments]            — explicitly marked as "no files provided"; satisfies the drawings intake check
  * @property {FeasibilityResult} [feasibilityResult]
  * @property {string} [feasibilityNote]
  * @property {string} [closedReason]

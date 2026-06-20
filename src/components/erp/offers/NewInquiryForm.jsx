@@ -33,6 +33,7 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
     summary: '',
     specificationNote: '',
     attachments: /** @type {import('../../../domains/inquiries/model.js').InquiryAttachment[]} */ ([]),
+    noAttachments: false,
   }))
   const [error, setError] = useState(/** @type {string | null} */ (null))
   const [submitting, setSubmitting] = useState(false)
@@ -77,6 +78,7 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
           summary: form.summary.trim() || undefined,
           specificationNote: form.specificationNote.trim() || undefined,
           attachments: form.attachments,
+          noAttachments: form.noAttachments,
         },
       })
       if (!result.ok) {
@@ -297,6 +299,8 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
         <AttachmentEditor
           attachments={form.attachments}
           onChange={(attachments) => setForm((f) => ({ ...f, attachments }))}
+          noAttachments={form.noAttachments}
+          onToggleNoAttachments={(noAttachments) => setForm((f) => ({ ...f, noAttachments }))}
         />
       </section>
 

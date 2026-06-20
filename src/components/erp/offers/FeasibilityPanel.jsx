@@ -33,13 +33,20 @@ export default function FeasibilityPanel({ db, inquiry, actorId, onChange }) {
 
   return (
     <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900">{t('feasibility.title')}</h3>
-        {inquiry.missingFields && inquiry.missingFields.length > 0 ? (
-          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
-            {t('feasibility.blockedByIntake')}
-          </span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {inquiry.noAttachments ? (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-300">
+              {t('inquiry.noFilesBadge')}
+            </span>
+          ) : null}
+          {inquiry.missingFields && inquiry.missingFields.length > 0 ? (
+            <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
+              {t('feasibility.blockedByIntake')}
+            </span>
+          ) : null}
+        </div>
       </header>
       <p className="text-xs text-slate-500">{t('feasibility.desc')}</p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

@@ -29,6 +29,7 @@ import { registerInquiry } from './inquiryIntakeService.js'
  * @property {string} [summary]
  * @property {string} [specificationNote]
  * @property {import('../../domains/inquiries/model.js').InquiryAttachment[]} [attachments]
+ * @property {boolean} [noAttachments]
  */
 
 /**
@@ -129,6 +130,7 @@ export function startNewInquiry(db, input) {
     customerContactName: input.client.contactName,
     customerContactEmail: input.client.contactEmail,
     attachments: input.inquiry.attachments,
+    noAttachments: input.inquiry.noAttachments,
     actorId: input.actorId,
   })
   if (!inquiryResult?.ok) {
