@@ -523,13 +523,23 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         open={effectiveOpen === 'offer'}
         onToggle={() => toggle('offer')}
       >
-        <OfferDetailsPanel
-          db={db}
-          version={version}
-          clientId={clientId}
-          actorId={actorId}
-          onChange={onChange}
-        />
+        <div className="space-y-4">
+          <OfferDetailsPanel
+            db={db}
+            version={version}
+            clientId={clientId}
+            actorId={actorId}
+            onChange={onChange}
+          />
+          {version && activeQuote ? (
+            <OfferPreview
+              db={db}
+              quote={activeQuote}
+              version={version}
+              acceptanceLink={lastSentEmail?.acceptanceLink}
+            />
+          ) : null}
+        </div>
       </Section>
 
       {/* Step 4 — Approve & send */}

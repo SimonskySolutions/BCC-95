@@ -13,12 +13,23 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
 }
 
+/** Format a number with space thousands separators and 2 decimals: 1 234 567.89 */
+function group(n) {
+  const [int, dec] = (Number(n) || 0).toFixed(2).split('.')
+  return `${int.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}.${dec}`
+}
+
+/** Group an integer with space thousands: 1 000, 2 000 … */
+function groupInt(n) {
+  return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+}
+
 /** Render the offer model to a standalone printable HTML document (Cyrillic-safe). */
 function offerHtml(m, photos = []) {
   const L = m.labels
   const showExw = m.priceBasis === 'exw' || m.priceBasis === 'both'
   const showDap = m.priceBasis === 'dap' || m.priceBasis === 'both'
-  const money = (n) => n.toFixed(2)
+  const money = group
   const product = m.rows[0]?.article ?? ''
   const requirements = m.rows[0]?.requirements ?? ''
   const colCount = 2 + (showExw ? 1 : 0) + (showDap ? 1 : 0) + 1
@@ -26,7 +37,7 @@ function offerHtml(m, photos = []) {
     const value = r.qty * (showDap ? r.unitPrice : r.exwUnitPrice)
     return `<tr>
       <td class="num">${r.no}</td>
-      <td class="right">${r.qty}${r.uom ? ' ' + esc(r.uom) : ''}</td>
+      <td class="right">${groupInt(r.qty)}${r.uom ? ' ' + esc(r.uom) : ''}</td>
       ${showExw ? `<td class="right">${money(r.exwUnitPrice)}</td>` : ''}
       ${showDap ? `<td class="right">${money(r.unitPrice)}</td>` : ''}
       <td class="right">${money(value)}</td>
@@ -248,10 +259,10 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
               return (
                 <tr key={r.no} className="text-slate-700">
                   <td className="py-1.5 pr-2">{r.no}</td>
-                  <td className="py-1.5 pr-2 font-medium">{r.qty}{r.uom ? ` ${r.uom}` : ''}</td>
-                  {showExw ? <td className="py-1.5 pr-2 text-right">{r.exwUnitPrice.toFixed(2)}</td> : null}
-                  {showDap ? <td className="py-1.5 pr-2 text-right font-semibold">{r.unitPrice.toFixed(2)}</td> : null}
-                  <td className="py-1.5 text-right text-slate-500">{value.toFixed(2)}</td>
+                  <td className="py-1.5 pr-2 font-medium">{groupInt(r.qty)}{r.uom ? ` ${r.uom}` : ''}</td>
+                  {showExw ? <td className="py-1.5 pr-2 text-right">{group(r.exwUnitPrice)}</td> : null}
+                  {showDap ? <td className="py-1.5 pr-2 text-right font-semibold">{group(r.unitPrice)}</td> : null}
+                  <td className="py-1.5 text-right text-slate-500">{group(value)}</td>
                 </tr>
               )
             })}

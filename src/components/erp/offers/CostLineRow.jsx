@@ -34,7 +34,9 @@ const parseDecimal = (s) => {
   const n = Number(String(s).replace(',', '.'))
   return Number.isFinite(n) ? n : 0
 }
-const toText = (v) => (v === null || v === undefined || v === '' ? '' : String(v))
+// Show 0 / empty as a blank field (with a 0 placeholder) so the user can type
+// straight in without clearing a pre-filled zero.
+const toText = (v) => (v === null || v === undefined || v === '' || Number(v) === 0 ? '' : String(v))
 
 /**
  * One compact labelled numeric input. Uses a text field with decimal input
@@ -57,6 +59,7 @@ function NumField({ label, value, onChange, suffix }) {
       <input
         type="text"
         inputMode="decimal"
+        placeholder="0"
         className={`${fieldCls} w-20`}
         value={text}
         onChange={(e) => {
