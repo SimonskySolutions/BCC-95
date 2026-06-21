@@ -412,8 +412,8 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         ) : null
       ) : null}
 
-      {/* Sticky summary + guided action bar */}
-      <div className="sticky top-0 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-card backdrop-blur">
+      {/* Summary + guided action bar */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
