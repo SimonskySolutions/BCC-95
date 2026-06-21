@@ -43,6 +43,9 @@ export default function TaskDetailDrawer({ db, taskId, actorId, onClose, onChang
   const task = db.tasks.find((x) => x.id === taskId)
   if (!task) return null
 
+  // Suggest labels already used anywhere — avoids typos / duplicates.
+  const knownLabels = [...new Set((db.tasks ?? []).flatMap((x) => x.labels ?? []))].sort()
+
   const patch = (p) => { patchTask(db, task.id, p); onChange() }
   const labels = task.labels ?? []
   const subtasks = task.subtasks ?? []
@@ -126,12 +129,16 @@ export default function TaskDetailDrawer({ db, taskId, actorId, onClose, onChang
                 </span>
               ))}
               <input
-                className="h-7 w-28 rounded-md border border-slate-200 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
+                list="task-label-suggestions"
+                className="h-7 w-32 rounded-md border border-slate-200 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
                 value={labelInput}
                 placeholder={t('task.addLabel')}
                 onChange={(e) => setLabelInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLabel() } }}
               />
+              <datalist id="task-label-suggestions">
+                {knownLabels.map((l) => <option key={l} value={l} />)}
+              </datalist>
             </div>
           </div>
 

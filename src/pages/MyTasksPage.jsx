@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import { X, Plus, ArrowRight, Check, RotateCcw } from 'lucide-react'
-import { selectTasksByEmployee } from '../domains/tasks/selectors.js'
 import { appendTask, patchTask, validateTaskCreate } from '../domains/tasks/mutations.js'
-import { PLANNED_QUARTERS, TASK_WORKSTREAMS } from '../domains/tasks/model.js'
+import { PLANNED_QUARTERS, TASK_WORKSTREAMS, TASK_PRIORITIES } from '../domains/tasks/model.js'
 import { LIFECYCLE_PHASE_ORDER } from '../domains/lifecycle/model.js'
 import { selectOperationsByProduct } from '../domains/operations/selectors.js'
 import { selectPathLinkByProduct, selectPathTemplateById } from '../domains/manufacturing-path/selectors.js'
@@ -141,6 +140,12 @@ export default function MyTasksPage({ db }) {
   const [showForm, setShowForm] = useState(false)
   const [yearFilter, setYearFilter] = useState(2026)
   const [quarterFilter, setQuarterFilter] = useState(/** @type {'all' | import('../domains/tasks/model.js').PlannedQuarter} */ ('all'))
+  const [assigneeFilter, setAssigneeFilter] = useState(CURRENT_USER_ID)
+  const [priorityFilter, setPriorityFilter] = useState('all')
+  const [workstreamFilter, setWorkstreamFilter] = useState('all')
+  const [labelFilter, setLabelFilter] = useState('all')
+  const [dueFrom, setDueFrom] = useState('')
+  const [dueTo, setDueTo] = useState('')
 
   const [form, setForm] = useState({
     title: '',
@@ -159,26 +164,36 @@ export default function MyTasksPage({ db }) {
 
   void version
 
-  const mine = useMemo(() => selectTasksByEmployee(db, CURRENT_USER_ID), [db, version])
-  const overdueCount = useMemo(
-    () => mine.filter((t) => t.status !== 'resolved' && t.dueDate < TODAY).length,
-    [mine],
+  const allLabels = useMemo(
+    () => [...new Set((db.tasks ?? []).flatMap((t) => t.labels ?? []))].sort(),
+    [db, version],
   )
 
   const filtered = useMemo(() => {
-    let result = mine
+    let result = db.tasks ?? []
+    if (assigneeFilter !== 'all') result = result.filter((t) => t.assigneeId === assigneeFilter)
     if (quarterFilter !== 'all') {
       result = result.filter((t) => t.plannedYear === yearFilter && t.plannedQuarter === quarterFilter)
     } else {
       result = result.filter((t) => t.plannedYear === yearFilter)
     }
     if (productFilter !== 'all') result = result.filter((t) => t.productId === productFilter)
+    if (priorityFilter !== 'all') result = result.filter((t) => (t.priority ?? 'medium') === priorityFilter)
+    if (workstreamFilter !== 'all') result = result.filter((t) => t.workstream === workstreamFilter)
+    if (labelFilter !== 'all') result = result.filter((t) => (t.labels ?? []).includes(labelFilter))
+    if (dueFrom) result = result.filter((t) => t.dueDate && t.dueDate >= dueFrom)
+    if (dueTo) result = result.filter((t) => t.dueDate && t.dueDate <= dueTo)
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter((t) => t.title.toLowerCase().includes(q))
     }
     return result
-  }, [mine, yearFilter, quarterFilter, productFilter, search])
+  }, [db, version, assigneeFilter, yearFilter, quarterFilter, productFilter, priorityFilter, workstreamFilter, labelFilter, dueFrom, dueTo, search])
+
+  const overdueCount = useMemo(
+    () => filtered.filter((t) => t.status !== 'resolved' && t.dueDate < TODAY).length,
+    [filtered],
+  )
 
   const kanbanColumns = useMemo(
     () =>
@@ -301,6 +316,54 @@ export default function MyTasksPage({ db }) {
           value={yearFilter}
           onChange={(e) => setYearFilter(Number(e.target.value))}
         />
+        <select
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+          value={assigneeFilter}
+          onChange={(e) => setAssigneeFilter(e.target.value)}
+          title={t('task.assignee')}
+        >
+          <option value="all">{t('tasks.filter.allAssignees')}</option>
+          {db.employees.map((emp) => (
+            <option key={emp.id} value={emp.id}>{emp.id === CURRENT_USER_ID ? `${emp.name} (${t('tasks.filter.me')})` : emp.name}</option>
+          ))}
+        </select>
+        <select
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          title={t('task.priority')}
+        >
+          <option value="all">{t('tasks.filter.allPriorities')}</option>
+          {TASK_PRIORITIES.map((p) => <option key={p} value={p}>{t(`taskPriority.${p}`, p)}</option>)}
+        </select>
+        <select
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+          value={workstreamFilter}
+          onChange={(e) => setWorkstreamFilter(e.target.value)}
+          title={t('tasks.fieldWorkstream')}
+        >
+          <option value="all">{t('tasks.filter.allWorkstreams')}</option>
+          {TASK_WORKSTREAMS.map((w) => <option key={w} value={w}>{t(`taskWorkstream.${w}`, w)}</option>)}
+        </select>
+        {allLabels.length > 0 ? (
+          <select
+            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+            value={labelFilter}
+            onChange={(e) => setLabelFilter(e.target.value)}
+            title={t('task.labels')}
+          >
+            <option value="all">{t('tasks.filter.allLabels')}</option>
+            {allLabels.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        ) : null}
+        <label className="flex items-center gap-1 text-xs text-slate-500">
+          {t('tasks.filter.dueFrom')}
+          <input type="date" className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700" value={dueFrom} onChange={(e) => setDueFrom(e.target.value)} />
+        </label>
+        <label className="flex items-center gap-1 text-xs text-slate-500">
+          {t('tasks.filter.dueTo')}
+          <input type="date" className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700" value={dueTo} onChange={(e) => setDueTo(e.target.value)} />
+        </label>
 
         <div className="ml-auto flex items-center gap-2">
           {overdueCount > 0 && (
