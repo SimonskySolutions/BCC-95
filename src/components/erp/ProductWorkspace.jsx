@@ -195,8 +195,8 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
         )}
       </div>
 
-      {/* ── Sticky tab bar ──────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 -mx-4 bg-slate-100/95 px-4 pb-1 pt-1.5 backdrop-blur md:-mx-0 md:px-0">
+      {/* ── Tab bar ──────────────────────────────────────────────── */}
+      <div className="border-b border-slate-200 pb-2">
         <nav className="flex flex-wrap gap-1.5" role="tablist">
           {TAB_IDS.map((id) => {
             const badge = id === 'tasks' && openTaskCount > 0
