@@ -104,6 +104,27 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
 
   const catalog = (group) => selectCostCatalog(db, group)
 
+  // Enter confirms the field and jumps to the next one (Excel-style). Textareas
+  // keep their normal newline behaviour.
+  function handleFieldKeyDown(e) {
+    if (e.key !== 'Enter' || e.shiftKey) return
+    const el = e.target
+    const tag = el.tagName
+    if (tag !== 'INPUT' && tag !== 'SELECT') return
+    e.preventDefault()
+    const fields = Array.from(
+      e.currentTarget.querySelectorAll('input:not([type="file"]), select'),
+    ).filter((f) => !f.disabled && f.offsetParent !== null)
+    const i = fields.indexOf(el)
+    const next = fields[i + 1]
+    if (next) {
+      next.focus()
+      if (next.tagName === 'INPUT' && typeof next.select === 'function') next.select()
+    } else {
+      el.blur()
+    }
+  }
+
   function saveToVersion() {
     const res = draftVersionFromCostSheet(db, { quoteId: sheet.quoteId, inquiryId, clientId, productId, actorId })
     if (res.ok) {
@@ -117,7 +138,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" onKeyDown={handleFieldKeyDown}>
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">
           {t('cost.alwaysEditable')}
