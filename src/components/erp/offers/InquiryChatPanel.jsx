@@ -84,13 +84,7 @@ export default function InquiryChatPanel({ db, inquiryId, actorId, onChange }) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-      <header className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-900">
-          {t('chat.title')} {all.length > 0 ? <span className="text-slate-400">({all.length})</span> : null}
-        </h3>
-      </header>
-
+    <div>
       {/* Tag filter bar */}
       {threadTags.length > 0 ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
@@ -115,7 +109,7 @@ export default function InquiryChatPanel({ db, inquiryId, actorId, onChange }) {
       ) : null}
 
       {/* Thread */}
-      <div className="space-y-3">
+      <div className="max-h-[52vh] space-y-3 overflow-y-auto pr-1">
         {messages.length === 0 ? (
           <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
             {filter ? t('chat.noneForTag') : t('chat.empty')}

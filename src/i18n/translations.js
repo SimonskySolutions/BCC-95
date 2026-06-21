@@ -1227,6 +1227,8 @@ const en = {
 
   // Inquiry discussion thread
   'chat.title': 'Discussion',
+  'chat.summary': '{n} message(s) in the thread',
+  'chat.summaryEmpty': 'No messages yet — start the conversation',
   'chat.empty': 'No messages yet. Start the conversation about this inquiry.',
   'chat.noneForTag': 'No messages with this tag.',
   'chat.placeholder': 'Write a message… use @name to mention a teammate (⌘/Ctrl+Enter to send)',
@@ -2453,6 +2455,8 @@ const bg = {
 
   // Дискусия по запитване
   'chat.title': 'Дискусия',
+  'chat.summary': '{n} съобщения в дискусията',
+  'chat.summaryEmpty': 'Все още няма съобщения — започнете разговора',
   'chat.empty': 'Все още няма съобщения. Започнете разговора по това запитване.',
   'chat.noneForTag': 'Няма съобщения с този етикет.',
   'chat.placeholder': 'Напишете съобщение… използвайте @име, за да споменете колега (⌘/Ctrl+Enter за изпращане)',

@@ -33,6 +33,7 @@ import OfferSendDialog from './OfferSendDialog.jsx'
 import OfferStatusBadge from './OfferStatusBadge.jsx'
 import FeasibilityPanel from './FeasibilityPanel.jsx'
 import InquiryChatPanel from './InquiryChatPanel.jsx'
+import { selectInquiryMessages } from '../../../domains/communications/selectors.js'
 
 function VersionDelta({ vA, vB, t }) {
   if (!vA || !vB) return null
@@ -247,6 +248,11 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
     .filter((m) => m.productId === productId)
     .slice(-1)[0]
 
+  // Discussion thread — keyed to the inquiry when there is one, otherwise to
+  // the product so an offer without an inquiry still has a place to talk.
+  const threadId = progress.inquiry?.id ?? `product:${productId}`
+  const chatCount = selectInquiryMessages(db, threadId).length
+
   // Which section should be open by default
   const activeSection = !progress.status.feasibility_done
     ? 'feasibility'
@@ -328,7 +334,8 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="min-w-0 flex-1 space-y-4">
 
       {/* Post-acceptance banner */}
       {activeQuote?.status === 'accepted' ? (
@@ -446,10 +453,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         onToggle={() => toggle('feasibility')}
       >
         {progress.inquiry ? (
-          <div className="space-y-4">
-            <FeasibilityPanel db={db} inquiry={progress.inquiry} actorId={actorId} onChange={onChange} />
-            <InquiryChatPanel db={db} inquiryId={progress.inquiry.id} actorId={actorId} onChange={onChange} />
-          </div>
+          <FeasibilityPanel db={db} inquiry={progress.inquiry} actorId={actorId} onChange={onChange} />
         ) : (
           <p className="text-xs text-slate-500">{t('offer.section.feasibility.noInquiry')}</p>
         )}
@@ -732,6 +736,20 @@ ${lastSentEmail.body}`}
           onChange()
         }}
       />
+      </div>
+
+      {/* Discussion — docked on the right, always visible while the quotation is open */}
+      <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-80 xl:w-96">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+          <header className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('chat.title')}
+              {chatCount > 0 ? <span className="ml-1 font-normal text-slate-400">({chatCount})</span> : null}
+            </h3>
+          </header>
+          <InquiryChatPanel db={db} inquiryId={threadId} actorId={actorId} onChange={onChange} />
+        </div>
+      </aside>
     </div>
   )
 }
