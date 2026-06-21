@@ -85,9 +85,16 @@ function NumField({ label, value, onChange, suffix }) {
  *   onToggleCollapse?: () => void
  * }} props
  */
-export default function CostLineRow({ line, amount, currency, onPatch, onRemove, collapsed = false, onToggleCollapse }) {
+export default function CostLineRow({ line, amount, currency, catalog = [], onPatch, onRemove, collapsed = false, onToggleCollapse }) {
   const { t } = useLanguage()
   const drivers = GROUP_DRIVERS[line.group] ?? ['count']
+
+  // Pick the catalog entry whose label matches → apply its driver + defaults.
+  function onDescription(value) {
+    const entry = catalog.find((c) => c.label === value)
+    if (entry) onPatch({ description: value, driver: entry.driver, catalogRefId: entry.id, ...entry.defaults })
+    else onPatch({ description: value })
+  }
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 transition-colors hover:border-slate-300">
@@ -101,13 +108,19 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove,
         >
           <ChevronDown size={14} className={`transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`} />
         </button>
-        {/* Description */}
+        {/* Description — combobox: pick from the part's nomenclature or type freely */}
         <input
+          list={`cat-${line.id}`}
           className="min-w-[140px] flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
           value={line.description}
           placeholder={t('cost.line.describe')}
-          onChange={(e) => onPatch({ description: e.target.value })}
+          onChange={(e) => onDescription(e.target.value)}
         />
+        {catalog.length ? (
+          <datalist id={`cat-${line.id}`}>
+            {catalog.map((c) => <option key={c.id} value={c.label} />)}
+          </datalist>
+        ) : null}
         {/* Free-text clarification next to the item (бланка col. B) */}
         {collapsed ? (
           line.note ? <span className="min-w-0 flex-1 truncate text-xs italic text-slate-400">{line.note}</span> : <span className="flex-1" />

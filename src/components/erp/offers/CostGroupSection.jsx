@@ -93,6 +93,7 @@ export default function CostGroupSection({
             line={line}
             amount={computeLineAmount(line, ctx)}
             currency={currency}
+            catalog={catalog}
             collapsed={!expanded.has(line.id)}
             onToggleCollapse={() => toggleLine(line.id)}
             onPatch={(patch) => onPatchLine(line.id, patch)}
