@@ -25,6 +25,7 @@ import {
 import CostGroupSection from './CostGroupSection.jsx'
 import CombinedSummary from './CombinedSummary.jsx'
 import AllProductsSummary from './AllProductsSummary.jsx'
+import GateTasksPanel from './GateTasksPanel.jsx'
 
 function FlashBanner({ type, message, onDismiss }) {
   const styles = {
@@ -211,6 +212,9 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
           onChange={(e) => { patchCostSheet(db, sheet.id, { productDescription: e.target.value }); onChange?.() }}
         />
       </label>
+
+      {/* VSM gate tasks for the selected product */}
+      {sheet.productId ? <GateTasksPanel db={db} productId={sheet.productId} onChange={() => onChange?.()} /> : null}
 
       {/* 1 — Материали */}
       <CostGroupSection
