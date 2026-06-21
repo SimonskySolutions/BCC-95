@@ -36,6 +36,7 @@
  * @property {string} [summary]
  * @property {number} [requestedQuantity]         — primary quantity (first tier)
  * @property {number[]} [requestedQuantities]     — all quantities the customer asked to be quoted (100/200/500…)
+ * @property {{ name: string; quantities: number[] }[]} [extraProducts]  — additional products in the same inquiry, each with its own quantities
  * @property {string} [requestedDeadline]        — ISO date
  * @property {string} [specificationNote]
  * @property {string} [customerContactName]

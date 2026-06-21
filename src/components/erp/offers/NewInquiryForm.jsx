@@ -31,6 +31,7 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
     requestedQuantity: '',
     extraQuantities: /** @type {number[]} */ ([]),
     extraQtyInput: '',
+    extraProducts: /** @type {{ name: string; quantities: number[]; qtyInput: string }[]} */ ([]),
     requestedDeadline: '',
     summary: '',
     specificationNote: '',
@@ -77,6 +78,9 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
           channel: form.channel,
           requestedQuantity: Number(form.requestedQuantity),
           requestedQuantities: [Number(form.requestedQuantity), ...form.extraQuantities].filter((n) => Number.isFinite(n) && n > 0),
+          extraProducts: form.extraProducts
+            .filter((p) => p.name.trim())
+            .map((p) => ({ name: p.name.trim(), quantities: p.quantities })),
           requestedDeadline: form.requestedDeadline || undefined,
           summary: form.summary.trim() || undefined,
           specificationNote: form.specificationNote.trim() || undefined,
@@ -322,6 +326,65 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
               onChange={(e) => setForm({ ...form, specificationNote: e.target.value })}
             />
           </label>
+        </div>
+
+        {/* Additional products in the same inquiry — each with its own quantities */}
+        <div className="rounded-lg border border-slate-200 p-2.5">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-slate-700">{t('newInquiry.moreProducts')}</h4>
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, extraProducts: [...f.extraProducts, { name: '', quantities: [], qtyInput: '' }] }))}
+              className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-700"
+            >
+              + {t('newInquiry.addProduct')}
+            </button>
+          </div>
+          {form.extraProducts.length === 0 ? (
+            <p className="text-[11px] text-slate-400">{t('newInquiry.moreProducts.hint')}</p>
+          ) : null}
+          <div className="space-y-2">
+            {form.extraProducts.map((p, idx) => (
+              <div key={idx} className="rounded-lg bg-slate-50 p-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm"
+                    value={p.name}
+                    placeholder={t('newInquiry.productName')}
+                    onChange={(e) => setForm((f) => ({ ...f, extraProducts: f.extraProducts.map((x, i) => i === idx ? { ...x, name: e.target.value } : x) }))}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, extraProducts: f.extraProducts.filter((_, i) => i !== idx) }))}
+                    className="text-slate-400 hover:text-rose-600"
+                  >✕</button>
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {p.quantities.map((q, qi) => (
+                    <span key={qi} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-100">
+                      {q}
+                      <button type="button" onClick={() => setForm((f) => ({ ...f, extraProducts: f.extraProducts.map((x, i) => i === idx ? { ...x, quantities: x.quantities.filter((_, j) => j !== qi) } : x) }))} className="opacity-60 hover:opacity-100">✕</button>
+                    </span>
+                  ))}
+                  <input
+                    type="number"
+                    min={1}
+                    className="h-7 w-24 rounded-md border border-slate-200 bg-white px-2 text-xs"
+                    value={p.qtyInput}
+                    placeholder={t('newInquiry.addQuantity')}
+                    onChange={(e) => setForm((f) => ({ ...f, extraProducts: f.extraProducts.map((x, i) => i === idx ? { ...x, qtyInput: e.target.value } : x) }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const n = Number(p.qtyInput)
+                        if (Number.isFinite(n) && n > 0) setForm((f) => ({ ...f, extraProducts: f.extraProducts.map((x, i) => i === idx ? { ...x, quantities: [...x.quantities, n], qtyInput: '' } : x) }))
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <AttachmentEditor

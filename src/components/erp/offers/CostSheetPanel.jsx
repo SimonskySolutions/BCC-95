@@ -67,8 +67,9 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
   // opened. Both helpers are idempotent, so this runs at most once effectively.
   useEffect(() => {
     const q = quote ?? ensureQuoteForProduct(db, { productId, clientId, inquiryId, actorId })
+    const inquiry = (db.inquiries ?? []).find((i) => i.id === inquiryId)
+    let changed = false
     if (!selectCostSheetByQuote(db, q.id)) {
-      const inquiry = (db.inquiries ?? []).find((i) => i.id === inquiryId)
       ensureCostSheet(db, {
         quoteId: q.id,
         productId,
@@ -78,8 +79,22 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
         quantities: inquiry?.requestedQuantities,
         actorId,
       })
-      onChange?.()
+      changed = true
     }
+    // A cost sheet per additional product captured on the inquiry.
+    const existing = selectCostSheetsByQuote(db, q.id)
+    for (const ep of inquiry?.extraProducts ?? []) {
+      if (!ep.name || existing.some((s) => (s.productLabel || '') === ep.name)) continue
+      addProductCostSheet(db, {
+        quoteId: q.id,
+        productLabel: ep.name,
+        quantities: ep.quantities,
+        currency: q.currency,
+        marginPercent: q.marginPercent,
+      })
+      changed = true
+    }
+    if (changed) onChange?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

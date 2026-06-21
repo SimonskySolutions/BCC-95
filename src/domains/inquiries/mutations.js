@@ -10,6 +10,7 @@ let idCounter = 20000
  * @property {string} [summary]
  * @property {number} [requestedQuantity]
  * @property {number[]} [requestedQuantities]
+ * @property {{ name: string; quantities: number[] }[]} [extraProducts]
  * @property {string} [requestedDeadline]
  * @property {string} [specificationNote]
  * @property {string} [customerContactName]
@@ -53,6 +54,7 @@ export function createInquiryDraft(input, id) {
     summary: input.summary,
     requestedQuantity: input.requestedQuantity,
     requestedQuantities: input.requestedQuantities ?? (input.requestedQuantity ? [input.requestedQuantity] : []),
+    extraProducts: input.extraProducts ?? [],
     requestedDeadline: input.requestedDeadline,
     specificationNote: input.specificationNote,
     customerContactName: input.customerContactName,
