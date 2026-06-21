@@ -144,6 +144,7 @@ export function buildOrderConfirmationModel(input) {
     const dap = Number(l.unitPrice) || 0
     return {
       no: i + 1,
+      productId: l.productId,
       article: l.description || '—',
       requirements: l.requirements ?? '',
       qty,
@@ -158,10 +159,22 @@ export function buildOrderConfirmationModel(input) {
   })
   const total = rows.reduce((s, r) => s + r.lineTotal, 0)
 
+  // Group rows by product so one offer can present several products, each with
+  // its own quantity → price matrix.
+  const productGroups = []
+  const gmap = new Map()
+  for (const r of rows) {
+    const key = r.productId || r.article || '—'
+    let g = gmap.get(key)
+    if (!g) { g = { product: r.article || '—', requirements: r.requirements, rows: [] }; gmap.set(key, g); productGroups.push(g) }
+    g.rows.push(r)
+  }
+
   return {
     isBg,
     currency,
     labels,
+    productGroups,
     firm: {
       name: firm?.name ?? '',
       subtitle: firm?.subtitle ?? '',

@@ -30,18 +30,15 @@ function offerHtml(m, photos = []) {
   const showExw = m.priceBasis === 'exw' || m.priceBasis === 'both'
   const showDap = m.priceBasis === 'dap' || m.priceBasis === 'both'
   const money = group
-  const product = m.rows[0]?.article ?? ''
-  const requirements = m.rows[0]?.requirements ?? ''
   const colCount = 2 + (showExw ? 1 : 0) + (showDap ? 1 : 0) + 1
-  const rows = m.rows.map((r) => {
-    const value = r.qty * (showDap ? r.unitPrice : r.exwUnitPrice)
-    return `<tr>
-      <td class="num">${r.no}</td>
-      <td class="right">${groupInt(r.qty)}${r.uom ? ' ' + esc(r.uom) : ''}</td>
-      ${showExw ? `<td class="right">${money(r.exwUnitPrice)}</td>` : ''}
-      ${showDap ? `<td class="right">${money(r.unitPrice)}</td>` : ''}
-      <td class="right">${money(value)}</td>
-    </tr>`
+  const headCells = `<th>${esc(L.no)}</th><th>${esc(L.pcsArt)}</th>${showExw ? `<th>${esc(L.exw)} ${esc(m.currency)}${esc(L.perPcs)}</th>` : ''}${showDap ? `<th>${esc(L.dap)} ${esc(m.currency)}${esc(L.perPcs)}</th>` : ''}<th>${esc(L.orderValue)} ${esc(m.currency)}</th>`
+  const sections = (m.productGroups || []).map((g) => {
+    const body = g.rows.map((r, i) => {
+      const value = r.qty * (showDap ? r.unitPrice : r.exwUnitPrice)
+      return `<tr><td class="num">${i + 1}</td><td class="right">${groupInt(r.qty)}${r.uom ? ' ' + esc(r.uom) : ''}</td>${showExw ? `<td class="right">${money(r.exwUnitPrice)}</td>` : ''}${showDap ? `<td class="right">${money(r.unitPrice)}</td>` : ''}<td class="right">${money(value)}</td></tr>`
+    }).join('')
+    return `<div class="prod"><strong>${esc(g.product)}</strong>${g.requirements ? `<div class="sub">${esc(g.requirements)}</div>` : ''}</div>
+      <table><thead><tr>${headCells}</tr></thead><tbody>${body || `<tr><td colspan="${colCount}" class="num">—</td></tr>`}</tbody></table>`
   }).join('')
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(L.docTitle)} ${esc(m.offerNo)}</title>
   <style>
@@ -100,18 +97,7 @@ function offerHtml(m, photos = []) {
     <div class="intro">${esc(L.intro1)}</div>
     <div class="intro">${esc(L.intro2)}</div>
 
-    <div class="prod"><strong>${esc(product)}</strong>${requirements ? `<div class="sub">${esc(requirements)}</div>` : ''}</div>
-
-    <table>
-      <thead><tr>
-        <th>${esc(L.no)}</th>
-        <th>${esc(L.pcsArt)}</th>
-        ${showExw ? `<th>${esc(L.exw)} ${esc(m.currency)}${esc(L.perPcs)}</th>` : ''}
-        ${showDap ? `<th>${esc(L.dap)} ${esc(m.currency)}${esc(L.perPcs)}</th>` : ''}
-        <th>${esc(L.orderValue)} ${esc(m.currency)}</th>
-      </tr></thead>
-      <tbody>${rows || `<tr><td colspan="${colCount}" class="num">—</td></tr>`}</tbody>
-    </table>
+    ${sections || `<div class="prod">—</div>`}
 
     ${photos.length ? `<div style="margin-top:14px"><div class="k" style="font-size:11px;margin-bottom:6px">${esc(L.photos)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:12px">${photos.map((p) => `<figure style="width:48%;margin:0"><img src="${p.storageRef}" alt="${esc(p.name)}" style="width:100%;max-height:280px;object-fit:contain;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px" />${p.caption ? `<figcaption style="font-size:11px;color:#475569;margin-top:3px;line-height:1.4">${esc(p.caption)}</figcaption>` : ''}</figure>`).join('')}</div></div>` : ''}
@@ -181,9 +167,7 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
   const L = model.labels
   const showExw = model.priceBasis === 'exw' || model.priceBasis === 'both'
   const showDap = model.priceBasis === 'dap' || model.priceBasis === 'both'
-  const product = model.rows[0]?.article ?? '—'
-  const requirements = model.rows[0]?.requirements ?? ''
-  const colCount = 2 + (showExw ? 1 : 0) + (showDap ? 1 : 0) + 1
+  const groups = model.productGroups || []
 
   return (
     <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
@@ -233,41 +217,43 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
         <p className="mt-3 text-xs text-slate-600">{L.intro1}</p>
         <p className="text-xs text-slate-600">{L.intro2}</p>
 
-        {/* Product band */}
-        <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2">
-          <span className="text-sm font-medium text-slate-800">{product}</span>
-          {requirements ? <span className="ml-1 text-[11px] text-slate-400">· {requirements}</span> : null}
-        </div>
-
-        {/* Quantity → price matrix */}
-        <table className="mt-2 w-full text-xs">
-          <thead>
-            <tr className="border-b border-slate-300 text-[10px] uppercase text-slate-500">
-              <th className="py-1.5 pr-2 text-left font-medium w-8">{L.no}</th>
-              <th className="py-1.5 pr-2 text-left font-medium">{L.pcsArt}</th>
-              {showExw ? <th className="py-1.5 pr-2 text-right font-medium">{L.exw} {model.currency}{L.perPcs}</th> : null}
-              {showDap ? <th className="py-1.5 pr-2 text-right font-medium">{L.dap} {model.currency}{L.perPcs}</th> : null}
-              <th className="py-1.5 text-right font-medium">{L.orderValue} {model.currency}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {model.rows.length === 0 ? (
-              <tr><td colSpan={colCount} className="py-4 text-center text-slate-400">—</td></tr>
-            ) : null}
-            {model.rows.map((r) => {
-              const value = r.qty * (showDap ? r.unitPrice : r.exwUnitPrice)
-              return (
-                <tr key={r.no} className="text-slate-700">
-                  <td className="py-1.5 pr-2">{r.no}</td>
-                  <td className="py-1.5 pr-2 font-medium">{groupInt(r.qty)}{r.uom ? ` ${r.uom}` : ''}</td>
-                  {showExw ? <td className="py-1.5 pr-2 text-right">{group(r.exwUnitPrice)}</td> : null}
-                  {showDap ? <td className="py-1.5 pr-2 text-right font-semibold">{group(r.unitPrice)}</td> : null}
-                  <td className="py-1.5 text-right text-slate-500">{group(value)}</td>
+        {/* Per-product quantity → price matrices */}
+        {groups.length === 0 ? (
+          <p className="mt-3 py-4 text-center text-xs text-slate-400">—</p>
+        ) : null}
+        {groups.map((g, gi) => (
+          <div key={gi} className="mt-3">
+            <div className="rounded-lg bg-slate-50 px-3 py-2">
+              <span className="text-sm font-medium text-slate-800">{g.product}</span>
+              {g.requirements ? <span className="ml-1 text-[11px] text-slate-400">· {g.requirements}</span> : null}
+            </div>
+            <table className="mt-2 w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-300 text-[10px] uppercase text-slate-500">
+                  <th className="py-1.5 pr-2 text-left font-medium w-8">{L.no}</th>
+                  <th className="py-1.5 pr-2 text-left font-medium">{L.pcsArt}</th>
+                  {showExw ? <th className="py-1.5 pr-2 text-right font-medium">{L.exw} {model.currency}{L.perPcs}</th> : null}
+                  {showDap ? <th className="py-1.5 pr-2 text-right font-medium">{L.dap} {model.currency}{L.perPcs}</th> : null}
+                  <th className="py-1.5 text-right font-medium">{L.orderValue} {model.currency}</th>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {g.rows.map((r, i) => {
+                  const value = r.qty * (showDap ? r.unitPrice : r.exwUnitPrice)
+                  return (
+                    <tr key={r.no} className="text-slate-700">
+                      <td className="py-1.5 pr-2">{i + 1}</td>
+                      <td className="py-1.5 pr-2 font-medium">{groupInt(r.qty)}{r.uom ? ` ${r.uom}` : ''}</td>
+                      {showExw ? <td className="py-1.5 pr-2 text-right">{group(r.exwUnitPrice)}</td> : null}
+                      {showDap ? <td className="py-1.5 pr-2 text-right font-semibold">{group(r.unitPrice)}</td> : null}
+                      <td className="py-1.5 text-right text-slate-500">{group(value)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
 
         {photos.length > 0 ? (
           <div className="mt-4">

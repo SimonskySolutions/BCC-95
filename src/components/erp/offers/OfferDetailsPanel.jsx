@@ -331,6 +331,18 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
           </div>
 
           <div>
+            <label className="block text-xs font-medium text-slate-600">{t('offer.leadTime')} <span className="text-slate-400">(days)</span></label>
+            <input
+              type="number"
+              min={0}
+              className={`mt-1 ${inputCls}`}
+              value={version.leadTimeDays ?? ''}
+              disabled={isLocked}
+              onChange={(e) => patchHeader({ leadTimeDays: e.target.value === '' ? undefined : Number(e.target.value) })}
+            />
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-slate-600">{t('offer.language')}</label>
             <select
               className={`mt-1 ${inputCls}`}
