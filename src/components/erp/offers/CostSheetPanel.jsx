@@ -24,6 +24,7 @@ import {
 } from '../../../services/offers/index.js'
 import CostGroupSection from './CostGroupSection.jsx'
 import CombinedSummary from './CombinedSummary.jsx'
+import AllProductsSummary from './AllProductsSummary.jsx'
 
 function FlashBanner({ type, message, onDismiss }) {
   const styles = {
@@ -253,6 +254,9 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
       />
 
       <CombinedSummary rollup={rollup} sheet={sheet} currency={currency} onPatchSheet={patchSheet} />
+
+      {/* Combined across all feasible products */}
+      <AllProductsSummary db={db} sheets={sheets} currency={currency} />
 
       {/* Free-text note for the whole calculation (бланка bottom field) */}
       <label className="block text-xs font-medium text-slate-600">

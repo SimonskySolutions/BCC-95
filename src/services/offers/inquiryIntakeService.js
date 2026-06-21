@@ -22,9 +22,12 @@ import { mandatoryQuotationTaskKeysForProduct } from '../quotations/quotationAut
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {string} productId
  * @param {string} [actorId]
+ * @param {string} [productName]   — appended to the task titles so each product's tasks are identifiable
  */
-export function ensureQuotationGateTasks(db, productId, actorId) {
+export function ensureQuotationGateTasks(db, productId, actorId, productName) {
   const [techKey, costKey] = mandatoryQuotationTaskKeysForProduct(productId)
+  const name = productName ?? db.products?.find((p) => p.id === productId)?.name ?? ''
+  const suffix = name ? ` — ${name}` : ''
   const today = new Date().toISOString().slice(0, 10)
   const addIfMissing = (taskKey, title, assigneeId) => {
     const exists = db.tasks.some(
@@ -50,8 +53,8 @@ export function ensureQuotationGateTasks(db, productId, actorId) {
   }
   const engineer = db.employees.find((e) => /engineer|engineering|технолог/i.test(e.role))
   const planner = db.employees.find((e) => /plan|планов/i.test(e.role))
-  addIfMissing(techKey, 'Technical review (VSM 1.3)', engineer?.id ?? db.employees[0]?.id)
-  addIfMissing(costKey, 'Costing rollup (VSM 1.4)', planner?.id ?? db.employees[0]?.id)
+  addIfMissing(techKey, `Technical review (VSM 1.3)${suffix}`, engineer?.id ?? db.employees[0]?.id)
+  addIfMissing(costKey, `Costing rollup (VSM 1.4)${suffix}`, planner?.id ?? db.employees[0]?.id)
 }
 
 export function registerInquiry(db, input) {

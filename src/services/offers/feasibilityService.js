@@ -46,9 +46,10 @@ export function recordProductFeasibility(db, inquiryId, productId, result, actor
   if (!inquiry) return { ok: /** @type {const} */ (false), code: 'not_found' }
   const pf = { ...(inquiry.productFeasibility ?? {}), [productId]: result }
   const vals = inquiryProductIds(inquiry).map((id) => pf[id] ?? 'not_assessed')
+  // The step is only "done" once every product has been assessed.
+  const anyNotAssessed = vals.some((v) => v === 'not_assessed')
   const anyFeasible = vals.some((v) => v === 'feasible' || v === 'feasible_with_conditions')
-  const allBlocked = vals.length > 0 && vals.every((v) => v === 'blocked')
-  const summary = anyFeasible ? 'feasible' : allBlocked ? 'blocked' : 'not_assessed'
+  const summary = anyNotAssessed ? 'not_assessed' : anyFeasible ? 'feasible' : 'blocked'
   patchInquiry(db, inquiryId, {
     productFeasibility: pf,
     feasibilityResult: summary,
