@@ -822,6 +822,7 @@ const en = {
 
   // Offer wizard
   'offer.title': 'Offer',
+  'offer.progress.steps': '{done} of {total} steps',
   'offer.desc': 'Guided Phase 1 offer workflow — calculation, approval, send, decision.',
   'offer.openReports': 'Open reports',
   'offer.nextStep': 'Next step',
@@ -2062,6 +2063,7 @@ const bg = {
   'feasibility.blockedByIntake': 'Приемът не е завършен',
 
   'offer.title': 'Оферта',
+  'offer.progress.steps': '{done} от {total} стъпки',
   'offer.desc': 'Процесът по офериране стъпка по стъпка — калкулация, одобрение, изпращане и решение на клиента.',
   'offer.openReports': 'Отвори отчети',
   'offer.nextStep': 'Следваща стъпка',

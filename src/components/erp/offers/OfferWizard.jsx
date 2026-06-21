@@ -100,19 +100,21 @@ function blockerLabel(blocker = '', t) {
  */
 function Section({ index, title, summary, progressLabel, done, open, onToggle, children }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-white shadow-card transition ${open ? 'border-blue-200' : 'border-slate-200'}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-white transition-all duration-200 ${
+      open ? 'border-blue-300 shadow-cardHover ring-1 ring-blue-100' : 'border-slate-200 shadow-card hover:border-slate-300 hover:shadow-cardHover'
+    }`}>
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50/80"
       >
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
           done ? 'bg-emerald-100 text-emerald-700' : open ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
         }`}>
           {done ? <Check size={14} /> : index}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-slate-900">{title}</span>
+          <span className={`block text-sm font-semibold transition-colors ${open ? 'text-blue-900' : 'text-slate-900'}`}>{title}</span>
           {!open && summary ? <span className="block truncate text-xs text-slate-500">{summary}</span> : null}
         </span>
         {progressLabel ? (
@@ -122,9 +124,11 @@ function Section({ index, title, summary, progressLabel, done, open, onToggle, c
             {progressLabel}
           </span>
         ) : null}
-        <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors ${open ? 'bg-blue-50 text-blue-600' : 'text-slate-400'}`}>
+          <ChevronDown size={16} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </span>
       </button>
-      {open ? <div className="border-t border-slate-100 p-4">{children}</div> : null}
+      {open ? <div className="animate-fade-in-up border-t border-slate-100 p-4">{children}</div> : null}
     </div>
   )
 }
@@ -334,6 +338,16 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
     if (next === 'sent' && version?.status === 'approved') setSendOpen(true)
   }
 
+  // Overall progress across the four steps — drives the summary progress bar.
+  const stepFlags = [
+    progress.status.feasibility_done,
+    Boolean(version),
+    Boolean(version) && progress.status.approved,
+    progress.status.sent,
+  ]
+  const stepsDone = stepFlags.filter(Boolean).length
+  const stepsPct = Math.round((stepsDone / stepFlags.length) * 100)
+
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
       <div className="min-w-0 flex-1 space-y-4">
@@ -434,6 +448,20 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
             ) : null}
           </div>
         </div>
+
+        {/* Overall step progress */}
+        <div className="mt-3 flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ease-out ${stepsDone === stepFlags.length ? 'bg-emerald-500' : 'bg-blue-600'}`}
+              style={{ width: `${stepsPct}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-[11px] font-medium text-slate-400">
+            {t('offer.progress.steps').replace('{done}', String(stepsDone)).replace('{total}', String(stepFlags.length))}
+          </span>
+        </div>
+
         {progress.blockers.length > 0 && progress.nextStep ? (
           <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">
             {blockerLabel(progress.blockers[0], t)}
