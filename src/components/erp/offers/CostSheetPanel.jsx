@@ -88,7 +88,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
   const currency = sheet.currency ?? 'EUR'
   const ctx = {
     netKg: rollup.netKg,
-    costBase: rollup.groups.material + rollup.groups.labor + rollup.groups.operation,
+    costBase: rollup.groups.material + rollup.groups.operation,
   }
 
   const linesIn = (group) => lines.filter((l) => l.group === group)
@@ -124,6 +124,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
         </span>
       </div>
 
+      {/* 1 — Материали */}
       <CostGroupSection
         index={1} accent="emerald" group="material"
         title={t('cost.group.material')} hint={t('cost.group.material.hint')}
@@ -131,20 +132,23 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
         currency={currency} catalog={catalog('material')}
         onAdd={addLine('material')} onPatchLine={patchLine} onRemoveLine={removeLine}
       />
+      {/* 2 — Операции */}
       <CostGroupSection
-        index={2} accent="violet" group="labor"
-        title={t('cost.group.labor')} hint={t('cost.group.labor.hint')}
-        lines={linesIn('labor')} ctx={ctx} subtotal={rollup.groups.labor}
-        currency={currency} catalog={catalog('labor')}
-        onAdd={addLine('labor')} onPatchLine={patchLine} onRemoveLine={removeLine}
-      />
-      <CostGroupSection
-        index={3} accent="blue" group="operation"
+        index={2} accent="violet" group="operation"
         title={t('cost.group.operation')} hint={t('cost.group.operation.hint')}
         lines={linesIn('operation')} ctx={ctx} subtotal={rollup.groups.operation}
         currency={currency} catalog={catalog('operation')}
         onAdd={addLine('operation')} onPatchLine={patchLine} onRemoveLine={removeLine}
       />
+      {/* 3 — Инструменти */}
+      <CostGroupSection
+        index={3} accent="blue" group="tooling"
+        title={t('cost.group.tooling')} hint={t('cost.group.tooling.hint')}
+        lines={linesIn('tooling')} ctx={ctx} subtotal={rollup.toolingTotal}
+        currency={currency} catalog={catalog('tooling')}
+        onAdd={addLine('tooling')} onPatchLine={patchLine} onRemoveLine={removeLine}
+      />
+      {/* 4 — Общи разходи */}
       <CostGroupSection
         index={4} accent="amber" group="other"
         title={t('cost.group.other')} hint={t('cost.group.other.hint')}
@@ -152,23 +156,14 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
         currency={currency} catalog={catalog('other')}
         onAdd={addLine('other')} onPatchLine={patchLine} onRemoveLine={removeLine}
       />
-
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <CostGroupSection
-          index="T" accent="slate" group="tooling"
-          title={t('cost.group.tooling')} hint={t('cost.group.tooling.hint')}
-          lines={linesIn('tooling')} ctx={ctx} subtotal={rollup.toolingTotal}
-          currency={currency} catalog={catalog('tooling')}
-          onAdd={addLine('tooling')} onPatchLine={patchLine} onRemoveLine={removeLine}
-        />
-        <CostGroupSection
-          index="L" accent="slate" group="logistics"
-          title={t('cost.group.logistics')} hint={t('cost.group.logistics.hint')}
-          lines={linesIn('logistics')} ctx={ctx} subtotal={rollup.logistics}
-          currency={currency} catalog={catalog('logistics')}
-          onAdd={addLine('logistics')} onPatchLine={patchLine} onRemoveLine={removeLine}
-        />
-      </div>
+      {/* 5 — Логистика */}
+      <CostGroupSection
+        index={5} accent="slate" group="logistics"
+        title={t('cost.group.logistics')} hint={t('cost.group.logistics.hint')}
+        lines={linesIn('logistics')} ctx={ctx} subtotal={rollup.logistics}
+        currency={currency} catalog={catalog('logistics')}
+        onAdd={addLine('logistics')} onPatchLine={patchLine} onRemoveLine={removeLine}
+      />
 
       <CombinedSummary rollup={rollup} sheet={sheet} currency={currency} onPatchSheet={patchSheet} />
 

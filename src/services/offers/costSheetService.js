@@ -26,7 +26,6 @@ const STARTER_CATALOG_REFS = [
   'cc-mat-09', // Покритие - прахова боя
   'cc-mat-20', // Опаковки - кашон, кутия
   'cc-mat-25', // Енергия, горива (linked to net weight)
-  'cc-lab-01', // Директен труд
   'cc-op-03',  // Пресоване
   'cc-op-09',  // Заваряване ръчно
   'cc-bur-03', // режийни и подръжка
@@ -117,7 +116,7 @@ export function draftVersionFromCostSheet(db, input) {
   const lines = selectCostSheetLines(db, sheet.id)
   const rollup = computeCostRollup(sheet, lines)
   const netKg = sheetNetKg(lines)
-  const costBase = rollup.groups.material + rollup.groups.labor + rollup.groups.operation
+  const costBase = rollup.groups.material + rollup.groups.operation
 
   /** Cost-price + logistics lines, snapshotted as per-unit QuoteLineItems. */
   const snapshotLines = lines

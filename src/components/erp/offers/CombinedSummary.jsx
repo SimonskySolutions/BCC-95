@@ -39,9 +39,8 @@ export default function CombinedSummary({ rollup, sheet, currency, onPatchSheet 
       </header>
 
       {/* Per-group subtotals */}
-      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+      <div className="mb-3 grid grid-cols-3 gap-2">
         <Metric label={t('cost.group.material')} value={rollup.groups.material} currency={currency} />
-        <Metric label={t('cost.group.labor')} value={rollup.groups.labor} currency={currency} />
         <Metric label={t('cost.group.operation')} value={rollup.groups.operation} currency={currency} />
         <Metric label={t('cost.group.other')} value={rollup.groups.other} currency={currency} />
       </div>

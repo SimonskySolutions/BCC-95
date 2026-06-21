@@ -221,9 +221,8 @@ export function computeCostRollup(sheet, lines) {
     lines.filter((l) => l.group === group).reduce((sum, l) => sum + computeLineAmount(l, ctx), 0)
 
   const materials = sumGroup('material', { netKg })
-  const labour = sumGroup('labor', { netKg })
-  const machine = sumGroup('operation', { netKg })
-  const costBase = materials + labour + machine
+  const operations = sumGroup('operation', { netKg })
+  const costBase = materials + operations
   const burden = sumGroup('other', { netKg, costBase })
 
   const toolingTotal = lines
@@ -233,7 +232,7 @@ export function computeCostRollup(sheet, lines) {
   const toolingPerUnit =
     sheet?.toolingMode === 'amortise' && amortUnits > 0 ? toolingTotal / amortUnits : 0
 
-  const costPrice = materials + labour + machine + burden + toolingPerUnit
+  const costPrice = materials + operations + burden + toolingPerUnit
   const margin = Number(sheet?.marginPercent) || 0
   const profit = costPrice * (margin / 100)
   const exw = costPrice + profit
@@ -244,8 +243,7 @@ export function computeCostRollup(sheet, lines) {
     netKg: round4(netKg),
     groups: {
       material: round4(materials),
-      labor: round4(labour),
-      operation: round4(machine),
+      operation: round4(operations),
       other: round4(burden),
     },
     toolingTotal: round2(toolingTotal),

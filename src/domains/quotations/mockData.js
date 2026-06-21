@@ -301,9 +301,6 @@ export const costCatalog = [
   // Seeded from the «Номенклатури» workbook (материали / Операции /
   // инструменти / общи разходи / Логистика). Labels are the source
   // nomenclature; rates default to 0 for the engineer to fill in.
-  { id: "cc-lab-01", group: "labor", driver: "count", label: "Директен труд", defaults: { qty: 1 } },
-  { id: "cc-lab-02", group: "labor", driver: "count", label: "Труд - монтаж", defaults: { qty: 1 } },
-  { id: "cc-lab-03", group: "labor", driver: "count", label: "Труд - опаковане", defaults: { qty: 1 } },
   { id: "cc-mat-01", group: "material", driver: "weight", label: "Метали тръби", defaults: { scrapPct: 3, costPerKg: 0 } },
   { id: "cc-mat-02", group: "material", driver: "weight", label: "Метали ламарина", defaults: { scrapPct: 3, costPerKg: 0 } },
   { id: "cc-mat-03", group: "material", driver: "weight", label: "Метали тел", defaults: { scrapPct: 3, costPerKg: 0 } },

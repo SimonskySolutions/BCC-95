@@ -209,15 +209,14 @@ export const QUOTE_LINE_ITEM_KINDS = [
  */
 
 /**
- * The cost groups, each computed by its own engine. Maps 1:1 onto the legacy
- * QuoteLineItemKind so snapshots stay backward-compatible.
- * - `material`   — raw material, surface, consumables, fittings, packaging
- * - `labor`      — direct (human) labour
- * - `operation`  — machine time + energy
- * - `other`      — burden: overhead, marketing, financial, amortised tooling
- * - `tooling`    — one-off tooling ledger (billed separately or amortised)
- * - `logistics`  — freight that lifts EXW → DAP
- * @typedef {'material' | 'labor' | 'operation' | 'other' | 'tooling' | 'logistics'} CostGroup
+ * The five calculation parts, mirroring the «Номенклатури» workbook tabs. Each
+ * maps onto a QuoteLineItemKind so snapshots stay backward-compatible.
+ * - `material`   — материали: raw material, surface, consumables, fittings, packaging, energy
+ * - `operation`  — Операции: process operations (cutting, bending, welding, assembly…) incl. labour
+ * - `tooling`    — инструменти: one-off tooling ledger (billed separately or amortised)
+ * - `other`      — общи разходи: overhead, admin, marketing, depreciation, financial
+ * - `logistics`  — Логистика: freight that lifts EXW → DAP
+ * @typedef {'material' | 'operation' | 'tooling' | 'other' | 'logistics'} CostGroup
  */
 
 /**
@@ -282,11 +281,11 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {string} [note]
  */
 
-/** @type {CostGroup[]} */
-export const COST_GROUPS = ['material', 'labor', 'operation', 'other', 'tooling', 'logistics']
+/** The five parts, in display order (matches the «Номенклатури» tabs). @type {CostGroup[]} */
+export const COST_GROUPS = ['material', 'operation', 'tooling', 'other', 'logistics']
 
-/** Cost groups that sum into the product cost price (before profit). */
-export const COST_PRICE_GROUPS = ['material', 'labor', 'operation', 'other']
+/** Cost groups that sum into the product cost price (before profit & logistics). */
+export const COST_PRICE_GROUPS = ['material', 'operation', 'other']
 
 /** @type {CostDriver[]} */
 export const COST_DRIVERS = ['count', 'weight', 'surface', 'percent', 'allocation', 'pack']
@@ -294,10 +293,9 @@ export const COST_DRIVERS = ['count', 'weight', 'surface', 'percent', 'allocatio
 /** Which drivers each group is allowed to use in the UI. */
 export const GROUP_DRIVERS = {
   material: ['count', 'weight', 'surface'],
-  labor: ['count'],
   operation: ['count', 'weight'],
-  other: ['percent', 'allocation', 'count'],
   tooling: ['count'],
+  other: ['percent', 'allocation', 'count'],
   logistics: ['pack', 'count'],
 }
 
