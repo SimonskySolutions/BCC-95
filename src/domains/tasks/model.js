@@ -24,7 +24,11 @@
  * @property {PlannedQuarter} plannedQuarter
  * @property {import('../lifecycle/model.js').LifecyclePhaseId} phaseId
  * @property {TaskWorkstream} workstream
- * @property {string} [priority]
+ * @property {string} [priority]                — 'low' | 'medium' | 'high' | 'urgent'
+ * @property {string} [description]              — free-text details
+ * @property {string[]} [labels]                 — freeform tags
+ * @property {{ id: string; name: string; size?: number }[]} [attachments]   — file references
+ * @property {{ id: string; title: string; done: boolean }[]} [subtasks]     — checklist
  * @property {string} [completedAt]
  * @property {string} [quoteId]
  * @property {string} [orderId]
@@ -50,6 +54,9 @@
 
 /** @type {TaskStatus[]} */
 export const TASK_STATUSES = ['draft', 'in_progress', 'resolved', 'blocked']
+
+/** @type {string[]} */
+export const TASK_PRIORITIES = ['low', 'medium', 'high', 'urgent']
 
 /** @type {PlannedQuarter[]} */
 export const PLANNED_QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4']

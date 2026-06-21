@@ -8,14 +8,15 @@ import { selectOperationsByProduct } from '../domains/operations/selectors.js'
 import { selectPathLinkByProduct, selectPathTemplateById } from '../domains/manufacturing-path/selectors.js'
 import { buildTaskDefaultsFromOperation } from '../services/tasks/taskAutofillService.js'
 import { useLanguage } from '../i18n/useLanguage.js'
+import TaskDetailDrawer from '../components/erp/TaskDetailDrawer.jsx'
 
 const CURRENT_USER_ID = 'emp-1'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 const KANBAN_COLS = [
-  { id: 'todo',        labelKey: 'tasks.col.todo',       statuses: ['draft', 'blocked'], accent: 'border-slate-300', headerBg: 'bg-slate-100', countBg: 'bg-slate-200 text-slate-700' },
-  { id: 'in_progress', labelKey: 'tasks.col.inProgress',  statuses: ['in_progress'],      accent: 'border-blue-300',  headerBg: 'bg-blue-50',    countBg: 'bg-blue-100 text-blue-700' },
-  { id: 'done',        labelKey: 'tasks.col.done',         statuses: ['resolved'],          accent: 'border-emerald-300', headerBg: 'bg-emerald-50', countBg: 'bg-emerald-100 text-emerald-700' },
+  { id: 'todo',        labelKey: 'tasks.col.todo',       statuses: ['draft', 'blocked'], dropStatus: 'draft',       accent: 'border-slate-300', headerBg: 'bg-slate-100', countBg: 'bg-slate-200 text-slate-700' },
+  { id: 'in_progress', labelKey: 'tasks.col.inProgress',  statuses: ['in_progress'],      dropStatus: 'in_progress', accent: 'border-blue-300',  headerBg: 'bg-blue-50',    countBg: 'bg-blue-100 text-blue-700' },
+  { id: 'done',        labelKey: 'tasks.col.done',         statuses: ['resolved'],          dropStatus: 'resolved',    accent: 'border-emerald-300', headerBg: 'bg-emerald-50', countBg: 'bg-emerald-100 text-emerald-700' },
 ]
 
 const WORKSTREAM_PILL = {
@@ -46,21 +47,26 @@ function nextStatus(status) {
   return 'draft'
 }
 
-/** @param {{ task: import('../domains/tasks/model.js').Task; db: any; onStatusChange: (id: string, s: string) => void }} props */
-function TaskCard({ task, db, onStatusChange }) {
+/** @param {{ task: import('../domains/tasks/model.js').Task; db: any; onStatusChange: (id: string, s: string) => void; onOpen: (id: string) => void }} props */
+function TaskCard({ task, db, onStatusChange, onOpen }) {
   const product = db.products.find((p) => p.id === task.productId)
   const assignee = db.employees.find((e) => e.id === task.assigneeId)
   const due = relativeDate(task.dueDate)
   const isBlocked = task.status === 'blocked'
   const isOverdue = task.status !== 'resolved' && due?.overdue
   const pillStyle = WORKSTREAM_PILL[task.workstream] ?? 'bg-slate-100 text-slate-600'
+  const subtasks = task.subtasks ?? []
+  const attachments = task.attachments ?? []
 
   const AdvanceIcon = task.status === 'in_progress' ? Check : task.status === 'resolved' ? RotateCcw : ArrowRight
   const advanceTitle = task.status === 'in_progress' ? 'Mark done' : task.status === 'resolved' ? 'Reopen' : 'Start'
 
   return (
     <article
-      className={`group relative rounded-xl border bg-white p-3 shadow-sm transition hover:shadow-md ${
+      draggable
+      onDragStart={(e) => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move' }}
+      onClick={() => onOpen(task.id)}
+      className={`group relative cursor-pointer rounded-xl border bg-white p-3 shadow-sm transition hover:shadow-md active:cursor-grabbing ${
         isOverdue ? 'border-rose-200' : isBlocked ? 'border-amber-200' : 'border-slate-200'
       }`}
     >
@@ -72,7 +78,7 @@ function TaskCard({ task, db, onStatusChange }) {
         <button
           type="button"
           title={advanceTitle}
-          onClick={() => onStatusChange(task.id, nextStatus(task.status))}
+          onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, nextStatus(task.status)) }}
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 opacity-0 transition hover:border-slate-400 hover:text-slate-700 group-hover:opacity-100"
         >
           <AdvanceIcon size={11} />
@@ -92,6 +98,14 @@ function TaskCard({ task, db, onStatusChange }) {
         <span className="mt-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
           BLOCKED
         </span>
+      )}
+
+      {/* Meta chips: subtasks / attachments */}
+      {(subtasks.length > 0 || attachments.length > 0) && (
+        <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+          {subtasks.length > 0 && <span>☑ {subtasks.filter((s) => s.done).length}/{subtasks.length}</span>}
+          {attachments.length > 0 && <span>📎 {attachments.length}</span>}
+        </div>
       )}
 
       {/* Bottom row: assignee + due date */}
@@ -141,6 +155,7 @@ export default function MyTasksPage({ db }) {
   })
   const [formError, setFormError] = useState(/** @type {string | null} */ (null))
   const [autofillNote, setAutofillNote] = useState('')
+  const [openTaskId, setOpenTaskId] = useState(/** @type {string | null} */ (null))
 
   void version
 
@@ -511,14 +526,22 @@ export default function MyTasksPage({ db }) {
                   {col.tasks.length}
                 </span>
               </div>
-              <div className="space-y-2 p-3">
+              <div
+                className="min-h-[60px] space-y-2 p-3"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const id = e.dataTransfer.getData('text/plain')
+                  if (id) handleStatusChange(id, col.dropStatus)
+                }}
+              >
                 {col.tasks.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-xs text-slate-400">
                     No tasks
                   </p>
                 ) : (
                   col.tasks.map((task) => (
-                    <TaskCard key={task.id} task={task} db={db} onStatusChange={handleStatusChange} />
+                    <TaskCard key={task.id} task={task} db={db} onStatusChange={handleStatusChange} onOpen={setOpenTaskId} />
                   ))
                 )}
               </div>
@@ -526,6 +549,16 @@ export default function MyTasksPage({ db }) {
           ))}
         </div>
       </div>
+
+      {openTaskId ? (
+        <TaskDetailDrawer
+          db={db}
+          taskId={openTaskId}
+          actorId={CURRENT_USER_ID}
+          onClose={() => setOpenTaskId(null)}
+          onChange={() => setVersion((x) => x + 1)}
+        />
+      ) : null}
     </div>
   )
 }
