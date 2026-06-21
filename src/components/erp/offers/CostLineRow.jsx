@@ -54,6 +54,13 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
           placeholder={t('cost.line.describe')}
           onChange={(e) => onPatch({ description: e.target.value })}
         />
+        {/* Free-text clarification next to the item (бланка col. B) */}
+        <input
+          className="min-w-[120px] flex-1 rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-2 py-1.5 text-xs italic text-slate-600 focus:not-italic focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+          value={line.note ?? ''}
+          placeholder={t('cost.line.note')}
+          onChange={(e) => onPatch({ note: e.target.value })}
+        />
         {/* Driver selector (only if the group allows more than one) */}
         {drivers.length > 1 ? (
           <select

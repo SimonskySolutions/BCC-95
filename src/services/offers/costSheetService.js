@@ -124,7 +124,7 @@ export function draftVersionFromCostSheet(db, input) {
     .filter((l) => l.group !== 'tooling')
     .map((l) => ({
       kind: l.group,
-      description: l.description || l.group,
+      description: l.note ? `${l.description || l.group} — ${l.note}` : (l.description || l.group),
       quantity: 1,
       unitPrice: computeLineAmount(l, { netKg, costBase }),
     }))

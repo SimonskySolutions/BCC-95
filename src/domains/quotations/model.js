@@ -252,6 +252,7 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {CostGroup} group
  * @property {CostDriver} driver
  * @property {string} description
+ * @property {string} [note]                         — free-text clarification next to the item (бланка col. B)
  * @property {string} [catalogRefId]                 — catalog entry it was picked from
  * @property {number} [qty]                          — count/pack driver
  * @property {number} [unitCost]                     — count driver
