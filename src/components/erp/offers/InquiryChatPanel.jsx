@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import {
@@ -46,17 +46,59 @@ function MessageBody({ text }) {
  */
 export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
   const { t } = useLanguage()
+  const taRef = useRef(/** @type {HTMLTextAreaElement | null} */ (null))
   const [body, setBody] = useState('')
   const [tags, setTags] = useState(/** @type {string[]} */ ([]))
   const [tagInput, setTagInput] = useState('')
   const [filter, setFilter] = useState(/** @type {string | null} */ (null))
+  // @mention autocomplete: { start, query } describes the @token being typed.
+  const [mention, setMention] = useState(/** @type {{ start: number; query: string } | null} */ (null))
+  const [mentionIdx, setMentionIdx] = useState(0)
 
   const all = selectInquiryMessages(db, threadKey)
   const threadTags = selectInquiryThreadTags(db, threadKey)
   const messages = filter ? all.filter((m) => (m.tags ?? []).includes(filter)) : all
 
   const author = db.employees.find((e) => e.id === actorId) ?? db.employees.find((e) => e.canApproveQuotes) ?? db.employees[0]
-  const mentionables = (db.employees ?? []).map((e) => `@${(e.name ?? '').split(' ')[0]}`).filter(Boolean)
+
+  const mentionMatches = mention
+    ? (db.employees ?? [])
+        .filter((e) => (e.name ?? '').toLowerCase().includes(mention.query.toLowerCase()))
+        .slice(0, 6)
+    : []
+
+  /** Detect an in-progress @token immediately before the caret. */
+  function detectMention(value, caret) {
+    const upto = value.slice(0, caret)
+    const m = /(^|\s)@(\w*)$/.exec(upto)
+    if (!m) return null
+    return { start: caret - m[2].length - 1, query: m[2] }
+  }
+
+  function onBodyChange(e) {
+    const value = e.target.value
+    setBody(value)
+    const ctx = detectMention(value, e.target.selectionStart ?? value.length)
+    setMention(ctx)
+    setMentionIdx(0)
+  }
+
+  /** Replace the active @token with the chosen teammate's first name. */
+  function pickMention(emp) {
+    if (!mention) return
+    const handle = `@${(emp.name ?? '').split(' ')[0]} `
+    const after = body.slice(mention.start + 1 + mention.query.length)
+    const next = body.slice(0, mention.start) + handle + after
+    setBody(next)
+    setMention(null)
+    const caret = mention.start + handle.length
+    requestAnimationFrame(() => {
+      if (taRef.current) {
+        taRef.current.focus()
+        taRef.current.setSelectionRange(caret, caret)
+      }
+    })
+  }
 
   function addTag(value) {
     const tag = value.trim().toLowerCase().replace(/^#/, '')
@@ -149,14 +191,50 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
 
       {/* Composer */}
       <div className="mt-4 rounded-xl border border-slate-200 p-2">
-        <textarea
-          rows={2}
-          className="w-full resize-none rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-          value={body}
-          placeholder={t('chat.placeholder')}
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() } }}
-        />
+        <div className="relative">
+          <textarea
+            ref={taRef}
+            rows={2}
+            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+            value={body}
+            placeholder={t('chat.placeholder')}
+            onChange={onBodyChange}
+            onKeyDown={(e) => {
+              if (mention && mentionMatches.length) {
+                if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx((i) => (i + 1) % mentionMatches.length); return }
+                if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIdx((i) => (i - 1 + mentionMatches.length) % mentionMatches.length); return }
+                if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(mentionMatches[mentionIdx]); return }
+                if (e.key === 'Escape') { e.preventDefault(); setMention(null); return }
+              }
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() }
+            }}
+          />
+          {/* @mention autocomplete */}
+          {mention && mentionMatches.length ? (
+            <div className="absolute left-0 top-full z-20 mt-1 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+              <p className="border-b border-slate-100 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                {t('chat.mentionPick')}
+              </p>
+              {mentionMatches.map((emp, i) => (
+                <button
+                  key={emp.id}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); pickMention(emp) }}
+                  onMouseEnter={() => setMentionIdx(i)}
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs ${i === mentionIdx ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-600">
+                    {initials(emp.name)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium text-slate-800">{emp.name}</span>
+                    {emp.role ? <span className="block truncate text-[10px] text-slate-400">{emp.role}</span> : null}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
         {/* Selected tags */}
         {tags.length > 0 ? (
@@ -191,7 +269,7 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
               <Plus size={12} /> {t('chat.tag')}
             </button>
           </div>
-          <span className="hidden text-[10px] text-slate-400 sm:inline">{t('chat.mentionHint')} {mentionables.slice(0, 3).join(' ')}</span>
+          <span className="hidden text-[10px] text-slate-400 sm:inline">{t('chat.mentionHint')}</span>
           <button
             type="button"
             onClick={send}
