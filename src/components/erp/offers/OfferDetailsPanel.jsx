@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import { Plus, Trash2, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
+import { advanceOnEnter } from '../../../lib/forms.js'
 import {
   selectQuoteOfferLines,
   selectOfferLinesTotal,
@@ -173,7 +174,7 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onKeyDown={advanceOnEnter}>
       {/* Customer & terms */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <h4 className="mb-3 text-sm font-semibold text-slate-900">{t('offer.details.customerTerms')}</h4>
