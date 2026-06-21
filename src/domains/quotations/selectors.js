@@ -257,6 +257,27 @@ export function computeCostRollup(sheet, lines) {
 }
 
 /**
+ * Resolve each quantity break into EXW / DAP unit prices. Cost price is fixed;
+ * only the margin varies per tier (logistics is added after margin for DAP).
+ * @param {{ costPrice: number; logistics: number }} rollup
+ * @param {import('./model.js').QuantityBreak[]} [breaks]
+ */
+export function priceBreakRows(rollup, breaks = []) {
+  return [...breaks]
+    .sort((a, b) => (Number(a.qty) || 0) - (Number(b.qty) || 0))
+    .map((b) => {
+      const exw = rollup.costPrice * (1 + (Number(b.marginPercent) || 0) / 100)
+      return {
+        id: b.id,
+        qty: Number(b.qty) || 0,
+        marginPercent: Number(b.marginPercent) || 0,
+        exw: round4(exw),
+        dap: round4(exw + rollup.logistics),
+      }
+    })
+}
+
+/**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {string} quoteId
  */

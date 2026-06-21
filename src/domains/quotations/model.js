@@ -240,8 +240,18 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {number} [annualQty]                    — informational (Pcs/year)
  * @property {'separate' | 'amortise'} toolingMode   — tooling billed separately or amortised into burden
  * @property {number} [amortisationUnits]            — units the tooling cost is spread over (editable)
+ * @property {QuantityBreak[]} [priceBreaks]         — per-quantity margin tiers (100/200/500…)
  * @property {string} [notes]                        — free-text note for the whole calculation
  * @property {string} updatedAt
+ */
+
+/**
+ * A quantity tier with its own profit margin — lets the same calculation be
+ * quoted at different prices for 100 / 200 / 500 pcs, etc.
+ * @typedef {Object} QuantityBreak
+ * @property {string} id
+ * @property {number} qty
+ * @property {number} marginPercent
  */
 
 /**

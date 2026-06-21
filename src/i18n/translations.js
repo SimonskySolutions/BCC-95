@@ -1285,7 +1285,14 @@ const en = {
   'cost.combined.profit': 'Profit',
   'cost.combined.exw': 'EXW price',
   'cost.combined.dap': 'DAP price',
-  'cost.combined.formula': 'Cost price = materials + labour + machine + burden. EXW = cost price + profit. DAP = EXW + logistics.',
+  'cost.combined.formula': 'Cost price = materials + operations + general costs. EXW = cost price + profit. DAP = EXW + logistics.',
+  'cost.breaks.title': 'Quantity price breaks',
+  'cost.breaks.hint': 'Quote different margins per quantity (100 / 200 / 500…)',
+  'cost.breaks.qty': 'Quantity',
+  'cost.breaks.margin': 'Margin',
+  'cost.breaks.add': 'Add tier',
+  'cost.breaks.remove': 'Remove tier',
+  'cost.breaks.empty': 'No quantity tiers — the single profit % above applies.',
 
   // Offer — edit after sent
   'offer.sent.editHint': 'This offer was sent. You can revise it as a new version — the sent one is kept as history.',
@@ -2522,7 +2529,14 @@ const bg = {
   'cost.combined.profit': 'Печалба',
   'cost.combined.exw': 'Цена EXW',
   'cost.combined.dap': 'Цена DAP',
-  'cost.combined.formula': 'Себестойност = материали + труд + машини + общи разходи. EXW = себестойност + печалба. DAP = EXW + логистика.',
+  'cost.combined.formula': 'Себестойност = материали + операции + общи разходи. EXW = себестойност + печалба. DAP = EXW + логистика.',
+  'cost.breaks.title': 'Ценови нива по количество',
+  'cost.breaks.hint': 'Различна надценка според количеството (100 / 200 / 500…)',
+  'cost.breaks.qty': 'Количество',
+  'cost.breaks.margin': 'Надценка',
+  'cost.breaks.add': 'Добави ниво',
+  'cost.breaks.remove': 'Премахни нивото',
+  'cost.breaks.empty': 'Няма нива — прилага се единичната надценка по-горе.',
 
   // Оферта — редакция след изпращане
   'offer.sent.editHint': 'Тази оферта е изпратена. Можете да я редактирате като нова версия — изпратената се запазва като история.',
