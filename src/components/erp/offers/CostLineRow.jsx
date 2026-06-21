@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trash2, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
@@ -88,6 +88,17 @@ function NumField({ label, value, onChange, suffix }) {
 export default function CostLineRow({ line, amount, currency, catalog = [], onPatch, onRemove, collapsed = false, onToggleCollapse }) {
   const { t } = useLanguage()
   const drivers = GROUP_DRIVERS[line.group] ?? ['count']
+  const driverRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const focusOnExpand = useRef(false)
+
+  // After Enter expands a collapsed line, jump into its first driver field.
+  useEffect(() => {
+    if (!collapsed && focusOnExpand.current) {
+      focusOnExpand.current = false
+      const first = /** @type {HTMLElement & { select?: () => void } | null} */ (driverRef.current?.querySelector('input, select'))
+      if (first) { first.focus(); first.select?.() }
+    }
+  }, [collapsed])
 
   // Pick the catalog entry whose label matches → apply its driver + defaults.
   function onDescription(value) {
@@ -115,6 +126,16 @@ export default function CostLineRow({ line, amount, currency, catalog = [], onPa
           value={line.description}
           placeholder={t('cost.line.describe')}
           onChange={(e) => onDescription(e.target.value)}
+          onKeyDown={(e) => {
+            // On a collapsed line, Enter expands it and steps into its own fields
+            // instead of jumping to the next record.
+            if (e.key === 'Enter' && collapsed) {
+              e.preventDefault()
+              e.stopPropagation()
+              focusOnExpand.current = true
+              onToggleCollapse?.()
+            }
+          }}
         />
         {catalog.length ? (
           <datalist id={`cat-${line.id}`}>
@@ -165,7 +186,7 @@ export default function CostLineRow({ line, amount, currency, catalog = [], onPa
 
       {/* Driver-specific inputs — hidden when the line is collapsed */}
       {collapsed ? null : (
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+      <div ref={driverRef} className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
         {line.driver === 'count' ? (
           <>
             <NumField label={t('cost.f.qty')} value={line.qty} onChange={(n) => onPatch({ qty: n })} />
