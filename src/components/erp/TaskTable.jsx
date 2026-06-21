@@ -15,9 +15,10 @@ const TODAY = new Date().toISOString().slice(0, 10)
  *   db: import('../../data/mockDatabase.js').MockDatabase
  *   tasks: import('../../domains/tasks/model.js').Task[]
  *   showPlanningColumns?: boolean
+ *   onOpenTask?: (taskId: string) => void
  * }} props
  */
-export default function TaskTable({ db, tasks, showPlanningColumns = false }) {
+export default function TaskTable({ db, tasks, showPlanningColumns = false, onOpenTask }) {
   const { t } = useLanguage()
 
   if (tasks.length === 0) {
@@ -53,7 +54,11 @@ export default function TaskTable({ db, tasks, showPlanningColumns = false }) {
             const isOverdue = taskRow.status !== 'resolved' && taskRow.dueDate < TODAY
             const statusStyle = STATUS_STYLES[taskRow.status] ?? 'bg-slate-100 text-slate-700'
             return (
-              <tr key={taskRow.id} className={`hover:bg-slate-50/80 ${isOverdue ? 'bg-rose-50/40' : ''}`}>
+              <tr
+                key={taskRow.id}
+                onClick={onOpenTask ? () => onOpenTask(taskRow.id) : undefined}
+                className={`hover:bg-slate-50/80 ${onOpenTask ? 'cursor-pointer' : ''} ${isOverdue ? 'bg-rose-50/40' : ''}`}
+              >
                 <td className="px-4 py-3 font-medium text-slate-900">
                   <span>{taskRow.title}</span>
                   {isOverdue && (

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useDb } from '../../data/useDb.js'
 import { ChevronRight } from 'lucide-react'
 import TaskTable from './TaskTable.jsx'
+import TaskDetailDrawer from './TaskDetailDrawer.jsx'
 import OperationList from './OperationList.jsx'
 import BomEditor from './BomEditor.jsx'
 import InquiryIntakeForm from './offers/InquiryIntakeForm.jsx'
@@ -65,6 +66,7 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
   const { commit } = useDb()
   const forceRefresh = () => commit()
   const [transitionMsg, setTransitionMsg] = useState(/** @type {string | null} */ (null))
+  const [openTaskId, setOpenTaskId] = useState(/** @type {string | null} */ (null))
 
   const productId = bundle?.product?.id ?? null
 
@@ -356,7 +358,7 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
       {tab === 'tasks' && (
         <section>
           <h3 className="mb-2 text-sm font-semibold text-slate-700">{t('pws.tasks')}</h3>
-          <TaskTable db={db} tasks={tasks} />
+          <TaskTable db={db} tasks={tasks} onOpenTask={setOpenTaskId} />
         </section>
       )}
 
@@ -368,6 +370,16 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
           </div>
         </section>
       )}
+
+      {openTaskId ? (
+        <TaskDetailDrawer
+          db={db}
+          taskId={openTaskId}
+          actorId={db.employees[0]?.id}
+          onClose={() => setOpenTaskId(null)}
+          onChange={forceRefresh}
+        />
+      ) : null}
     </div>
   )
 }
