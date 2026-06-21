@@ -206,7 +206,8 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
                 if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(mentionMatches[mentionIdx]); return }
                 if (e.key === 'Escape') { e.preventDefault(); setMention(null); return }
               }
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() }
+              // Enter sends; Shift+Enter inserts a new line.
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
             }}
           />
           {/* @mention autocomplete */}
