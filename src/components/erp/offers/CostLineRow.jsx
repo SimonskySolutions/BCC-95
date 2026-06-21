@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { Trash2, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
 
@@ -37,15 +37,26 @@ function NumField({ label, value, onChange, step = 'any', suffix }) {
  *   currency: string
  *   onPatch: (patch: Partial<import('../../../domains/quotations/model.js').CostSheetLine>) => void
  *   onRemove: () => void
+ *   collapsed?: boolean
+ *   onToggleCollapse?: () => void
  * }} props
  */
-export default function CostLineRow({ line, amount, currency, onPatch, onRemove }) {
+export default function CostLineRow({ line, amount, currency, onPatch, onRemove, collapsed = false, onToggleCollapse }) {
   const { t } = useLanguage()
   const drivers = GROUP_DRIVERS[line.group] ?? ['count']
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 transition-colors hover:border-slate-300">
       <div className="flex flex-wrap items-center gap-2">
+        {/* Collapse toggle */}
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          title={collapsed ? t('cost.line.expand') : t('cost.line.collapse')}
+        >
+          <ChevronDown size={14} className={`transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`} />
+        </button>
         {/* Description */}
         <input
           className="min-w-[140px] flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -54,14 +65,18 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
           onChange={(e) => onPatch({ description: e.target.value })}
         />
         {/* Free-text clarification next to the item (бланка col. B) */}
-        <input
-          className="min-w-[120px] flex-1 rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-2 py-1 text-xs italic text-slate-600 focus:not-italic focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-          value={line.note ?? ''}
-          placeholder={t('cost.line.note')}
-          onChange={(e) => onPatch({ note: e.target.value })}
-        />
+        {collapsed ? (
+          line.note ? <span className="min-w-0 flex-1 truncate text-xs italic text-slate-400">{line.note}</span> : <span className="flex-1" />
+        ) : (
+          <input
+            className="min-w-[120px] flex-1 rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-2 py-1 text-xs italic text-slate-600 focus:not-italic focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+            value={line.note ?? ''}
+            placeholder={t('cost.line.note')}
+            onChange={(e) => onPatch({ note: e.target.value })}
+          />
+        )}
         {/* Driver selector (only if the group allows more than one) */}
-        {drivers.length > 1 ? (
+        {!collapsed && drivers.length > 1 ? (
           <select
             className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs"
             value={line.driver}
@@ -91,7 +106,8 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
         </div>
       </div>
 
-      {/* Driver-specific inputs */}
+      {/* Driver-specific inputs — hidden when the line is collapsed */}
+      {collapsed ? null : (
       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
         {line.driver === 'count' ? (
           <>
@@ -143,6 +159,7 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
           </>
         ) : null}
       </div>
+      )}
     </div>
   )
 }

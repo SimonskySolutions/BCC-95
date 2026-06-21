@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { computeLineAmount } from '../../../domains/quotations/selectors.js'
@@ -40,23 +40,47 @@ export default function CostGroupSection({
 }) {
   const { t } = useLanguage()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [open, setOpen] = useState(true)
+  // Which lines are expanded. Seeded lines start collapsed (overview); a newly
+  // added line auto-expands so it's ready to edit.
+  const [expanded, setExpanded] = useState(() => new Set())
+  const prevIds = useRef(/** @type {string[] | null} */ (null))
+
+  useEffect(() => {
+    const ids = lines.map((l) => l.id)
+    if (prevIds.current) {
+      const added = ids.filter((id) => !prevIds.current.includes(id))
+      if (added.length) setExpanded((s) => { const n = new Set(s); added.forEach((id) => n.add(id)); return n })
+    }
+    prevIds.current = ids
+  }, [lines])
+
+  const toggleLine = (id) =>
+    setExpanded((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-2.5 shadow-card">
-      <header className="mb-1.5 flex items-center gap-2.5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2.5 rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-slate-50"
+      >
         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${ACCENTS[accent]}`}>
           {index}
         </span>
         <div className="min-w-0 flex-1">
           <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
-          {hint ? <p className="truncate text-[11px] text-slate-400">{hint}</p> : null}
+          {hint && open ? <p className="truncate text-[11px] text-slate-400">{hint}</p> : null}
         </div>
         <div className="text-right">
           <span className="block text-[10px] font-medium uppercase tracking-wide text-slate-400">{t('cost.group.subtotal')}</span>
           <span className="text-sm font-bold text-slate-800">{subtotal.toFixed(4)} <span className="text-[10px] font-normal text-slate-400">{currency}</span></span>
         </div>
-      </header>
+        <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
 
+      {!open ? null : (
+      <div className="mt-1.5">
       <div className="space-y-1.5">
         {lines.length === 0 ? (
           <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-center text-[11px] text-slate-400">
@@ -69,6 +93,8 @@ export default function CostGroupSection({
             line={line}
             amount={computeLineAmount(line, ctx)}
             currency={currency}
+            collapsed={!expanded.has(line.id)}
+            onToggleCollapse={() => toggleLine(line.id)}
             onPatch={(patch) => onPatchLine(line.id, patch)}
             onRemove={() => onRemoveLine(line.id)}
           />
@@ -116,6 +142,8 @@ export default function CostGroupSection({
           </div>
         ) : null}
       </div>
+      </div>
+      )}
     </div>
   )
 }

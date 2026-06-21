@@ -1226,6 +1226,8 @@ const en = {
   'cost.group.logistics.hint': 'Freight that lifts EXW → DAP',
   'cost.line.describe': 'Describe this line…',
   'cost.line.note': 'Note / clarification…',
+  'cost.line.expand': 'Expand',
+  'cost.line.collapse': 'Collapse',
 
   // Inquiry discussion thread
   'chat.title': 'Discussion',
@@ -2461,6 +2463,8 @@ const bg = {
   'cost.group.logistics.hint': 'Транспорт, който превръща EXW → DAP',
   'cost.line.describe': 'Опишете този ред…',
   'cost.line.note': 'Пояснение / забележка…',
+  'cost.line.expand': 'Разгъни',
+  'cost.line.collapse': 'Свий',
 
   // Дискусия по запитване
   'chat.title': 'Дискусия',
