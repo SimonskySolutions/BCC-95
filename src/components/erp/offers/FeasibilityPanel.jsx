@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { FEASIBILITY_RESULTS } from '../../../domains/inquiries/model.js'
 import { recordFeasibility } from '../../../services/offers/feasibilityService.js'
+import { updateInquiry } from '../../../services/offers/inquiryIntakeService.js'
+import AttachmentEditor from './AttachmentEditor.jsx'
 
 /**
  * @param {{
@@ -73,6 +75,16 @@ export default function FeasibilityPanel({ db, inquiry, actorId, onChange }) {
             onChange={(e) => setNote(e.target.value)}
           />
         </label>
+      </div>
+
+      {/* Attachments — drawings, specs, etc. (always editable on the inquiry) */}
+      <div className="border-t border-slate-100 pt-3">
+        <AttachmentEditor
+          attachments={inquiry.attachments ?? []}
+          onChange={(next) => { updateInquiry(db, inquiry.id, { attachments: next, actorId }); onChange?.() }}
+          noAttachments={inquiry.noAttachments}
+          onToggleNoAttachments={(v) => { updateInquiry(db, inquiry.id, { noAttachments: v, actorId }); onChange?.() }}
+        />
       </div>
       <div className="flex items-center justify-between">
         {flash ? (
