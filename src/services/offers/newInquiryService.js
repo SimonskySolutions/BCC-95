@@ -1,7 +1,36 @@
 import { appendProduct } from '../../domains/products/mutations.js'
 import { appendClient, findClientByName } from '../../domains/crm/mutations.js'
 import { appendAuditEntry } from '../../domains/audit/mutations.js'
-import { registerInquiry } from './inquiryIntakeService.js'
+import { patchInquiry } from '../../domains/inquiries/mutations.js'
+import { registerInquiry, ensureQuotationGateTasks } from './inquiryIntakeService.js'
+
+/** Create a product record (+ lifecycle state + audit) in the concept phase. */
+function createConceptProduct(db, { name, description, clientId, actorId }) {
+  const product = appendProduct(db, {
+    name: name.trim(),
+    description,
+    customerId: clientId,
+    status: 'draft',
+    lifecyclePhaseId: 'concept',
+  })
+  db.productLifecycleStates.push({
+    productId: product.id,
+    phaseId: /** @type {import('../../domains/lifecycle/model.js').LifecyclePhaseId} */ ('concept'),
+    completionPercent: 0,
+    blocked: false,
+    pendingApprovalStages: [],
+    completedGates: [],
+  })
+  appendAuditEntry(db, {
+    productId: product.id,
+    entityType: 'product',
+    entityId: product.id,
+    action: 'product.created',
+    actorId,
+    meta: { customerId: clientId, sku: product.sku },
+  })
+  return product
+}
 
 /**
  * @typedef {Object} NewInquiryClientInput
@@ -93,30 +122,11 @@ export function startNewInquiry(db, input) {
       })
   }
 
-  const product = appendProduct(db, {
-    name: input.product.name.trim(),
+  const product = createConceptProduct(db, {
+    name: input.product.name,
     description: input.product.description,
-    customerId: client.id,
-    status: 'draft',
-    lifecyclePhaseId: 'concept',
-  })
-
-  db.productLifecycleStates.push({
-    productId: product.id,
-    phaseId: /** @type {import('../../domains/lifecycle/model.js').LifecyclePhaseId} */ ('concept'),
-    completionPercent: 0,
-    blocked: false,
-    pendingApprovalStages: [],
-    completedGates: [],
-  })
-
-  appendAuditEntry(db, {
-    productId: product.id,
-    entityType: 'product',
-    entityId: product.id,
-    action: 'product.created',
+    clientId: client.id,
     actorId: input.actorId,
-    meta: { customerId: client.id, sku: product.sku },
   })
 
   const inquiryResult = registerInquiry(db, {
@@ -137,6 +147,20 @@ export function startNewInquiry(db, input) {
   })
   if (!inquiryResult?.ok) {
     return { ok: /** @type {const} */ (false), code: 'inquiry_failed' }
+  }
+
+  // Each additional product becomes its own real product (inventory) with its
+  // own VSM gate tasks; record their product ids on the inquiry.
+  const extras = input.inquiry.extraProducts ?? []
+  if (extras.length) {
+    const withIds = extras
+      .filter((ep) => ep.name?.trim())
+      .map((ep) => {
+        const p = createConceptProduct(db, { name: ep.name, description: ep.description, clientId: client.id, actorId: input.actorId })
+        ensureQuotationGateTasks(db, p.id, input.actorId)
+        return { ...ep, productId: p.id }
+      })
+    patchInquiry(db, inquiryResult.inquiry.id, { extraProducts: withIds })
   }
 
   return {

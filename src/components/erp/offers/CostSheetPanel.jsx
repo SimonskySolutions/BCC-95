@@ -87,6 +87,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
       if (!ep.name || existing.some((s) => (s.productLabel || '') === ep.name)) continue
       addProductCostSheet(db, {
         quoteId: q.id,
+        productId: ep.productId,
         productLabel: ep.name,
         productDescription: ep.description,
         quantities: ep.quantities,

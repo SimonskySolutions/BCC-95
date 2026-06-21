@@ -15,23 +15,28 @@ import { mandatoryQuotationTaskKeysForProduct } from '../quotations/quotationAut
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {import('../../domains/inquiries/mutations.js').InquiryCreateInput & { actorId?: string }} input
  */
-export function registerInquiry(db, input) {
-  const inquiry = createInquiryDraft(input)
-  appendInquiry(db, inquiry)
-
-  const [techKey, costKey] = mandatoryQuotationTaskKeysForProduct(input.productId)
+/**
+ * Create the two mandatory VSM gate tasks (technical review + costing) for a
+ * product, if they don't already exist. Used per product so each product in a
+ * multi-product inquiry gets its own gate tasks.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} productId
+ * @param {string} [actorId]
+ */
+export function ensureQuotationGateTasks(db, productId, actorId) {
+  const [techKey, costKey] = mandatoryQuotationTaskKeysForProduct(productId)
   const today = new Date().toISOString().slice(0, 10)
   const addIfMissing = (taskKey, title, assigneeId) => {
     const exists = db.tasks.some(
-      (t) => t.productId === input.productId && t.taskKey === taskKey && t.workstream === 'quotation',
+      (t) => t.productId === productId && t.taskKey === taskKey && t.workstream === 'quotation',
     )
     if (exists) return
     appendTask(db, {
-      id: `auto-${taskKey}-${Date.now()}`,
+      id: `auto-${taskKey}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       taskKey,
       title,
       assigneeId,
-      productId: input.productId,
+      productId,
       dueDate: today,
       status: 'draft',
       plannedYear: new Date().getFullYear(),
@@ -47,6 +52,13 @@ export function registerInquiry(db, input) {
   const planner = db.employees.find((e) => /plan|планов/i.test(e.role))
   addIfMissing(techKey, 'Technical review (VSM 1.3)', engineer?.id ?? db.employees[0]?.id)
   addIfMissing(costKey, 'Costing rollup (VSM 1.4)', planner?.id ?? db.employees[0]?.id)
+}
+
+export function registerInquiry(db, input) {
+  const inquiry = createInquiryDraft(input)
+  appendInquiry(db, inquiry)
+
+  ensureQuotationGateTasks(db, input.productId, input.actorId)
 
   appendAuditEntry(db, {
     productId: input.productId,
