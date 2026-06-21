@@ -3,26 +3,25 @@ import { useLanguage } from '../../../i18n/useLanguage.js'
 import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
 
 const fieldCls =
-  'w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-right text-xs focus:outline-none focus:ring-2 focus:ring-blue-300'
+  'w-full rounded-md border border-slate-200 bg-white px-1.5 py-1 text-right text-xs focus:outline-none focus:ring-2 focus:ring-blue-300'
 
 /**
- * One labelled numeric input.
+ * One compact labelled numeric input — label sits inline before the field to
+ * keep rows short.
  * @param {{ label: string; value: any; onChange: (n: number) => void; step?: string; suffix?: string }} props
  */
 function NumField({ label, value, onChange, step = 'any', suffix }) {
   return (
-    <label className="block">
-      <span className="mb-0.5 block text-[10px] font-medium text-slate-400">{label}</span>
-      <div className="flex items-center gap-1">
-        <input
-          type="number"
-          step={step}
-          className={fieldCls}
-          value={value ?? ''}
-          onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-        />
-        {suffix ? <span className="text-[10px] text-slate-400">{suffix}</span> : null}
-      </div>
+    <label className="flex items-center gap-1.5">
+      <span className="whitespace-nowrap text-[10px] font-medium text-slate-400">{label}</span>
+      <input
+        type="number"
+        step={step}
+        className={`${fieldCls} w-20`}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+      />
+      {suffix ? <span className="-ml-0.5 text-[10px] text-slate-400">{suffix}</span> : null}
     </label>
   )
 }
@@ -45,18 +44,18 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
   const drivers = GROUP_DRIVERS[line.group] ?? ['count']
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-2.5">
-      <div className="flex flex-wrap items-start gap-2">
+    <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 transition-colors hover:border-slate-300">
+      <div className="flex flex-wrap items-center gap-2">
         {/* Description */}
         <input
-          className="min-w-[140px] flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="min-w-[140px] flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-300"
           value={line.description}
           placeholder={t('cost.line.describe')}
           onChange={(e) => onPatch({ description: e.target.value })}
         />
         {/* Free-text clarification next to the item (бланка col. B) */}
         <input
-          className="min-w-[120px] flex-1 rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-2 py-1.5 text-xs italic text-slate-600 focus:not-italic focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="min-w-[120px] flex-1 rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-2 py-1 text-xs italic text-slate-600 focus:not-italic focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
           value={line.note ?? ''}
           placeholder={t('cost.line.note')}
           onChange={(e) => onPatch({ note: e.target.value })}
@@ -64,7 +63,7 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
         {/* Driver selector (only if the group allows more than one) */}
         {drivers.length > 1 ? (
           <select
-            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs"
             value={line.driver}
             onChange={(e) => onPatch({ driver: e.target.value })}
             title={t('cost.line.driver')}
@@ -78,16 +77,13 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
         ) : null}
         {/* Amount + remove */}
         <div className="ml-auto flex items-center gap-2">
-          <div className="text-right">
-            <span className="block text-[10px] font-medium text-slate-400">{t('cost.line.amount')}</span>
-            <span className="text-sm font-semibold text-slate-800">
-              {amount.toFixed(4)} <span className="text-[10px] font-normal text-slate-400">{currency}</span>
-            </span>
-          </div>
+          <span className="text-sm font-semibold text-slate-800">
+            {amount.toFixed(4)} <span className="text-[10px] font-normal text-slate-400">{currency}</span>
+          </span>
           <button
             type="button"
             onClick={onRemove}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-300 hover:bg-rose-50 hover:text-rose-600"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 hover:bg-rose-50 hover:text-rose-600"
             title={t('cost.line.remove')}
           >
             <Trash2 size={13} />
@@ -96,7 +92,7 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
       </div>
 
       {/* Driver-specific inputs */}
-      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
         {line.driver === 'count' ? (
           <>
             <NumField label={t('cost.f.qty')} value={line.qty} onChange={(n) => onPatch({ qty: n })} />
@@ -107,9 +103,9 @@ export default function CostLineRow({ line, amount, currency, onPatch, onRemove 
         {line.driver === 'weight' ? (
           line.linkNetKg ? (
             <>
-              <div className="col-span-2 flex items-center gap-1.5 self-end rounded-lg bg-blue-50 px-2 py-1.5 text-[10px] font-medium text-blue-700">
+              <span className="flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700">
                 <span aria-hidden="true">↳</span> {t('cost.f.linkedNetKg')}
-              </div>
+              </span>
               <NumField label={`${t('cost.f.costPerKg')} (${currency})`} value={line.costPerKg} onChange={(n) => onPatch({ costPerKg: n })} />
             </>
           ) : (

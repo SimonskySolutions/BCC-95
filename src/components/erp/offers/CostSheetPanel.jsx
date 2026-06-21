@@ -117,7 +117,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">
           {t('cost.alwaysEditable')}

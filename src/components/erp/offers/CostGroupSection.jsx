@@ -42,8 +42,8 @@ export default function CostGroupSection({
   const [pickerOpen, setPickerOpen] = useState(false)
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-card">
-      <header className="mb-2 flex items-center gap-2.5">
+    <div className="rounded-2xl border border-slate-200 bg-white p-2.5 shadow-card">
+      <header className="mb-1.5 flex items-center gap-2.5">
         <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${ACCENTS[accent]}`}>
           {index}
         </span>
@@ -57,9 +57,9 @@ export default function CostGroupSection({
         </div>
       </header>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {lines.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-center text-[11px] text-slate-400">
+          <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-center text-[11px] text-slate-400">
             {t('cost.group.empty')}
           </p>
         ) : null}
