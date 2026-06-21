@@ -98,12 +98,12 @@ export default function OfferPhotos({ db, versionId, isLocked, onChange }) {
                   </button>
                 ) : null}
               </div>
-              <figcaption className="bg-slate-50 px-1.5 py-1">
+              <figcaption className="bg-slate-50 p-1.5">
                 {isLocked ? (
-                  <span className="block truncate text-[10px] text-slate-500">{p.caption || p.name}</span>
+                  <span className="block truncate text-[11px] text-slate-600">{p.caption || p.name}</span>
                 ) : (
                   <input
-                    className="w-full bg-transparent text-[10px] text-slate-600 placeholder-slate-400 focus:outline-none"
+                    className="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
                     value={p.caption ?? ''}
                     placeholder={t('offer.photos.caption')}
                     onChange={(e) => { patchQuoteDocument(db, p.id, { caption: e.target.value }); onChange?.() }}
