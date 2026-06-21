@@ -45,6 +45,7 @@ export default function OfferPhotos({ db, versionId, isLocked, onChange }) {
   const { t } = useLanguage()
   const fileRef = useRef(/** @type {HTMLInputElement | null} */ (null))
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState(/** @type {{ storageRef: string; name: string; caption?: string } | null} */ (null))
   const photos = selectQuoteDocuments(db, versionId).filter((d) => d.kind === 'photo')
 
   async function onPick(e) {
@@ -82,11 +83,16 @@ export default function OfferPhotos({ db, versionId, isLocked, onChange }) {
       {photos.length === 0 ? (
         <p className="text-xs text-slate-400">{t('offer.photos.empty')}</p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {photos.map((p) => (
             <figure key={p.id} className="group relative overflow-hidden rounded-lg border border-slate-200">
               <div className="relative">
-                <img src={p.storageRef} alt={p.name} className="h-24 w-full object-cover" />
+                <img
+                  src={p.storageRef}
+                  alt={p.name}
+                  onClick={() => setPreview(p)}
+                  className="h-48 w-full cursor-zoom-in object-cover transition hover:opacity-90"
+                />
                 {!isLocked ? (
                   <button
                     type="button"
@@ -115,6 +121,19 @@ export default function OfferPhotos({ db, versionId, isLocked, onChange }) {
         </div>
       )}
       <p className="mt-2 text-[10px] text-slate-400">{t('offer.photos.hint')}</p>
+
+      {/* Full-size lightbox */}
+      {preview ? (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-slate-900/80 p-6"
+          onClick={() => setPreview(null)}
+        >
+          <img src={preview.storageRef} alt={preview.name} className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain shadow-2xl" />
+          {preview.caption || preview.name ? (
+            <p className="max-w-[90vw] text-center text-sm text-white">{preview.caption || preview.name}</p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

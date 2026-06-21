@@ -6,7 +6,6 @@ import { generateOfferMatrix } from '../../../services/offers/index.js'
 import OfferPhotos from './OfferPhotos.jsx'
 import {
   selectQuoteOfferLines,
-  selectOfferLinesTotal,
   offerLineNetTotal,
   selectTermsOfDelivery,
   selectTermsOfPayment,
@@ -134,7 +133,6 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
   const client = db.clients.find((c) => c.id === clientId)
   const products = db.products ?? []
   const lines = selectQuoteOfferLines(db, version.id)
-  const total = selectOfferLinesTotal(db, version.id)
   const currency = version.currency ?? 'EUR'
   const termsDelivery = selectTermsOfDelivery(db)
   const termsPayment = selectTermsOfPayment(db)
@@ -376,9 +374,7 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                 {t('offer.details.generate')}
               </button>
             ) : null}
-            <span className="text-xs font-medium text-slate-500">
-              {t('offer.details.total')}: <span className="font-bold text-slate-800">{total.toFixed(2)} {currency}</span>
-            </span>
+            <span className="text-xs font-medium text-slate-400">{t('offer.details.perQty')}</span>
           </div>
         </div>
 

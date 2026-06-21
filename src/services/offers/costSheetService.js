@@ -220,6 +220,14 @@ export function generateOfferMatrix(db, versionId) {
 
   const product = quote ? selectProductById(db, quote.productId) : undefined
   ensureOfferNo(db, version.quoteId)
+
+  // Default the offer validity to 30 days out if not set yet.
+  if (!version.validUntil) {
+    const base = new Date(version.orderDate || version.createdAt || Date.now())
+    base.setDate(base.getDate() + 30)
+    patchQuoteVersion(db, versionId, { validUntil: base.toISOString().slice(0, 10) })
+  }
+
   clearQuoteOfferLines(db, versionId)
   rows.forEach((r, i) =>
     appendQuoteOfferLine(db, {
