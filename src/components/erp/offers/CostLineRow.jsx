@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Trash2, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
@@ -5,21 +6,64 @@ import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
 const fieldCls =
   'w-full rounded-md border border-slate-200 bg-white px-1.5 py-1 text-right text-xs focus:outline-none focus:ring-2 focus:ring-blue-300'
 
+/** Drop leading zeros from an integer string, keeping a single 0. */
+function stripLeadingZeros(digits) {
+  if (digits === '') return ''
+  const s = digits.replace(/^0+(?=\d)/, '')
+  return s === '' ? '0' : s
+}
+
 /**
- * One compact labelled numeric input — label sits inline before the field to
- * keep rows short.
- * @param {{ label: string; value: any; onChange: (n: number) => void; step?: string; suffix?: string }} props
+ * Sanitise a numeric string: digits + one decimal separator (comma or dot),
+ * no leading zeros except a single `0` before the separator. Preserves the
+ * separator the user typed so "0,5" stays "0,5".
  */
-function NumField({ label, value, onChange, step = 'any', suffix }) {
+function sanitizeDecimal(raw) {
+  let s = String(raw).replace(/[^\d.,]/g, '')
+  const sepIdx = s.search(/[.,]/)
+  if (sepIdx >= 0) {
+    const sep = s[sepIdx]
+    const intPart = s.slice(0, sepIdx).replace(/[.,]/g, '')
+    const decPart = s.slice(sepIdx + 1).replace(/[.,]/g, '')
+    return `${stripLeadingZeros(intPart)}${sep}${decPart}`
+  }
+  return stripLeadingZeros(s)
+}
+
+const parseDecimal = (s) => {
+  const n = Number(String(s).replace(',', '.'))
+  return Number.isFinite(n) ? n : 0
+}
+const toText = (v) => (v === null || v === undefined || v === '' ? '' : String(v))
+
+/**
+ * One compact labelled numeric input. Uses a text field with decimal input
+ * mode so we can forbid leading zeros (e.g. "0200") while still allowing
+ * "0,xxx" decimals.
+ * @param {{ label: string; value: any; onChange: (n: number) => void; suffix?: string }} props
+ */
+function NumField({ label, value, onChange, suffix }) {
+  const [text, setText] = useState(() => toText(value))
+
+  // Keep in sync when the value changes from outside (catalog autofill, etc.)
+  useEffect(() => {
+    if (parseDecimal(text) !== (Number(value) || 0)) setText(toText(value))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
   return (
     <label className="flex items-center gap-1.5">
       <span className="whitespace-nowrap text-[10px] font-medium text-slate-400">{label}</span>
       <input
-        type="number"
-        step={step}
+        type="text"
+        inputMode="decimal"
         className={`${fieldCls} w-20`}
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+        value={text}
+        onChange={(e) => {
+          const s = sanitizeDecimal(e.target.value)
+          setText(s)
+          onChange(parseDecimal(s))
+        }}
       />
       {suffix ? <span className="-ml-0.5 text-[10px] text-slate-400">{suffix}</span> : null}
     </label>
