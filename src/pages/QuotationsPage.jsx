@@ -49,9 +49,13 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
       const version = q.currentVersionId ? selectQuoteVersionById(db, q.currentVersionId) : undefined
       const expiry  = version?.validUntil ?? q.validUntil
       const daysExp = expiry ? daysUntil(expiry) : null
-      return { q, product, client, version, daysExp }
+      // A quote can cover several products (one inquiry → many products).
+      const inquiry = (db.inquiries ?? []).find((i) => i.id === q.inquiryId)
+      const names = [product?.name, ...((inquiry?.extraProducts ?? []).map((e) => e.name))].filter(Boolean)
+      const label = names.length ? `${names[0]}${names.length > 1 ? ` +${names.length - 1}` : ''}` : (product?.name ?? q.productId)
+      return { q, product, client, version, daysExp, label, allNames: names.join(', ') }
     })
-  }, [db.quoteDrafts, db.quoteVersions, productsById, clientsById])
+  }, [db.quoteDrafts, db.quoteVersions, db.inquiries, productsById, clientsById])
 
   const filtered = useMemo(() => {
     const sq = search.trim().toLowerCase()
@@ -208,11 +212,13 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
                   {items.length === 0 ? (
                     <p className="py-4 text-center text-xs text-slate-400">—</p>
                   ) : (
-                    items.map(({ q, product, client, daysExp }) => (
+                    items.map(({ q, product, client, daysExp, label, allNames }) => (
                       <QuoteCard
                         key={q.id}
                         quote={q}
                         product={product}
+                        label={label}
+                        allNames={allNames}
                         client={client}
                         daysExp={daysExp}
                         t={t}
@@ -232,11 +238,13 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
         <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('quotations.decided')}</p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {decidedItems.map(({ q, product, client, daysExp }) => (
+            {decidedItems.map(({ q, product, client, daysExp, label, allNames }) => (
               <QuoteCard
                 key={q.id}
                 quote={q}
                 product={product}
+                label={label}
+                allNames={allNames}
                 client={client}
                 daysExp={daysExp}
                 t={t}
@@ -276,7 +284,7 @@ function AnalyticsTile({ label, value, valueClass = 'text-slate-900' }) {
   )
 }
 
-function QuoteCard({ quote, product, client, daysExp, t, onOpen, flat = false }) {
+function QuoteCard({ quote, product, label, allNames, client, daysExp, t, onOpen, flat = false }) {
   const cfg = STATUS_CONFIG[quote.status] ?? STATUS_CONFIG.draft
   const isExpired     = daysExp !== null && daysExp < 0
   const expiresSoon   = daysExp !== null && daysExp >= 0 && daysExp <= 7
@@ -289,8 +297,8 @@ function QuoteCard({ quote, product, client, daysExp, t, onOpen, flat = false })
       className={`group w-full rounded-lg border text-left transition hover:shadow-md ${flat ? 'border-slate-200 bg-white p-3' : 'border-slate-100 bg-slate-50/60 p-2.5 hover:bg-white'}`}
     >
       <div className="flex items-start justify-between gap-1">
-        <p className="text-xs font-semibold text-slate-800 leading-snug line-clamp-2">
-          {product?.name ?? quote.productId}
+        <p className="text-xs font-semibold text-slate-800 leading-snug line-clamp-2" title={allNames || undefined}>
+          {label ?? product?.name ?? quote.productId}
         </p>
         {flat ? (
           <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${cfg.color}`}>
