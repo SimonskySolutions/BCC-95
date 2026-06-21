@@ -32,6 +32,7 @@ import OfferPreview from './OfferPreview.jsx'
 import OfferSendDialog from './OfferSendDialog.jsx'
 import OfferStatusBadge from './OfferStatusBadge.jsx'
 import FeasibilityPanel from './FeasibilityPanel.jsx'
+import InquiryChatPanel from './InquiryChatPanel.jsx'
 
 function VersionDelta({ vA, vB, t }) {
   if (!vA || !vB) return null
@@ -445,7 +446,10 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         onToggle={() => toggle('feasibility')}
       >
         {progress.inquiry ? (
-          <FeasibilityPanel db={db} inquiry={progress.inquiry} actorId={actorId} onChange={onChange} />
+          <div className="space-y-4">
+            <FeasibilityPanel db={db} inquiry={progress.inquiry} actorId={actorId} onChange={onChange} />
+            <InquiryChatPanel db={db} inquiryId={progress.inquiry.id} actorId={actorId} onChange={onChange} />
+          </div>
         ) : (
           <p className="text-xs text-slate-500">{t('offer.section.feasibility.noInquiry')}</p>
         )}

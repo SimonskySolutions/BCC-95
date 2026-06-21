@@ -53,7 +53,7 @@ import {
 } from '../domains/quotations/mockData.js'
 import { inquiries } from '../domains/inquiries/mockData.js'
 import { auditEntries } from '../domains/audit/mockData.js'
-import { outboundEmails } from '../domains/communications/mockData.js'
+import { outboundEmails, inquiryMessages } from '../domains/communications/mockData.js'
 import { bomHeaders, bomLines, bomOperations } from '../domains/bom/mockData.js'
 import { stockLocations, stockQuants, stockMoves } from '../domains/inventory/mockData.js'
 
@@ -114,6 +114,7 @@ export function createMockDatabase() {
     inquiries: structuredClone(inquiries),
     auditEntries: structuredClone(auditEntries),
     outboundEmails: structuredClone(outboundEmails),
+    inquiryMessages: structuredClone(inquiryMessages),
     bomHeaders: structuredClone(bomHeaders),
     bomLines: structuredClone(bomLines),
     bomOperations: structuredClone(bomOperations),

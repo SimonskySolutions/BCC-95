@@ -18,4 +18,20 @@
  * @property {'queued' | 'sent' | 'failed'} status
  */
 
+/**
+ * A message in an inquiry's discussion thread. The thread is an immutable,
+ * timestamped log so the team can revisit the conversation over time. Messages
+ * carry free-form tags (labels) for filtering and @mentions of teammates.
+ * @typedef {Object} InquiryMessage
+ * @property {string} id
+ * @property {string} inquiryId
+ * @property {string} [authorId]            — employee id of the author
+ * @property {string} authorLabel           — snapshot of the author's name
+ * @property {string} body
+ * @property {string[]} [tags]              — topic labels, e.g. "pricing", "blocker"
+ * @property {string[]} [mentions]          — employee ids referenced via @mention
+ * @property {string} createdAt             — ISO datetime
+ * @property {string} [editedAt]            — ISO datetime if edited
+ */
+
 export {}
