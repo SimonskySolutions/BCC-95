@@ -451,6 +451,9 @@ const en = {
 
   // Product workspace page
   'pw.back': 'Back to products',
+  'pw.offer.combinedTitle': 'Part of a combined offer',
+  'pw.offer.combinedDesc': 'This product is quoted together with {n} product(s) in one offer, managed in Quotations.',
+  'pw.offer.openCombined': 'Open combined offer',
   'pw.phaseControl': 'Phase control',
   'pw.currentPhase': 'Current phase:',
   'pw.setPhase': 'Set phase to',
@@ -1797,6 +1800,9 @@ const bg = {
   'newInquiry.error.inquiry_failed': 'Запитването не може да бъде регистрирано.',
 
   'pw.back': '← Назад към продуктите',
+  'pw.offer.combinedTitle': 'Част от обща оферта',
+  'pw.offer.combinedDesc': 'Този продукт се оферира заедно с {n} продукт(а) в една оферта, управлявана в „Оферти“.',
+  'pw.offer.openCombined': 'Отвори общата оферта',
   'pw.phaseControl': 'Управление на фаза',
   'pw.currentPhase': 'Текуща фаза:',
   'pw.setPhase': 'Задай фаза',

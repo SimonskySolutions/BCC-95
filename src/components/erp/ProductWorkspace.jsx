@@ -6,7 +6,7 @@ import TaskDetailDrawer from './TaskDetailDrawer.jsx'
 import OperationList from './OperationList.jsx'
 import BomEditor from './BomEditor.jsx'
 import InquiryIntakeForm from './offers/InquiryIntakeForm.jsx'
-import OfferWizard from './offers/OfferWizard.jsx'
+import { ensureQuoteForProduct } from '../../services/offers/index.js'
 import AuditTimeline from './AuditTimeline.jsx'
 import { useLanguage } from '../../i18n/useLanguage.js'
 import { selectInquiriesByProduct } from '../../domains/inquiries/selectors.js'
@@ -61,7 +61,7 @@ function blockerHint(blocker = '') {
  *   onOpenReports?: () => void
  * }} props
  */
-export default function ProductWorkspace({ db, bundle, onOpenReports }) {
+export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffer }) {
   const { t } = useLanguage()
   const { commit } = useDb()
   const forceRefresh = () => commit()
@@ -335,14 +335,39 @@ export default function ProductWorkspace({ db, bundle, onOpenReports }) {
         </div>
       )}
 
-      {tab === 'offer' && (
-        <OfferWizard
-          db={db}
-          productId={product.id}
-          actorId={db.employees[0]?.id}
-          onOpenReports={onOpenReports}
-        />
-      )}
+      {tab === 'offer' && (() => {
+        const inq = (db.inquiries ?? []).find(
+          (i) => i.productId === product.id || (i.extraProducts ?? []).some((e) => e.productId === product.id),
+        )
+        const offerQuote = inq
+          ? (db.quoteDrafts ?? []).find((q) => q.inquiryId === inq.id)
+          : (db.quoteDrafts ?? []).find((q) => q.productId === product.id)
+        const count = inq ? 1 + (inq.extraProducts ?? []).filter((e) => e.productId).length : 1
+        const openOffer = () => {
+          let q = offerQuote
+          if (!q) {
+            const primaryId = inq?.productId ?? product.id
+            q = commit(() => ensureQuoteForProduct(db, { productId: primaryId, clientId: product.customerId, inquiryId: inq?.id }))
+          }
+          if (q) onOpenOffer?.(q.id)
+        }
+        return (
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900">{t('pw.offer.combinedTitle')}</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              {t('pw.offer.combinedDesc').replace('{n}', String(count))}
+              {offerQuote?.offerNo ? ` · ${offerQuote.offerNo}` : ''}
+            </p>
+            <button
+              type="button"
+              onClick={openOffer}
+              className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              {t('pw.offer.openCombined')} →
+            </button>
+          </section>
+        )
+      })()}
 
       {tab === 'bom' && (
         <BomEditor db={db} productId={product.id} />

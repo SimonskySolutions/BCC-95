@@ -116,6 +116,7 @@ function renderPage(route, db, actions) {
           productId={route.productId ?? 'prod-1'}
           onBack={actions.backFromProduct}
           onOpenReports={actions.openReports}
+          onOpenOffer={actions.openOffer}
         />
       )
     case 'tasks':
