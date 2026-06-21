@@ -163,6 +163,19 @@ export function appendQuoteDocument(db, input) {
 /**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {string} documentId
+ * @param {Partial<import('./model.js').QuoteDocument>} patch
+ */
+export function patchQuoteDocument(db, documentId, patch) {
+  if (!db.quoteDocuments) return null
+  const idx = db.quoteDocuments.findIndex((d) => d.id === documentId)
+  if (idx < 0) return null
+  db.quoteDocuments[idx] = { ...db.quoteDocuments[idx], ...patch }
+  return db.quoteDocuments[idx]
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} documentId
  */
 export function removeQuoteDocument(db, documentId) {
   if (!db.quoteDocuments) return

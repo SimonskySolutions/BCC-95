@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { selectQuoteDocuments } from '../../../domains/quotations/selectors.js'
-import { appendQuoteDocument, removeQuoteDocument } from '../../../domains/quotations/mutations.js'
+import { appendQuoteDocument, patchQuoteDocument, removeQuoteDocument } from '../../../domains/quotations/mutations.js'
 
 /**
  * Read an image file and return a downscaled JPEG data URL so it fits the
@@ -82,21 +82,34 @@ export default function OfferPhotos({ db, versionId, isLocked, onChange }) {
       {photos.length === 0 ? (
         <p className="text-xs text-slate-400">{t('offer.photos.empty')}</p>
       ) : (
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
           {photos.map((p) => (
             <figure key={p.id} className="group relative overflow-hidden rounded-lg border border-slate-200">
-              <img src={p.storageRef} alt={p.name} className="h-24 w-full object-cover" />
-              {!isLocked ? (
-                <button
-                  type="button"
-                  onClick={() => { removeQuoteDocument(db, p.id); onChange?.() }}
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-md bg-white/90 text-slate-500 opacity-0 ring-1 ring-slate-200 transition-opacity hover:text-rose-600 group-hover:opacity-100"
-                  title={t('offer.photos.remove')}
-                >
-                  <Trash2 size={12} />
-                </button>
-              ) : null}
-              <figcaption className="truncate bg-slate-50 px-1.5 py-1 text-[10px] text-slate-500">{p.name}</figcaption>
+              <div className="relative">
+                <img src={p.storageRef} alt={p.name} className="h-24 w-full object-cover" />
+                {!isLocked ? (
+                  <button
+                    type="button"
+                    onClick={() => { removeQuoteDocument(db, p.id); onChange?.() }}
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-md bg-white/90 text-slate-500 opacity-0 ring-1 ring-slate-200 transition-opacity hover:text-rose-600 group-hover:opacity-100"
+                    title={t('offer.photos.remove')}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                ) : null}
+              </div>
+              <figcaption className="bg-slate-50 px-1.5 py-1">
+                {isLocked ? (
+                  <span className="block truncate text-[10px] text-slate-500">{p.caption || p.name}</span>
+                ) : (
+                  <input
+                    className="w-full bg-transparent text-[10px] text-slate-600 placeholder-slate-400 focus:outline-none"
+                    value={p.caption ?? ''}
+                    placeholder={t('offer.photos.caption')}
+                    onChange={(e) => { patchQuoteDocument(db, p.id, { caption: e.target.value }); onChange?.() }}
+                  />
+                )}
+              </figcaption>
             </figure>
           ))}
         </div>

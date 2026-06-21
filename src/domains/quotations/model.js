@@ -116,6 +116,7 @@
  * @property {string} quoteVersionId
  * @property {QuoteDocumentKind} kind
  * @property {string} name
+ * @property {string} [caption]                — explanation shown under the photo in the offer
  * @property {string} [storageRef]
  * @property {string} createdAt
  */

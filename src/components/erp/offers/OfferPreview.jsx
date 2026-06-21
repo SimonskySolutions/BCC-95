@@ -103,7 +103,7 @@ function offerHtml(m, photos = []) {
     </table>
 
     ${photos.length ? `<div style="margin-top:14px"><div class="k" style="font-size:11px;margin-bottom:6px">${esc(L.photos)}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">${photos.map((p) => `<img src="${p.storageRef}" alt="${esc(p.name)}" style="width:150px;height:110px;object-fit:cover;border:1px solid #cbd5e1;border-radius:6px" />`).join('')}</div></div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:10px">${photos.map((p) => `<figure style="width:160px;margin:0"><img src="${p.storageRef}" alt="${esc(p.name)}" style="width:160px;height:115px;object-fit:cover;border:1px solid #cbd5e1;border-radius:6px" />${p.caption ? `<figcaption style="font-size:10px;color:#475569;margin-top:2px;line-height:1.3">${esc(p.caption)}</figcaption>` : ''}</figure>`).join('')}</div></div>` : ''}
 
     <div class="footer">
       ${m.deliveryAddress ? `<div><span class="k">${esc(L.addressOfDelivery)}</span> ${esc(m.deliveryAddress)}</div>` : ''}
@@ -263,7 +263,10 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
             <p className="mb-1.5 text-[11px] text-slate-400">{L.photos}</p>
             <div className="flex flex-wrap gap-2">
               {photos.map((p) => (
-                <img key={p.id} src={p.storageRef} alt={p.name} className="h-20 w-28 rounded-md border border-slate-200 object-cover" />
+                <figure key={p.id} className="w-28">
+                  <img src={p.storageRef} alt={p.name} className="h-20 w-28 rounded-md border border-slate-200 object-cover" />
+                  {p.caption ? <figcaption className="mt-0.5 text-[10px] leading-tight text-slate-500">{p.caption}</figcaption> : null}
+                </figure>
               ))}
             </div>
           </div>
