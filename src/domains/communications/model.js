@@ -29,6 +29,7 @@
  * @property {string} authorLabel           — snapshot of the author's name
  * @property {string} body
  * @property {string[]} [tags]              — topic labels, e.g. "pricing", "blocker"
+ * @property {{ id: string; name: string; size?: number }[]} [attachments]  — file references
  * @property {string[]} [mentions]          — employee ids referenced via @mention
  * @property {string} createdAt             — ISO datetime
  * @property {string} [editedAt]            — ISO datetime if edited

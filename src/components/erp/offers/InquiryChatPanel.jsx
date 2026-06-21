@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Paperclip } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import {
   selectInquiryMessages,
@@ -16,6 +16,13 @@ const TAG_STYLE = 'inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 p
 
 function initials(name = '?') {
   return name.split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+}
+
+function formatSize(bytes) {
+  if (!bytes && bytes !== 0) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
 /** Render a message body with @mentions highlighted. */
@@ -47,6 +54,8 @@ function MessageBody({ text }) {
 export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
   const { t } = useLanguage()
   const taRef = useRef(/** @type {HTMLTextAreaElement | null} */ (null))
+  const fileRef = useRef(/** @type {HTMLInputElement | null} */ (null))
+  const [files, setFiles] = useState(/** @type {{id:string;name:string;size?:number}[]} */ ([]))
   const [body, setBody] = useState('')
   const [tags, setTags] = useState(/** @type {string[]} */ ([]))
   const [tagInput, setTagInput] = useState('')
@@ -106,17 +115,29 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
     setTagInput('')
   }
 
+  function onPickFiles(e) {
+    const picked = Array.from(e.target.files ?? []).map((f) => ({
+      id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: f.name,
+      size: f.size,
+    }))
+    if (picked.length) setFiles((cur) => [...cur, ...picked])
+    e.target.value = '' // allow re-selecting the same file
+  }
+
   function send() {
-    if (!body.trim()) return
+    if (!body.trim() && files.length === 0) return
     appendInquiryMessage(db, {
       threadKey,
       authorId: author?.id,
       authorLabel: author?.name ?? t('chat.you'),
       body: body.trim(),
       tags,
+      attachments: files,
     })
     setBody('')
     setTags([])
+    setFiles([])
     onChange?.()
   }
 
@@ -176,7 +197,18 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
                   <Trash2 size={12} />
                 </button>
               </div>
-              <MessageBody text={m.body} />
+              {m.body ? <MessageBody text={m.body} /> : null}
+              {(m.attachments ?? []).length > 0 ? (
+                <div className="mt-1.5 space-y-1">
+                  {m.attachments.map((a) => (
+                    <div key={a.id} className="flex items-center gap-1.5 rounded-lg bg-white px-2 py-1 text-xs ring-1 ring-slate-200">
+                      <Paperclip size={11} className="shrink-0 text-slate-400" />
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-700">{a.name}</span>
+                      {a.size ? <span className="shrink-0 text-[10px] text-slate-400">{formatSize(a.size)}</span> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {(m.tags ?? []).length > 0 ? (
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {m.tags.map((tag) => (
@@ -249,7 +281,31 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
           </div>
         ) : null}
 
+        {/* Pending attachments */}
+        {files.length > 0 ? (
+          <div className="mt-2 space-y-1">
+            {files.map((f, i) => (
+              <div key={f.id} className="flex items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-1 text-xs ring-1 ring-slate-200">
+                <Paperclip size={11} className="shrink-0 text-slate-400" />
+                <span className="min-w-0 flex-1 truncate font-medium text-slate-700">{f.name}</span>
+                {f.size ? <span className="shrink-0 text-[10px] text-slate-400">{formatSize(f.size)}</span> : null}
+                <button type="button" onClick={() => setFiles((cur) => cur.filter((_, idx) => idx !== i))} className="shrink-0 text-slate-400 hover:text-rose-600">✕</button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <input ref={fileRef} type="file" multiple className="hidden" onChange={onPickFiles} />
+
         <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="flex h-8 items-center gap-1 rounded-lg border border-slate-200 px-2 text-xs text-slate-500 hover:bg-slate-50 hover:text-blue-700"
+            title={t('chat.attach')}
+          >
+            <Paperclip size={13} /> {t('chat.attach')}
+          </button>
           <div className="flex items-center gap-1">
             <input
               list="chat-tag-suggestions"
@@ -274,7 +330,7 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
           <button
             type="button"
             onClick={send}
-            disabled={!body.trim()}
+            disabled={!body.trim() && files.length === 0}
             className="ml-auto rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {t('chat.send')}

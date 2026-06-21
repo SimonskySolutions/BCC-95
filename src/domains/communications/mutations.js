@@ -53,6 +53,7 @@ export function appendInquiryMessage(db, input) {
     authorLabel: input.authorLabel,
     body: input.body,
     tags: input.tags ?? [],
+    attachments: input.attachments ?? [],
     mentions: input.mentions ?? parseMentions(input.body, db.employees),
     createdAt: input.createdAt ?? new Date().toISOString(),
   }

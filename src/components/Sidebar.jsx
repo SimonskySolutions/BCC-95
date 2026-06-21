@@ -42,6 +42,7 @@ const iconMap = {
   BookText,
   Settings,
   Warehouse,
+  UserCircle2,
 }
 
 function SidebarItem({ item, onSelect, theme }) {

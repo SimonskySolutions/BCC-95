@@ -18,6 +18,7 @@ import ManufacturingPage from './pages/ManufacturingPage.jsx'
 import MachinesPage from './pages/MachinesPage.jsx'
 import MachineProfilePage from './pages/MachineProfilePage.jsx'
 import PeoplePage from './pages/PeoplePage.jsx'
+import MessagesPage from './pages/MessagesPage.jsx'
 import QualityPage from './pages/QualityPage.jsx'
 import AnalyticsPage from './pages/AnalyticsPage.jsx'
 import PlanningPage from './pages/PlanningPage.jsx'
@@ -55,6 +56,7 @@ const PAGE_META_KEYS = {
   purchase: { titleKey: 'page.purchase.title', subtitleKey: 'page.purchase.subtitle' },
   shipping: { titleKey: 'page.shipping.title', subtitleKey: 'page.shipping.subtitle' },
   people: { titleKey: 'page.people.title', subtitleKey: 'page.people.subtitle' },
+  messages: { titleKey: 'page.messages.title', subtitleKey: 'page.messages.subtitle' },
   quality: { titleKey: 'page.quality.title', subtitleKey: 'page.quality.subtitle' },
   analytics: { titleKey: 'page.analytics.title', subtitleKey: 'page.analytics.subtitle' },
   reports: { titleKey: 'page.reports.title', subtitleKey: 'page.reports.subtitle' },
@@ -141,6 +143,8 @@ function renderPage(route, db, actions) {
       return <ShippingPage db={db} />
     case 'people':
       return <PeoplePage db={db} onTeamWorkload={actions.openTeamWorkload} />
+    case 'messages':
+      return <MessagesPage />
     case 'quality':
       return <QualityPage db={db} />
     case 'analytics':
