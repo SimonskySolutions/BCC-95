@@ -100,10 +100,18 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const sheets = quote ? selectCostSheetsByQuote(db, quote.id) : []
+  const allSheets = quote ? selectCostSheetsByQuote(db, quote.id) : []
+  // Only feasible products are costed — drop any whose feasibility is "blocked".
+  const inquiryRec = (db.inquiries ?? []).find((i) => i.id === inquiryId)
+  const pf = inquiryRec?.productFeasibility ?? {}
+  const sheets = allSheets.filter((s) => pf[s.productId] !== 'blocked')
   const sheet = sheets.find((s) => s.id === selectedSheetId) ?? sheets[0]
   if (!sheet) {
-    return <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">{t('cost.preparing')}</p>
+    return (
+      <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">
+        {allSheets.length > 0 ? t('cost.allBlocked') : t('cost.preparing')}
+      </p>
+    )
   }
 
   function addProduct() {

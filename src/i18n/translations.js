@@ -815,6 +815,9 @@ const en = {
   // Feasibility
   'feasibility.title': 'Feasibility (VSM 1.3)',
   'feasibility.desc': 'Record the outcome of the technical discussion before creating an offer.',
+  'feasibility.descPerProduct': 'Assess each product. Only feasible products are costed and included in the offer.',
+  'feasibility.completeIntakeFirst': 'Complete the intake form first',
+  'feasibility.gateNote': 'Products marked “blocked” are excluded from the calculation and the offer.',
   'feasibility.result': 'Result',
   'feasibility.result.feasible': 'Feasible',
   'feasibility.result.feasible_with_conditions': 'Feasible with conditions',
@@ -1252,6 +1255,7 @@ const en = {
   // Grouped cost sheet
   'cost.preparing': 'Preparing the calculation…',
   'cost.alwaysEditable': 'Cost sheet — always editable',
+  'cost.allBlocked': 'No feasible products to cost — mark a product feasible in step 1.',
   'cost.productName': 'Product',
   'cost.productDescription': 'Product description',
   'cost.productDescription.placeholder': 'Shown on the offer for this product…',
@@ -2120,6 +2124,9 @@ const bg = {
 
   'feasibility.title': 'Оценка за изпълнимост (VSM 1.3)',
   'feasibility.desc': 'Запишете резултата от техническото обсъждане преди да създадете оферта.',
+  'feasibility.descPerProduct': 'Оценете всеки продукт. Само осъществимите продукти се калкулират и влизат в офертата.',
+  'feasibility.completeIntakeFirst': 'Първо попълнете формата за прием',
+  'feasibility.gateNote': 'Продукти, маркирани като „блокирани“, се изключват от калкулацията и офертата.',
   'feasibility.result': 'Резултат',
   'feasibility.result.feasible': 'Изпълнимо',
   'feasibility.result.feasible_with_conditions': 'Изпълнимо с условия',
@@ -2550,6 +2557,7 @@ const bg = {
   // Grouped cost sheet
   'cost.preparing': 'Подготовка на калкулацията…',
   'cost.alwaysEditable': 'Калкулация — винаги редактируема',
+  'cost.allBlocked': 'Няма осъществими продукти за калкулация — маркирайте продукт като осъществим в стъпка 1.',
   'cost.productName': 'Продукт',
   'cost.productDescription': 'Описание на продукта',
   'cost.productDescription.placeholder': 'Показва се в офертата за този продукт…',

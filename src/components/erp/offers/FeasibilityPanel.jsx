@@ -1,9 +1,15 @@
-import { useState } from 'react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { FEASIBILITY_RESULTS } from '../../../domains/inquiries/model.js'
-import { recordFeasibility } from '../../../services/offers/feasibilityService.js'
+import { recordProductFeasibility } from '../../../services/offers/feasibilityService.js'
 import { updateInquiry } from '../../../services/offers/inquiryIntakeService.js'
 import AttachmentEditor from './AttachmentEditor.jsx'
+
+const RESULT_STYLE = {
+  feasible: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  feasible_with_conditions: 'bg-amber-50 text-amber-700 ring-amber-200',
+  blocked: 'bg-rose-50 text-rose-700 ring-rose-200',
+  not_assessed: 'bg-slate-50 text-slate-500 ring-slate-200',
+}
 
 /**
  * @param {{
@@ -15,22 +21,20 @@ import AttachmentEditor from './AttachmentEditor.jsx'
  */
 export default function FeasibilityPanel({ db, inquiry, actorId, onChange }) {
   const { t } = useLanguage()
-  const [result, setResult] = useState(inquiry.feasibilityResult ?? 'not_assessed')
-  const [note, setNote] = useState(inquiry.feasibilityNote ?? '')
-  const [flash, setFlash] = useState(/** @type {string | null} */ (null))
+  const missing = inquiry.missingFields ?? []
+  const intakeIncomplete = missing.length > 0
 
-  function save() {
-    const res = recordFeasibility(db, inquiry.id, {
-      result: /** @type {import('../../../domains/inquiries/model.js').FeasibilityResult} */ (result),
-      note,
-      actorId,
-    })
-    if (res.ok) {
-      setFlash(t('feasibility.saved'))
-      onChange?.()
-    } else {
-      setFlash(t('feasibility.error'))
-    }
+  // Every product in the inquiry (primary + extras), each assessed on its own.
+  const primary = db.products.find((p) => p.id === inquiry.productId)
+  const products = [
+    { productId: inquiry.productId, name: primary?.name ?? inquiry.productId },
+    ...((inquiry.extraProducts ?? []).filter((e) => e.productId).map((e) => ({ productId: e.productId, name: e.name }))),
+  ]
+  const pf = inquiry.productFeasibility ?? {}
+
+  function setProduct(productId, result) {
+    recordProductFeasibility(db, inquiry.id, productId, result, actorId)
+    onChange?.()
   }
 
   return (
@@ -43,41 +47,46 @@ export default function FeasibilityPanel({ db, inquiry, actorId, onChange }) {
               {t('inquiry.noFilesBadge')}
             </span>
           ) : null}
-          {inquiry.missingFields && inquiry.missingFields.length > 0 ? (
+          {intakeIncomplete ? (
             <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700">
               {t('feasibility.blockedByIntake')}
             </span>
           ) : null}
         </div>
       </header>
-      <p className="text-xs text-slate-500">{t('feasibility.desc')}</p>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <label className="block text-xs font-medium text-slate-600">
-          {t('feasibility.result')}
-          <select
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
-            value={result}
-            onChange={(e) => setResult(e.target.value)}
-          >
-            {FEASIBILITY_RESULTS.map((r) => (
-              <option key={r} value={r}>
-                {t(`feasibility.result.${r}`, r)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-xs font-medium text-slate-600 md:col-span-2">
-          {t('feasibility.note')}
-          <textarea
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
-            rows={2}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </label>
-      </div>
+      <p className="text-xs text-slate-500">{t('feasibility.descPerProduct')}</p>
 
-      {/* Attachments — drawings, specs, etc. (always editable on the inquiry) */}
+      {/* Per-product feasibility */}
+      <div className="space-y-2">
+        {products.map((p) => {
+          const result = pf[p.productId] ?? 'not_assessed'
+          return (
+            <div key={p.productId} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+              <span className="min-w-0 flex-1 text-sm font-medium text-slate-800">{p.name}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${RESULT_STYLE[result] ?? RESULT_STYLE.not_assessed}`}>
+                {t(`feasibility.result.${result}`, result)}
+              </span>
+              <select
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs disabled:bg-slate-50 disabled:text-slate-400"
+                value={result}
+                disabled={intakeIncomplete}
+                onChange={(e) => setProduct(p.productId, e.target.value)}
+              >
+                {FEASIBILITY_RESULTS.map((r) => (
+                  <option key={r} value={r}>{t(`feasibility.result.${r}`, r)}</option>
+                ))}
+              </select>
+            </div>
+          )
+        })}
+      </div>
+      {intakeIncomplete ? (
+        <p className="text-[11px] text-rose-600">{t('feasibility.completeIntakeFirst')}: {missing.join(', ')}</p>
+      ) : (
+        <p className="text-[11px] text-slate-400">{t('feasibility.gateNote')}</p>
+      )}
+
+      {/* Attachments */}
       <div className="border-t border-slate-100 pt-3">
         <AttachmentEditor
           attachments={inquiry.attachments ?? []}
@@ -85,24 +94,6 @@ export default function FeasibilityPanel({ db, inquiry, actorId, onChange }) {
           noAttachments={inquiry.noAttachments}
           onToggleNoAttachments={(v) => { updateInquiry(db, inquiry.id, { noAttachments: v, actorId }); onChange?.() }}
         />
-      </div>
-      <div className="flex items-center justify-between">
-        {flash ? (
-          <p className={`rounded-lg px-3 py-1.5 text-xs font-medium ${flash === t('feasibility.saved') ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-            {flash}
-          </p>
-        ) : <span />}
-        <button
-          type="button"
-          onClick={save}
-          className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={(inquiry.missingFields ?? []).length > 0}
-          title={(inquiry.missingFields ?? []).length > 0
-            ? `Complete intake form first: ${(inquiry.missingFields ?? []).join(', ')}`
-            : undefined}
-        >
-          {t('feasibility.save')}
-        </button>
       </div>
     </div>
   )

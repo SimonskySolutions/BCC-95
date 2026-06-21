@@ -25,3 +25,42 @@ export function recordFeasibility(db, inquiryId, input) {
   })
   return { ok: /** @type {const} */ (true), inquiry }
 }
+
+/** All product ids covered by an inquiry (primary + extras). */
+export function inquiryProductIds(inquiry) {
+  return [inquiry.productId, ...((inquiry.extraProducts ?? []).map((e) => e.productId).filter(Boolean))]
+}
+
+/**
+ * Record feasibility for one product within a (possibly multi-product) inquiry,
+ * then derive the inquiry-level summary so the offer progress gate still works:
+ * feasible if any product is feasible, blocked if all are blocked.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} inquiryId
+ * @param {string} productId
+ * @param {import('../../domains/inquiries/model.js').FeasibilityResult} result
+ * @param {string} [actorId]
+ */
+export function recordProductFeasibility(db, inquiryId, productId, result, actorId) {
+  const inquiry = db.inquiries.find((i) => i.id === inquiryId)
+  if (!inquiry) return { ok: /** @type {const} */ (false), code: 'not_found' }
+  const pf = { ...(inquiry.productFeasibility ?? {}), [productId]: result }
+  const vals = inquiryProductIds(inquiry).map((id) => pf[id] ?? 'not_assessed')
+  const anyFeasible = vals.some((v) => v === 'feasible' || v === 'feasible_with_conditions')
+  const allBlocked = vals.length > 0 && vals.every((v) => v === 'blocked')
+  const summary = anyFeasible ? 'feasible' : allBlocked ? 'blocked' : 'not_assessed'
+  patchInquiry(db, inquiryId, {
+    productFeasibility: pf,
+    feasibilityResult: summary,
+    status: summary === 'blocked' ? 'closed_rejected' : summary === 'not_assessed' ? inquiry.status : 'feasibility_done',
+  })
+  appendAuditEntry(db, {
+    productId,
+    entityType: 'inquiry',
+    entityId: inquiryId,
+    action: 'inquiry.feasibilityRecorded',
+    actorId,
+    meta: { productId, result },
+  })
+  return { ok: /** @type {const} */ (true) }
+}

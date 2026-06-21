@@ -223,7 +223,11 @@ export function ensureOfferNo(db, quoteId) {
 export function generateOfferMatrix(db, versionId) {
   const version = selectQuoteVersionById(db, versionId)
   if (!version) return { ok: /** @type {const} */ (false), code: 'not_found' }
-  const sheets = selectCostSheetsByQuote(db, version.quoteId)
+  const quote0 = selectQuoteById(db, version.quoteId)
+  const inquiry = (db.inquiries ?? []).find((i) => i.id === quote0?.inquiryId)
+  const pf = inquiry?.productFeasibility ?? {}
+  // Only feasible products are offered — exclude any marked "blocked".
+  const sheets = selectCostSheetsByQuote(db, version.quoteId).filter((s) => pf[s.productId] !== 'blocked')
   if (!sheets.length) return { ok: /** @type {const} */ (false), code: 'no_cost_sheet' }
 
   ensureOfferNo(db, version.quoteId)
