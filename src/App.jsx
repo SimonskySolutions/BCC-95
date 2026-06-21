@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import Sidebar from './components/Sidebar.jsx'
 import Header from './components/Header.jsx'
 import CommandPalette from './components/CommandPalette.jsx'
+import ChatLauncher from './components/ChatLauncher.jsx'
 import { useLanguage } from './i18n/useLanguage.js'
 import { useFactoryConfig } from './config/useFactoryConfig.js'
 import { useDb } from './data/useDb.js'
@@ -295,7 +296,7 @@ function App() {
           type="button"
           onClick={() => setShowNewInquiry(true)}
           title={t('dashboard.quickActions.newInquiry')}
-          className={`fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition active:scale-95 ${theme.primaryBtn}`}
+          className={`fixed bottom-24 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition active:scale-95 ${theme.primaryBtn}`}
         >
           <Plus size={22} />
         </button>
@@ -335,6 +336,9 @@ function App() {
           </div>
         </div>
       ) : null}
+
+      {/* Global floating chat bubble — 1:1 employee conversations */}
+      <ChatLauncher />
     </div>
   )
 }
