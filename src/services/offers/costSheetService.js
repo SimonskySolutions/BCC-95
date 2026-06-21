@@ -8,6 +8,7 @@ import {
 } from '../../domains/quotations/mutations.js'
 import {
   selectCostSheetByQuote,
+  selectCostSheetsByQuote,
   selectCostSheetLines,
   selectCostCatalog,
   computeCostRollup,
@@ -73,35 +74,46 @@ export function lineFromCatalog(costSheetId, entry) {
  *   actorId?: string
  * }} input
  */
-export function ensureCostSheet(db, input) {
-  const existing = selectCostSheetByQuote(db, input.quoteId)
-  if (existing) return existing
+function seedStarterLines(db, sheetId) {
+  const catalog = selectCostCatalog(db)
+  for (const ref of STARTER_CATALOG_REFS) {
+    const entry = catalog.find((c) => c.id === ref)
+    if (entry) appendCostSheetLine(db, lineFromCatalog(sheetId, entry))
+  }
+}
 
-  // Seed quantity price-break tiers from the quantities the customer asked for.
-  const qtys = [...new Set((input.quantities ?? []).filter((q) => Number(q) > 0))].sort((a, b) => a - b)
-  const priceBreaks = qtys.length >= 2
-    ? qtys.map((q, i) => ({ id: `qb-seed-${i}`, qty: q, marginPercent: input.marginPercent ?? 10 }))
-    : []
+function seedPriceBreaks(quantities, marginPercent) {
+  const qtys = [...new Set((quantities ?? []).filter((q) => Number(q) > 0))].sort((a, b) => a - b)
+  return qtys.length >= 2 ? qtys.map((q, i) => ({ id: `qb-seed-${i}`, qty: q, marginPercent: marginPercent ?? 10 })) : []
+}
 
+/**
+ * Create a new cost sheet for a product under a quote (a quote can have several
+ * — one per product in a multi-product offer).
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {{ quoteId: string; productId?: string; productLabel?: string; currency?: any; marginPercent?: number; annualQty?: number; quantities?: number[]; seed?: boolean }} input
+ */
+export function addProductCostSheet(db, input) {
+  const product = input.productId ? selectProductById(db, input.productId) : undefined
   const sheet = appendCostSheet(db, {
     quoteId: input.quoteId,
     productId: input.productId,
+    productLabel: input.productLabel ?? product?.name,
     currency: input.currency ?? 'EUR',
     marginPercent: input.marginPercent ?? 10,
     annualQty: input.annualQty,
     toolingMode: 'amortise',
     amortisationUnits: input.annualQty || 10000,
-    priceBreaks,
+    priceBreaks: seedPriceBreaks(input.quantities, input.marginPercent),
   })
+  if (input.seed !== false) seedStarterLines(db, sheet.id)
+  return sheet
+}
 
-  if (input.seed !== false) {
-    const catalog = selectCostCatalog(db)
-    for (const ref of STARTER_CATALOG_REFS) {
-      const entry = catalog.find((c) => c.id === ref)
-      if (entry) appendCostSheetLine(db, lineFromCatalog(sheet.id, entry))
-    }
-  }
-
+export function ensureCostSheet(db, input) {
+  const existing = selectCostSheetByQuote(db, input.quoteId)
+  if (existing) return existing
+  const sheet = addProductCostSheet(db, input)
   appendAuditEntry(db, {
     productId: input.productId,
     entityType: 'costSheet',
@@ -210,15 +222,9 @@ export function ensureOfferNo(db, quoteId) {
 export function generateOfferMatrix(db, versionId) {
   const version = selectQuoteVersionById(db, versionId)
   if (!version) return { ok: /** @type {const} */ (false), code: 'not_found' }
-  const sheet = selectCostSheetByQuote(db, version.quoteId)
-  if (!sheet) return { ok: /** @type {const} */ (false), code: 'no_cost_sheet' }
+  const sheets = selectCostSheetsByQuote(db, version.quoteId)
+  if (!sheets.length) return { ok: /** @type {const} */ (false), code: 'no_cost_sheet' }
 
-  const quote = selectQuoteById(db, version.quoteId)
-  const rollup = computeCostRollup(sheet, selectCostSheetLines(db, sheet.id))
-  let rows = priceBreakRows(rollup, sheet.priceBreaks)
-  if (!rows.length) rows = [{ qty: sheet.amortisationUnits || 1, exw: rollup.exw, dap: rollup.dap }]
-
-  const product = quote ? selectProductById(db, quote.productId) : undefined
   ensureOfferNo(db, version.quoteId)
 
   // Default the offer validity to 30 days out if not set yet.
@@ -228,20 +234,31 @@ export function generateOfferMatrix(db, versionId) {
     patchQuoteVersion(db, versionId, { validUntil: base.toISOString().slice(0, 10) })
   }
 
+  // One offer line per (product × quantity tier), across every product sheet.
   clearQuoteOfferLines(db, versionId)
-  rows.forEach((r, i) =>
-    appendQuoteOfferLine(db, {
-      quoteVersionId: versionId,
-      productId: quote?.productId,
-      description: product?.name ?? '',
-      uom: product?.uom,
-      requestedQty: r.qty,
-      unitPrice: Math.round(r.dap * 10000) / 10000,
-      exwUnitPrice: Math.round(r.exw * 10000) / 10000,
-      sortOrder: i,
-    }),
-  )
-  return { ok: /** @type {const} */ (true), count: rows.length }
+  let sort = 0
+  let count = 0
+  for (const sheet of sheets) {
+    const rollup = computeCostRollup(sheet, selectCostSheetLines(db, sheet.id))
+    let rows = priceBreakRows(rollup, sheet.priceBreaks)
+    if (!rows.length) rows = [{ qty: sheet.amortisationUnits || 1, exw: rollup.exw, dap: rollup.dap }]
+    const product = sheet.productId ? selectProductById(db, sheet.productId) : undefined
+    const label = sheet.productLabel || product?.name || ''
+    for (const r of rows) {
+      appendQuoteOfferLine(db, {
+        quoteVersionId: versionId,
+        productId: sheet.productId,
+        description: label,
+        uom: product?.uom,
+        requestedQty: r.qty,
+        unitPrice: Math.round(r.dap * 10000) / 10000,
+        exwUnitPrice: Math.round(r.exw * 10000) / 10000,
+        sortOrder: sort++,
+      })
+      count++
+    }
+  }
+  return { ok: /** @type {const} */ (true), count }
 }
 
 export { computeCostRollup, selectCostSheetByQuote, selectCostSheetLines }

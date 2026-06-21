@@ -1248,6 +1248,10 @@ const en = {
   // Grouped cost sheet
   'cost.preparing': 'Preparing the calculation…',
   'cost.alwaysEditable': 'Cost sheet — always editable',
+  'cost.productName': 'Product',
+  'cost.addProduct': 'Product',
+  'cost.newProduct': 'New product',
+  'cost.untitledProduct': 'Untitled product',
   'cost.notes': 'Calculation note',
   'cost.notes.placeholder': 'Free-text note / remark for the whole offer…',
   'cost.saveToVersion': 'Save to offer version',
@@ -2536,6 +2540,10 @@ const bg = {
   // Grouped cost sheet
   'cost.preparing': 'Подготовка на калкулацията…',
   'cost.alwaysEditable': 'Калкулация — винаги редактируема',
+  'cost.productName': 'Продукт',
+  'cost.addProduct': 'Продукт',
+  'cost.newProduct': 'Нов продукт',
+  'cost.untitledProduct': 'Без име',
   'cost.notes': 'Забележка към калкулацията',
   'cost.notes.placeholder': 'Свободен текст / забележка за цялата оферта…',
   'cost.saveToVersion': 'Запис към версия на офертата',

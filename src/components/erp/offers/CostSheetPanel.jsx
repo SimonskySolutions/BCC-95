@@ -4,6 +4,7 @@ import { advanceOnEnter } from '../../../lib/forms.js'
 import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
 import {
   selectCostSheetByQuote,
+  selectCostSheetsByQuote,
   selectCostSheetLines,
   selectCostCatalog,
   computeCostRollup,
@@ -17,6 +18,7 @@ import {
 import {
   ensureQuoteForProduct,
   ensureCostSheet,
+  addProductCostSheet,
   draftVersionFromCostSheet,
   lineFromCatalog,
 } from '../../../services/offers/index.js'
@@ -59,6 +61,7 @@ function FlashBanner({ type, message, onDismiss }) {
 export default function CostSheetPanel({ db, productId, clientId, inquiryId, quote, actorId, onChange }) {
   const { t } = useLanguage()
   const [flash, setFlash] = useState(/** @type {{type:'success'|'error'|'info';message:string}|null} */ (null))
+  const [selectedSheetId, setSelectedSheetId] = useState(/** @type {string | null} */ (null))
 
   // Ensure a quote + working cost sheet exist the moment the costing step is
   // opened. Both helpers are idempotent, so this runs at most once effectively.
@@ -80,9 +83,22 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const sheet = quote ? selectCostSheetByQuote(db, quote.id) : undefined
+  const sheets = quote ? selectCostSheetsByQuote(db, quote.id) : []
+  const sheet = sheets.find((s) => s.id === selectedSheetId) ?? sheets[0]
   if (!sheet) {
     return <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-xs text-slate-500">{t('cost.preparing')}</p>
+  }
+
+  function addProduct() {
+    if (!quote) return
+    const created = addProductCostSheet(db, {
+      quoteId: quote.id,
+      productLabel: t('cost.newProduct'),
+      currency: sheet.currency,
+      marginPercent: sheet.marginPercent,
+    })
+    setSelectedSheetId(created.id)
+    onChange?.()
   }
 
   const lines = selectCostSheetLines(db, sheet.id)
@@ -120,11 +136,45 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
 
   return (
     <div className="space-y-2" onKeyDown={advanceOnEnter}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200">
           {t('cost.alwaysEditable')}
         </span>
       </div>
+
+      {/* Product tabs — one cost sheet per product in the offer */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {sheets.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => setSelectedSheetId(s.id)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              s.id === sheet.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {s.productLabel || t('cost.untitledProduct')}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={addProduct}
+          className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-500 hover:border-blue-300 hover:text-blue-700"
+        >
+          + {t('cost.addProduct')}
+        </button>
+      </div>
+
+      {/* Product name for the selected sheet */}
+      <label className="block text-xs font-medium text-slate-600">
+        {t('cost.productName')}
+        <input
+          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm font-medium"
+          value={sheet.productLabel ?? ''}
+          placeholder={t('cost.untitledProduct')}
+          onChange={(e) => { patchCostSheet(db, sheet.id, { productLabel: e.target.value }); onChange?.() }}
+        />
+      </label>
 
       {/* 1 — Материали */}
       <CostGroupSection

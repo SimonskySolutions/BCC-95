@@ -317,6 +317,7 @@ export function appendCostSheet(db, input) {
     id: input.id ?? `cs-${++costSheetCounter}`,
     quoteId: input.quoteId,
     productId: input.productId,
+    productLabel: input.productLabel,
     currency: input.currency ?? 'EUR',
     marginPercent: input.marginPercent ?? 10,
     annualQty: input.annualQty,

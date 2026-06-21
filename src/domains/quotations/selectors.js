@@ -138,6 +138,11 @@ export function selectCostSheetByQuote(db, quoteId) {
   return (db.costSheets ?? []).find((s) => s.quoteId === quoteId)
 }
 
+/** All cost sheets for a quote (one per product when costing a multi-product offer). */
+export function selectCostSheetsByQuote(db, quoteId) {
+  return (db.costSheets ?? []).filter((s) => s.quoteId === quoteId)
+}
+
 /**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {string} costSheetId
