@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { Plus, Trash2, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { advanceOnEnter } from '../../../lib/forms.js'
+import { generateOfferMatrix } from '../../../services/offers/index.js'
 import {
   selectQuoteOfferLines,
   selectOfferLinesTotal,
@@ -342,16 +343,42 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
               <option value="bg">Български</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-600">{t('offer.priceBasis')}</label>
+            <select
+              className={`mt-1 ${inputCls}`}
+              value={version.priceBasis ?? 'both'}
+              disabled={isLocked}
+              onChange={(e) => patchHeader({ priceBasis: e.target.value })}
+            >
+              <option value="both">{t('offer.priceBasis.both')}</option>
+              <option value="dap">{t('offer.priceBasis.dap')}</option>
+              <option value="exw">{t('offer.priceBasis.exw')}</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Offer lines */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <h4 className="text-sm font-semibold text-slate-900">{t('offer.details.lines')}</h4>
-          <span className="text-xs font-medium text-slate-500">
-            {t('offer.details.total')}: <span className="font-bold text-slate-800">{total.toFixed(2)} {currency}</span>
-          </span>
+          <div className="flex items-center gap-2">
+            {!isLocked ? (
+              <button
+                type="button"
+                onClick={() => { const r = generateOfferMatrix(db, version.id); if (r.ok) onChange?.() }}
+                className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                title={t('offer.details.generateHint')}
+              >
+                {t('offer.details.generate')}
+              </button>
+            ) : null}
+            <span className="text-xs font-medium text-slate-500">
+              {t('offer.details.total')}: <span className="font-bold text-slate-800">{total.toFixed(2)} {currency}</span>
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200">

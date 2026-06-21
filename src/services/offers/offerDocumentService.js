@@ -78,19 +78,29 @@ export function buildOfferPlainText(input) {
  */
 export function orderConfirmationLabels(isBg) {
   return {
-    docTitle: isBg ? 'ПОТВЪРЖДЕНИЕ НА ПОРЪЧКА' : 'ORDER CONFIRMATION',
+    docTitle: isBg ? 'ОФЕРТА' : 'OFFER',
     to: isBg ? 'ДО:' : 'TO:',
+    offerNo: isBg ? 'Оферта №' : 'Offer No',
+    date: isBg ? 'Дата' : 'Date',
+    rev: isBg ? 'ревизия' : 'rev.',
     yourOrder: isBg ? 'Ваша Поръчка №' : 'Your Order #',
     attention: isBg ? 'На вниманието на' : 'To the attention of',
-    intro1: isBg ? 'Благодарим Ви за поръчката!' : 'Thank You for your order!',
+    intro1: isBg ? 'Благодарим Ви за запитването!' : 'Thank you for your inquiry!',
     intro2: isBg
-      ? 'Ние потвърждаваме Вашата поръчка и доставката, както следва:'
-      : 'We confirm your order and the delivery as follows:',
+      ? 'Имаме удоволствието да Ви представим следната оферта:'
+      : 'We are pleased to present the following offer:',
     no: '№',
-    articles: isBg ? 'Артикул' : 'Articles',
+    articles: isBg ? 'Артикул' : 'Product',
+    pcsArt: isBg ? 'Бр./арт.' : 'Pcs/art',
+    exw: isBg ? 'EXW' : 'EXW',
+    dap: isBg ? 'DAP' : 'DAP',
+    perPcs: isBg ? '/бр.' : '/pcs',
+    orderValue: isBg ? 'Стойност' : 'Order value',
+    leadTime: isBg ? 'Срок (дни)' : 'Lead time (days)',
     quantity: isBg ? 'Кол-во' : 'Quantity',
     dispatchDate: isBg ? 'Дата на изпращане' : 'Dispatch Date',
     price: isBg ? 'Цена' : 'Price',
+    validUntil: isBg ? 'Валидна до' : 'Valid until',
     addressOfDelivery: isBg ? 'Адрес на доставка:' : 'Shipping address:',
     termsOfDelivery: isBg ? 'Условия на доставка:' : 'Terms of Delivery:',
     termsOfPayment: isBg ? 'Условия на плащане:' : 'Terms of payments:',
@@ -130,6 +140,7 @@ export function buildOrderConfirmationModel(input) {
     const qty = Number(l.confirmedQty ?? l.requestedQty) || 0
     const date = l.confirmedDate ?? l.requestedDate ?? version.dispatchDate ?? ''
     const discount = Number(l.discountPercent) || 0
+    const dap = Number(l.unitPrice) || 0
     return {
       no: i + 1,
       article: l.description || '—',
@@ -137,9 +148,11 @@ export function buildOrderConfirmationModel(input) {
       qty,
       uom: l.uom ?? '',
       dispatchDate: date,
-      unitPrice: Number(l.unitPrice) || 0,
+      unitPrice: dap,
+      exwUnitPrice: Number(l.exwUnitPrice) || 0,
       discountPercent: discount,
-      lineTotal: qty * (Number(l.unitPrice) || 0) * (1 - discount / 100),
+      orderValue: qty * dap * (1 - discount / 100),
+      lineTotal: qty * dap * (1 - discount / 100),
     }
   })
   const total = rows.reduce((s, r) => s + r.lineTotal, 0)
@@ -162,7 +175,12 @@ export function buildOrderConfirmationModel(input) {
       vat: client?.vat ?? '',
     },
     contact: [version.contactTitle, version.contactName].filter(Boolean).join(' '),
-    customerOrderRef: version.customerOrderRef ?? quote.id,
+    customerOrderRef: version.customerOrderRef ?? '',
+    offerNo: quote.offerNo ?? quote.id,
+    versionNo: version.versionNo,
+    priceBasis: version.priceBasis ?? 'both',
+    validUntil: version.validUntil ?? '',
+    leadTimeDays: version.leadTimeDays,
     orderDate: version.orderDate ?? version.createdAt?.slice(0, 10) ?? '',
     rows,
     total,

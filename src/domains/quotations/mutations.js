@@ -36,6 +36,7 @@ export function appendQuote(db, input) {
     deliveryTerms: input.deliveryTerms,
     paymentTerms: input.paymentTerms,
     moq: input.moq,
+    offerNo: input.offerNo,
   }
   db.quoteDrafts.push(quote)
   return quote
@@ -201,6 +202,7 @@ export function appendQuoteOfferLine(db, input) {
     confirmedQty: input.confirmedQty,
     confirmedDate: input.confirmedDate,
     unitPrice: input.unitPrice ?? 0,
+    exwUnitPrice: input.exwUnitPrice,
     priceCurrency: input.priceCurrency,
     discountPercent: input.discountPercent,
     requirements: input.requirements,

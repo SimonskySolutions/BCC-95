@@ -1,6 +1,8 @@
 import {
   appendCostSheet,
   appendCostSheetLine,
+  appendQuoteOfferLine,
+  clearQuoteOfferLines,
   patchQuote,
   patchQuoteVersion,
 } from '../../domains/quotations/mutations.js'
@@ -11,7 +13,11 @@ import {
   computeCostRollup,
   computeLineAmount,
   sheetNetKg,
+  priceBreakRows,
+  selectQuoteById,
+  selectQuoteVersionById,
 } from '../../domains/quotations/selectors.js'
+import { selectProductById } from '../../domains/products/selectors.js'
 import { appendAuditEntry } from '../../domains/audit/mutations.js'
 import { draftQuoteVersion } from './quoteVersioningService.js'
 
@@ -174,6 +180,60 @@ export function draftVersionFromCostSheet(db, input) {
     meta: { source: 'costSheet', costPrice: rollup.costPrice, dap: rollup.dap },
   })
   return res
+}
+
+/**
+ * Assign a customer-facing offer number (OF-YYYY-####) to a quote the first
+ * time it's needed; reused across all its versions/revisions.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} quoteId
+ */
+export function ensureOfferNo(db, quoteId) {
+  const quote = selectQuoteById(db, quoteId)
+  if (!quote) return undefined
+  if (quote.offerNo) return quote.offerNo
+  const year = new Date().getFullYear()
+  const seq = (db.quoteDrafts ?? []).filter((q) => q.offerNo).length + 1
+  const offerNo = `OF-${year}-${String(seq).padStart(4, '0')}`
+  patchQuote(db, quoteId, { offerNo })
+  return offerNo
+}
+
+/**
+ * Generate the offer's quantity → price matrix from the cost sheet: one offer
+ * line per quantity tier, each carrying EXW and DAP unit prices. Replaces the
+ * version's existing offer lines. This is the "requested quantities → priced
+ * offer" automation.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} versionId
+ */
+export function generateOfferMatrix(db, versionId) {
+  const version = selectQuoteVersionById(db, versionId)
+  if (!version) return { ok: /** @type {const} */ (false), code: 'not_found' }
+  const sheet = selectCostSheetByQuote(db, version.quoteId)
+  if (!sheet) return { ok: /** @type {const} */ (false), code: 'no_cost_sheet' }
+
+  const quote = selectQuoteById(db, version.quoteId)
+  const rollup = computeCostRollup(sheet, selectCostSheetLines(db, sheet.id))
+  let rows = priceBreakRows(rollup, sheet.priceBreaks)
+  if (!rows.length) rows = [{ qty: sheet.amortisationUnits || 1, exw: rollup.exw, dap: rollup.dap }]
+
+  const product = quote ? selectProductById(db, quote.productId) : undefined
+  ensureOfferNo(db, version.quoteId)
+  clearQuoteOfferLines(db, versionId)
+  rows.forEach((r, i) =>
+    appendQuoteOfferLine(db, {
+      quoteVersionId: versionId,
+      productId: quote?.productId,
+      description: product?.name ?? '',
+      uom: product?.uom,
+      requestedQty: r.qty,
+      unitPrice: Math.round(r.dap * 10000) / 10000,
+      exwUnitPrice: Math.round(r.exw * 10000) / 10000,
+      sortOrder: i,
+    }),
+  )
+  return { ok: /** @type {const} */ (true), count: rows.length }
 }
 
 export { computeCostRollup, selectCostSheetByQuote, selectCostSheetLines }

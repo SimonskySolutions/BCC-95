@@ -30,6 +30,7 @@
  * @property {number} [moq]
  * @property {number} [currentVersionNo]
  * @property {string} [currentVersionId]
+ * @property {string} [offerNo]                         — customer-facing offer number (OF-YYYY-####)
  */
 
 /**
@@ -60,6 +61,7 @@
  * @property {QuoteCurrency} [currency]
  * @property {string} [language]
  * @property {string} [notes]
+ * @property {'exw' | 'dap' | 'both'} [priceBasis]    — which unit price the offer matrix shows
  *
  * Customer-facing header (mapped from the legacy GS "Order Confirmation"):
  * @property {string} [customerOrderRef]              — customer's own PO ref ("Ваша Поръчка #")
@@ -175,7 +177,8 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {string} [requestedDate]                  — ISO date (ExpeditionDate)
  * @property {number} [confirmedQty]                   — what we commit to (OriginalQuantity)
  * @property {string} [confirmedDate]                  — ISO date (OriginalDate)
- * @property {number} unitPrice                        — price per unit in the quote currency
+ * @property {number} unitPrice                        — price per unit (DAP/delivered) in the quote currency
+ * @property {number} [exwUnitPrice]                   — ex-works unit price (matrix shows EXW + DAP)
  * @property {number} [priceCurrency]                  — secondary-currency price (PriceCurrency)
  * @property {number} [discountPercent]                — per-line discount (e.g. volume discount)
  * @property {string} [requirements]                   — spec / requirements (ResourceRequiments)
