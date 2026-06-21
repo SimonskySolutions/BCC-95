@@ -16,7 +16,7 @@ import { getMockDatabase } from './mockDatabase.js'
  */
 
 const STORAGE_KEY = 'bcc95-erp-db'
-const SCHEMA_VERSION = 4
+const SCHEMA_VERSION = 5
 
 let version = 0
 let hydrated = false

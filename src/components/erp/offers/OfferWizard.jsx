@@ -248,10 +248,11 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
     .filter((m) => m.productId === productId)
     .slice(-1)[0]
 
-  // Discussion thread — keyed to the inquiry when there is one, otherwise to
-  // the product so an offer without an inquiry still has a place to talk.
-  const threadId = progress.inquiry?.id ?? `product:${productId}`
-  const chatCount = selectInquiryMessages(db, threadId).length
+  // Discussion thread — one per quotation, so it carries across versions when
+  // the calculation is revised after an offer has been sent. Falls back to the
+  // product only before a quote exists.
+  const threadKey = activeQuote?.id ?? `product:${productId}`
+  const chatCount = selectInquiryMessages(db, threadKey).length
 
   // Which section should be open by default
   const activeSection = !progress.status.feasibility_done
@@ -747,7 +748,7 @@ ${lastSentEmail.body}`}
               {chatCount > 0 ? <span className="ml-1 font-normal text-slate-400">({chatCount})</span> : null}
             </h3>
           </header>
-          <InquiryChatPanel db={db} inquiryId={threadId} actorId={actorId} onChange={onChange} />
+          <InquiryChatPanel db={db} threadKey={threadKey} actorId={actorId} onChange={onChange} />
         </div>
       </aside>
     </div>

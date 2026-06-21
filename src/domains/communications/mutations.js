@@ -48,7 +48,7 @@ export function appendInquiryMessage(db, input) {
   /** @type {import('./model.js').InquiryMessage} */
   const message = {
     id: input.id ?? `msg-${++messageCounter}`,
-    inquiryId: input.inquiryId,
+    threadKey: input.threadKey,
     authorId: input.authorId,
     authorLabel: input.authorLabel,
     body: input.body,

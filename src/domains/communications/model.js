@@ -24,7 +24,7 @@
  * carry free-form tags (labels) for filtering and @mentions of teammates.
  * @typedef {Object} InquiryMessage
  * @property {string} id
- * @property {string} inquiryId
+ * @property {string} threadKey             — owning quotation (quote id); falls back to `product:<id>` before a quote exists
  * @property {string} [authorId]            — employee id of the author
  * @property {string} authorLabel           — snapshot of the author's name
  * @property {string} body

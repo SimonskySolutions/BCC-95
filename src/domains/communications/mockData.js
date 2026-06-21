@@ -5,22 +5,22 @@ export const outboundEmails = []
 export const inquiryMessages = [
   {
     id: 'msg-1',
-    inquiryId: 'inq-seed-1',
+    threadKey: 'quote-3',
     authorId: 'emp-4',
     authorLabel: 'Maria Dimitrova',
-    body: 'Customer asked for a price for 4000 pcs/year. @Alex can you confirm the tube spec before we cost it?',
+    body: 'Offer sent to IKEA. @Alex if the customer pushes back on price we may need to revisit the costing.',
     tags: ['pricing'],
     mentions: ['emp-1'],
-    createdAt: '2026-05-08T09:15:00.000Z',
+    createdAt: '2026-05-05T09:15:00.000Z',
   },
   {
     id: 'msg-2',
-    inquiryId: 'inq-seed-1',
+    threadKey: 'quote-3',
     authorId: 'emp-1',
     authorLabel: 'Alex Rivers',
-    body: 'Confirmed Ø25×1.5 S235. Powder coat RAL 9005. No blockers on our side.',
+    body: 'Noted. Coating cost has room — I can shave it in a new version if needed.',
     tags: ['technical'],
     mentions: [],
-    createdAt: '2026-05-08T11:40:00.000Z',
+    createdAt: '2026-05-05T11:40:00.000Z',
   },
 ]

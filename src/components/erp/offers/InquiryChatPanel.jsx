@@ -39,20 +39,20 @@ function MessageBody({ text }) {
  *
  * @param {{
  *   db: import('../../../data/mockDatabase.js').MockDatabase
- *   inquiryId: string
+ *   threadKey: string
  *   actorId?: string
  *   onChange?: () => void
  * }} props
  */
-export default function InquiryChatPanel({ db, inquiryId, actorId, onChange }) {
+export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
   const { t } = useLanguage()
   const [body, setBody] = useState('')
   const [tags, setTags] = useState(/** @type {string[]} */ ([]))
   const [tagInput, setTagInput] = useState('')
   const [filter, setFilter] = useState(/** @type {string | null} */ (null))
 
-  const all = selectInquiryMessages(db, inquiryId)
-  const threadTags = selectInquiryThreadTags(db, inquiryId)
+  const all = selectInquiryMessages(db, threadKey)
+  const threadTags = selectInquiryThreadTags(db, threadKey)
   const messages = filter ? all.filter((m) => (m.tags ?? []).includes(filter)) : all
 
   const author = db.employees.find((e) => e.id === actorId) ?? db.employees.find((e) => e.canApproveQuotes) ?? db.employees[0]
@@ -67,7 +67,7 @@ export default function InquiryChatPanel({ db, inquiryId, actorId, onChange }) {
   function send() {
     if (!body.trim()) return
     appendInquiryMessage(db, {
-      inquiryId,
+      threadKey,
       authorId: author?.id,
       authorLabel: author?.name ?? t('chat.you'),
       body: body.trim(),
