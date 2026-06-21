@@ -107,7 +107,7 @@
  */
 
 /**
- * @typedef {'drawing' | 'spec' | 'generated_offer_pdf' | 'customer_email' | 'acceptance_receipt' | 'other'} QuoteDocumentKind
+ * @typedef {'drawing' | 'spec' | 'photo' | 'generated_offer_pdf' | 'customer_email' | 'acceptance_receipt' | 'other'} QuoteDocumentKind
  */
 
 /**

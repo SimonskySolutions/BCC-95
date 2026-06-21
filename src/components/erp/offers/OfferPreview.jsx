@@ -6,6 +6,7 @@ import { buildOrderConfirmationModel } from '../../../services/offers/offerDocum
 import {
   selectQuoteOfferLines,
   selectQuoteApprovals,
+  selectQuoteDocuments,
 } from '../../../domains/quotations/selectors.js'
 
 function esc(s) {
@@ -13,7 +14,7 @@ function esc(s) {
 }
 
 /** Render the offer model to a standalone printable HTML document (Cyrillic-safe). */
-function offerHtml(m) {
+function offerHtml(m, photos = []) {
   const L = m.labels
   const showExw = m.priceBasis === 'exw' || m.priceBasis === 'both'
   const showDap = m.priceBasis === 'dap' || m.priceBasis === 'both'
@@ -101,6 +102,9 @@ function offerHtml(m) {
       <tbody>${rows || `<tr><td colspan="${colCount}" class="num">—</td></tr>`}</tbody>
     </table>
 
+    ${photos.length ? `<div style="margin-top:14px"><div class="k" style="font-size:11px;margin-bottom:6px">${esc(L.photos)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${photos.map((p) => `<img src="${p.storageRef}" alt="${esc(p.name)}" style="width:150px;height:110px;object-fit:cover;border:1px solid #cbd5e1;border-radius:6px" />`).join('')}</div></div>` : ''}
+
     <div class="footer">
       ${m.deliveryAddress ? `<div><span class="k">${esc(L.addressOfDelivery)}</span> ${esc(m.deliveryAddress)}</div>` : ''}
       ${m.termsOfDelivery ? `<div><span class="k">${esc(L.termsOfDelivery)}</span> ${esc(m.termsOfDelivery)}</div>` : ''}
@@ -152,10 +156,12 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
     })
   }, [db, quote, version, acceptanceLink, config])
 
+  const photos = selectQuoteDocuments(db, version.id).filter((d) => d.kind === 'photo')
+
   function printDoc() {
     const w = window.open('', '_blank', 'width=820,height=1000')
     if (!w) return
-    w.document.write(offerHtml(model))
+    w.document.write(offerHtml(model, photos))
     w.document.close()
     w.focus()
     setTimeout(() => w.print(), 250)
@@ -251,6 +257,17 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
             })}
           </tbody>
         </table>
+
+        {photos.length > 0 ? (
+          <div className="mt-4">
+            <p className="mb-1.5 text-[11px] text-slate-400">{L.photos}</p>
+            <div className="flex flex-wrap gap-2">
+              {photos.map((p) => (
+                <img key={p.id} src={p.storageRef} alt={p.name} className="h-20 w-28 rounded-md border border-slate-200 object-cover" />
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-4 space-y-1 text-xs text-slate-600">
           {model.deliveryAddress ? <p><span className="text-slate-400">{L.addressOfDelivery}</span> {model.deliveryAddress}</p> : null}

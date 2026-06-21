@@ -105,6 +105,7 @@ export function orderConfirmationLabels(isBg) {
     termsOfDelivery: isBg ? 'Условия на доставка:' : 'Terms of Delivery:',
     termsOfPayment: isBg ? 'Условия на плащане:' : 'Terms of payments:',
     notes: isBg ? 'Забележки:' : 'Notes:',
+    photos: isBg ? 'Снимки' : 'Photos',
     issuedBy: isBg ? 'Издадена от:' : 'Issued by:',
     approvedBy: isBg ? 'Одобрена от:' : 'Approved by:',
     total: isBg ? 'Общо' : 'Total',

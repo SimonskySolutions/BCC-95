@@ -3,6 +3,7 @@ import { Plus, Trash2, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { advanceOnEnter } from '../../../lib/forms.js'
 import { generateOfferMatrix } from '../../../services/offers/index.js'
+import OfferPhotos from './OfferPhotos.jsx'
 import {
   selectQuoteOfferLines,
   selectOfferLinesTotal,
@@ -587,6 +588,9 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
           ) : null}
         </div>
       </div>
+
+      {/* Photos / attachments included in the offer */}
+      <OfferPhotos db={db} versionId={version.id} isLocked={isLocked} onChange={onChange} />
     </div>
   )
 }

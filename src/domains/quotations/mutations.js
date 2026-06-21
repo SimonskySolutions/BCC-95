@@ -162,6 +162,15 @@ export function appendQuoteDocument(db, input) {
 
 /**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} documentId
+ */
+export function removeQuoteDocument(db, documentId) {
+  if (!db.quoteDocuments) return
+  db.quoteDocuments = db.quoteDocuments.filter((d) => d.id !== documentId)
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {Omit<import('./model.js').QuoteDecision, 'id' | 'decidedAt'> & { id?: string; decidedAt?: string }} input
  */
 export function appendQuoteDecision(db, input) {
