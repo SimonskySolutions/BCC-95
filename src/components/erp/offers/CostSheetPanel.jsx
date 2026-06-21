@@ -88,6 +88,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
       addProductCostSheet(db, {
         quoteId: q.id,
         productLabel: ep.name,
+        productDescription: ep.description,
         quantities: ep.quantities,
         currency: q.currency,
         marginPercent: q.marginPercent,
@@ -188,6 +189,16 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
           value={sheet.productLabel ?? ''}
           placeholder={t('cost.untitledProduct')}
           onChange={(e) => { patchCostSheet(db, sheet.id, { productLabel: e.target.value }); onChange?.() }}
+        />
+      </label>
+      <label className="block text-xs font-medium text-slate-600">
+        {t('cost.productDescription')}
+        <textarea
+          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+          rows={2}
+          value={sheet.productDescription ?? ''}
+          placeholder={t('cost.productDescription.placeholder')}
+          onChange={(e) => { patchCostSheet(db, sheet.id, { productDescription: e.target.value }); onChange?.() }}
         />
       </label>
 

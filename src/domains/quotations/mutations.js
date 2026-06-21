@@ -318,6 +318,7 @@ export function appendCostSheet(db, input) {
     quoteId: input.quoteId,
     productId: input.productId,
     productLabel: input.productLabel,
+    productDescription: input.productDescription,
     currency: input.currency ?? 'EUR',
     marginPercent: input.marginPercent ?? 10,
     annualQty: input.annualQty,

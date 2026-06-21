@@ -25,13 +25,10 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
     country: '',
     city: '',
     region: '',
-    productName: '',
-    productDescription: '',
     channel: /** @type {import('../../../domains/inquiries/model.js').InquiryChannel} */ ('email'),
-    requestedQuantity: '',
-    extraQuantities: /** @type {number[]} */ ([]),
-    extraQtyInput: '',
-    extraProducts: /** @type {{ name: string; quantities: number[]; qtyInput: string }[]} */ ([]),
+    products: /** @type {{ name: string; description: string; quantities: number[]; qtyInput: string }[]} */ ([
+      { name: '', description: '', quantities: [], qtyInput: '' },
+    ]),
     requestedDeadline: '',
     summary: '',
     specificationNote: '',
@@ -44,9 +41,8 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
   const validation = useMemo(() => {
     const problems = /** @type {string[]} */ ([])
     if (mode === 'new' && !form.clientName.trim()) problems.push('clientName')
-    if (!form.productName.trim()) problems.push('productName')
-    const qty = Number(form.requestedQuantity)
-    if (!form.requestedQuantity || !Number.isFinite(qty) || qty <= 0) problems.push('quantity')
+    if (!form.products[0]?.name.trim()) problems.push('productName')
+    if (!(form.products[0]?.quantities.length > 0)) problems.push('quantity')
     return problems
   }, [mode, form])
 
@@ -71,16 +67,17 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
                 region: form.region.trim() || regionForCountry(form.country) || undefined,
               },
         product: {
-          name: form.productName.trim(),
-          description: form.productDescription.trim() || undefined,
+          name: form.products[0].name.trim(),
+          description: form.products[0].description.trim() || undefined,
         },
         inquiry: {
           channel: form.channel,
-          requestedQuantity: Number(form.requestedQuantity),
-          requestedQuantities: [Number(form.requestedQuantity), ...form.extraQuantities].filter((n) => Number.isFinite(n) && n > 0),
-          extraProducts: form.extraProducts
+          requestedQuantity: form.products[0].quantities[0],
+          requestedQuantities: form.products[0].quantities,
+          extraProducts: form.products
+            .slice(1)
             .filter((p) => p.name.trim())
-            .map((p) => ({ name: p.name.trim(), quantities: p.quantities })),
+            .map((p) => ({ name: p.name.trim(), description: p.description.trim() || undefined, quantities: p.quantities })),
           requestedDeadline: form.requestedDeadline || undefined,
           summary: form.summary.trim() || undefined,
           specificationNote: form.specificationNote.trim() || undefined,
@@ -102,6 +99,25 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
   const inputCls =
     'mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm'
   const invalidCls = 'border-rose-400 bg-rose-50'
+
+  const setProduct = (idx, patch) =>
+    setForm((f) => ({ ...f, products: f.products.map((p, i) => (i === idx ? { ...p, ...patch } : p)) }))
+  const addProductRow = () =>
+    setForm((f) => ({ ...f, products: [...f.products, { name: '', description: '', quantities: [], qtyInput: '' }] }))
+  const removeProductRow = (idx) =>
+    setForm((f) => ({ ...f, products: f.products.filter((_, i) => i !== idx) }))
+  const addQty = (idx) =>
+    setForm((f) => ({
+      ...f,
+      products: f.products.map((p, i) => {
+        if (i !== idx) return p
+        const n = Number(p.qtyInput)
+        if (!Number.isFinite(n) || n <= 0) return p
+        return { ...p, quantities: [...p.quantities, n], qtyInput: '' }
+      }),
+    }))
+  const removeQty = (idx, qi) =>
+    setForm((f) => ({ ...f, products: f.products.map((p, i) => (i === idx ? { ...p, quantities: p.quantities.filter((_, j) => j !== qi) } : p)) }))
 
   return (
     <div className="space-y-5">
@@ -216,26 +232,61 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-900">{t('newInquiry.section.product')}</h3>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="block text-xs font-medium text-slate-600 md:col-span-2">
-            {t('newInquiry.productName')} *
-            <input
-              className={`${inputCls} ${isInvalid('productName') ? invalidCls : ''}`}
-              value={form.productName}
-              onChange={(e) => setForm({ ...form, productName: e.target.value })}
-              placeholder="CNC housing v2"
-            />
-          </label>
-          <label className="block text-xs font-medium text-slate-600 md:col-span-2">
-            {t('newInquiry.productDescription')}
-            <textarea
-              className={inputCls}
-              rows={2}
-              value={form.productDescription}
-              onChange={(e) => setForm({ ...form, productDescription: e.target.value })}
-            />
-          </label>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900">{t('newInquiry.section.products')}</h3>
+          <button
+            type="button"
+            onClick={addProductRow}
+            className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-700"
+          >
+            + {t('newInquiry.addProduct')}
+          </button>
+        </div>
+        <div className="space-y-3">
+          {form.products.map((p, idx) => (
+            <div key={idx} className="space-y-2 rounded-xl border border-slate-200 p-3">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{idx + 1}</span>
+                <input
+                  className={`flex-1 rounded-lg border bg-white px-2 py-1.5 text-sm ${idx === 0 && isInvalid('productName') ? invalidCls : 'border-slate-200'}`}
+                  value={p.name}
+                  placeholder={`${t('newInquiry.productName')}${idx === 0 ? ' *' : ''}`}
+                  onChange={(e) => setProduct(idx, { name: e.target.value })}
+                />
+                {form.products.length > 1 ? (
+                  <button type="button" onClick={() => removeProductRow(idx)} className="text-slate-400 hover:text-rose-600" title={t('common.remove')}>✕</button>
+                ) : null}
+              </div>
+              <textarea
+                className={inputCls}
+                rows={2}
+                value={p.description}
+                placeholder={t('newInquiry.productDescription')}
+                onChange={(e) => setProduct(idx, { description: e.target.value })}
+              />
+              <div>
+                <span className="block text-[11px] font-medium text-slate-500">{t('newInquiry.quantity')}{idx === 0 ? ' *' : ''}</span>
+                <div className={`mt-1 flex flex-wrap items-center gap-1.5 rounded-lg border px-2 py-1.5 ${idx === 0 && isInvalid('quantity') ? invalidCls : 'border-slate-200'}`}>
+                  {p.quantities.map((q, qi) => (
+                    <span key={qi} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-100">
+                      {q}
+                      <button type="button" onClick={() => removeQty(idx, qi)} className="opacity-60 hover:opacity-100">✕</button>
+                    </span>
+                  ))}
+                  <input
+                    type="number"
+                    min={1}
+                    className="h-7 w-24 rounded-md border border-slate-200 bg-white px-2 text-xs"
+                    value={p.qtyInput}
+                    placeholder={t('newInquiry.addQuantity')}
+                    onChange={(e) => setProduct(idx, { qtyInput: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addQty(idx) } }}
+                  />
+                </div>
+                <span className="mt-0.5 block text-[10px] text-slate-400">{t('newInquiry.quantityHint')}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -265,41 +316,6 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
             </select>
           </label>
           <label className="block text-xs font-medium text-slate-600">
-            {t('newInquiry.quantity')} *
-            <input
-              type="number"
-              min={1}
-              className={`${inputCls} ${isInvalid('quantity') ? invalidCls : ''}`}
-              value={form.requestedQuantity}
-              onChange={(e) => setForm({ ...form, requestedQuantity: e.target.value })}
-            />
-            {/* Additional quantities the customer asked to be quoted */}
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              {form.extraQuantities.map((q, i) => (
-                <span key={`${q}-${i}`} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-100">
-                  {q}
-                  <button type="button" onClick={() => setForm((f) => ({ ...f, extraQuantities: f.extraQuantities.filter((_, idx) => idx !== i) }))} className="opacity-60 hover:opacity-100">✕</button>
-                </span>
-              ))}
-              <input
-                type="number"
-                min={1}
-                className="h-7 w-24 rounded-md border border-slate-200 px-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-blue-300"
-                value={form.extraQtyInput}
-                placeholder={t('newInquiry.addQuantity')}
-                onChange={(e) => setForm({ ...form, extraQtyInput: e.target.value })}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    const n = Number(form.extraQtyInput)
-                    if (Number.isFinite(n) && n > 0) setForm((f) => ({ ...f, extraQuantities: [...f.extraQuantities, n], extraQtyInput: '' }))
-                  }
-                }}
-              />
-            </div>
-            <span className="mt-0.5 block text-[10px] font-normal text-slate-400">{t('newInquiry.quantityHint')}</span>
-          </label>
-          <label className="block text-xs font-medium text-slate-600">
             {t('inquiry.deadline')}
             <input
               type="date"
@@ -326,65 +342,6 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
               onChange={(e) => setForm({ ...form, specificationNote: e.target.value })}
             />
           </label>
-        </div>
-
-        {/* Additional products in the same inquiry — each with its own quantities */}
-        <div className="rounded-lg border border-slate-200 p-2.5">
-          <div className="mb-1.5 flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-slate-700">{t('newInquiry.moreProducts')}</h4>
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, extraProducts: [...f.extraProducts, { name: '', quantities: [], qtyInput: '' }] }))}
-              className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-700"
-            >
-              + {t('newInquiry.addProduct')}
-            </button>
-          </div>
-          {form.extraProducts.length === 0 ? (
-            <p className="text-[11px] text-slate-400">{t('newInquiry.moreProducts.hint')}</p>
-          ) : null}
-          <div className="space-y-2">
-            {form.extraProducts.map((p, idx) => (
-              <div key={idx} className="rounded-lg bg-slate-50 p-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm"
-                    value={p.name}
-                    placeholder={t('newInquiry.productName')}
-                    onChange={(e) => setForm((f) => ({ ...f, extraProducts: f.extraProducts.map((x, i) => i === idx ? { ...x, name: e.target.value } : x) }))}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, extraProducts: f.extraProducts.filter((_, i) => i !== idx) }))}
-                    className="text-slate-400 hover:text-rose-600"
-                  >✕</button>
-                </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  {p.quantities.map((q, qi) => (
-                    <span key={qi} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-100">
-                      {q}
-                      <button type="button" onClick={() => setForm((f) => ({ ...f, extraProducts: f.extraProducts.map((x, i) => i === idx ? { ...x, quantities: x.quantities.filter((_, j) => j !== qi) } : x) }))} className="opacity-60 hover:opacity-100">✕</button>
-                    </span>
-                  ))}
-                  <input
-                    type="number"
-                    min={1}
-                    className="h-7 w-24 rounded-md border border-slate-200 bg-white px-2 text-xs"
-                    value={p.qtyInput}
-                    placeholder={t('newInquiry.addQuantity')}
-                    onChange={(e) => setForm((f) => ({ ...f, extraProducts: f.extraProducts.map((x, i) => i === idx ? { ...x, qtyInput: e.target.value } : x) }))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        const n = Number(p.qtyInput)
-                        if (Number.isFinite(n) && n > 0) setForm((f) => ({ ...f, extraProducts: f.extraProducts.map((x, i) => i === idx ? { ...x, quantities: [...x.quantities, n], qtyInput: '' } : x) }))
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         <AttachmentEditor

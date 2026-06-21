@@ -240,6 +240,7 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {string} quoteId
  * @property {string} [productId]                     — linked product (optional for ad-hoc products)
  * @property {string} [productLabel]                  — product name being costed (one offer can cost several products)
+ * @property {string} [productDescription]            — product description shown on the offer
  * @property {import('./model.js').QuoteCurrency} currency
  * @property {number} marginPercent                  — profit % applied to cost price
  * @property {number} [annualQty]                    — informational (Pcs/year)
