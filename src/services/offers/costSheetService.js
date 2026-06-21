@@ -62,6 +62,7 @@ export function lineFromCatalog(costSheetId, entry) {
  *   currency?: import('../../domains/quotations/model.js').QuoteCurrency
  *   marginPercent?: number
  *   annualQty?: number
+ *   quantities?: number[]
  *   seed?: boolean
  *   actorId?: string
  * }} input
@@ -69,6 +70,12 @@ export function lineFromCatalog(costSheetId, entry) {
 export function ensureCostSheet(db, input) {
   const existing = selectCostSheetByQuote(db, input.quoteId)
   if (existing) return existing
+
+  // Seed quantity price-break tiers from the quantities the customer asked for.
+  const qtys = [...new Set((input.quantities ?? []).filter((q) => Number(q) > 0))].sort((a, b) => a - b)
+  const priceBreaks = qtys.length >= 2
+    ? qtys.map((q, i) => ({ id: `qb-seed-${i}`, qty: q, marginPercent: input.marginPercent ?? 10 }))
+    : []
 
   const sheet = appendCostSheet(db, {
     quoteId: input.quoteId,
@@ -78,6 +85,7 @@ export function ensureCostSheet(db, input) {
     annualQty: input.annualQty,
     toolingMode: 'amortise',
     amortisationUnits: input.annualQty || 10000,
+    priceBreaks,
   })
 
   if (input.seed !== false) {

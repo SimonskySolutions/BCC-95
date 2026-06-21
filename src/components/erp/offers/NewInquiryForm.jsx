@@ -29,6 +29,8 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
     productDescription: '',
     channel: /** @type {import('../../../domains/inquiries/model.js').InquiryChannel} */ ('email'),
     requestedQuantity: '',
+    extraQuantities: /** @type {number[]} */ ([]),
+    extraQtyInput: '',
     requestedDeadline: '',
     summary: '',
     specificationNote: '',
@@ -74,6 +76,7 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
         inquiry: {
           channel: form.channel,
           requestedQuantity: Number(form.requestedQuantity),
+          requestedQuantities: [Number(form.requestedQuantity), ...form.extraQuantities].filter((n) => Number.isFinite(n) && n > 0),
           requestedDeadline: form.requestedDeadline || undefined,
           summary: form.summary.trim() || undefined,
           specificationNote: form.specificationNote.trim() || undefined,
@@ -266,6 +269,31 @@ export default function NewInquiryForm({ db, onCreated, onCancel }) {
               value={form.requestedQuantity}
               onChange={(e) => setForm({ ...form, requestedQuantity: e.target.value })}
             />
+            {/* Additional quantities the customer asked to be quoted */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {form.extraQuantities.map((q, i) => (
+                <span key={`${q}-${i}`} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-blue-100">
+                  {q}
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, extraQuantities: f.extraQuantities.filter((_, idx) => idx !== i) }))} className="opacity-60 hover:opacity-100">✕</button>
+                </span>
+              ))}
+              <input
+                type="number"
+                min={1}
+                className="h-7 w-24 rounded-md border border-slate-200 px-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-blue-300"
+                value={form.extraQtyInput}
+                placeholder={t('newInquiry.addQuantity')}
+                onChange={(e) => setForm({ ...form, extraQtyInput: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    const n = Number(form.extraQtyInput)
+                    if (Number.isFinite(n) && n > 0) setForm((f) => ({ ...f, extraQuantities: [...f.extraQuantities, n], extraQtyInput: '' }))
+                  }
+                }}
+              />
+            </div>
+            <span className="mt-0.5 block text-[10px] font-normal text-slate-400">{t('newInquiry.quantityHint')}</span>
           </label>
           <label className="block text-xs font-medium text-slate-600">
             {t('inquiry.deadline')}

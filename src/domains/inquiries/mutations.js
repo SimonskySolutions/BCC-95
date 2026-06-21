@@ -9,6 +9,7 @@ let idCounter = 20000
  * @property {import('./model.js').InquiryChannel} channel
  * @property {string} [summary]
  * @property {number} [requestedQuantity]
+ * @property {number[]} [requestedQuantities]
  * @property {string} [requestedDeadline]
  * @property {string} [specificationNote]
  * @property {string} [customerContactName]
@@ -51,6 +52,7 @@ export function createInquiryDraft(input, id) {
     status: 'received',
     summary: input.summary,
     requestedQuantity: input.requestedQuantity,
+    requestedQuantities: input.requestedQuantities ?? (input.requestedQuantity ? [input.requestedQuantity] : []),
     requestedDeadline: input.requestedDeadline,
     specificationNote: input.specificationNote,
     customerContactName: input.customerContactName,

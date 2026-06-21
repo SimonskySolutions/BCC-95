@@ -298,6 +298,7 @@ export function appendCostSheet(db, input) {
     annualQty: input.annualQty,
     toolingMode: input.toolingMode ?? 'amortise',
     amortisationUnits: input.amortisationUnits,
+    priceBreaks: input.priceBreaks ?? [],
     notes: input.notes,
     updatedAt: input.updatedAt ?? new Date().toISOString(),
   }

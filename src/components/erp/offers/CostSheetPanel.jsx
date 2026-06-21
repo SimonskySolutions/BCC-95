@@ -72,6 +72,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
         currency: q.currency,
         marginPercent: q.marginPercent,
         annualQty: inquiry?.requestedQuantity,
+        quantities: inquiry?.requestedQuantities,
         actorId,
       })
       onChange?.()

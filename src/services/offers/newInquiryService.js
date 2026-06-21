@@ -125,6 +125,7 @@ export function startNewInquiry(db, input) {
     channel: input.inquiry.channel,
     summary: input.inquiry.summary,
     requestedQuantity: input.inquiry.requestedQuantity,
+    requestedQuantities: input.inquiry.requestedQuantities,
     requestedDeadline: input.inquiry.requestedDeadline,
     specificationNote: input.inquiry.specificationNote,
     customerContactName: input.client.contactName,

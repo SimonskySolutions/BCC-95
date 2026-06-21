@@ -34,7 +34,8 @@
  * @property {InquiryChannel} channel
  * @property {InquiryStatus} status
  * @property {string} [summary]
- * @property {number} [requestedQuantity]
+ * @property {number} [requestedQuantity]         — primary quantity (first tier)
+ * @property {number[]} [requestedQuantities]     — all quantities the customer asked to be quoted (100/200/500…)
  * @property {string} [requestedDeadline]        — ISO date
  * @property {string} [specificationNote]
  * @property {string} [customerContactName]
