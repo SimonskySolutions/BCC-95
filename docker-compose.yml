@@ -1,0 +1,54 @@
+# Local stack for BCC-95.
+#
+#   Production-style (built SPA on nginx):   docker compose up --build web
+#     → http://localhost:8080
+#
+#   Hot-reload dev (Vite, source mounted):   docker compose --profile dev up web-dev
+#     → http://localhost:5173
+#
+#   Database + Adminer:                       docker compose up db adminer
+#     → Adminer http://localhost:8081  (server: db, user/pass/db: bcc95)
+#
+# NOTE: the app currently persists in the browser (localStorage). The Postgres
+# service below is the foundation for a future backend — nothing connects to it
+# yet.
+services:
+  web:
+    build: .
+    image: bcc95-web
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  web-dev:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    profiles:
+      - dev
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bcc95
+      POSTGRES_PASSWORD: bcc95
+      POSTGRES_DB: bcc95
+    ports:
+      - "5432:5432"
+    volumes:
+      - bcc95_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:4
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+
+volumes:
+  bcc95_pgdata:

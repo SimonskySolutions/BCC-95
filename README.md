@@ -67,6 +67,32 @@ Node 18+ is recommended.
 
 ---
 
+## Run locally with Docker
+
+No Node install required — Docker builds and serves everything.
+
+```bash
+# Production-style: build the SPA and serve it on nginx
+docker compose up --build web          # → http://localhost:8080
+
+# Hot-reload dev (Vite, source mounted)
+docker compose --profile dev up web-dev   # → http://localhost:5173
+
+# Database + Adminer (DB browser)
+docker compose up db adminer
+#   Adminer  → http://localhost:8081   (system: PostgreSQL, server: db, user/pass/db: bcc95)
+```
+
+Files: `Dockerfile` (multi-stage build → nginx), `nginx.conf` (SPA fallback),
+`docker-compose.yml` (web / web-dev / db / adminer).
+
+> **Note on the database:** the app currently persists in the browser
+> (`localStorage`). The `db` (Postgres) service is included as the foundation
+> for a future backend API — the frontend does **not** talk to it yet. Wiring
+> the domains to a real backend + database is a separate piece of work.
+
+---
+
 ## Deployment — Vercel
 
 This repository is configured to deploy to Vercel out of the box (`vercel.json`).
