@@ -6,6 +6,7 @@ import {
   updateInquiry,
 } from '../../../services/offers/inquiryIntakeService.js'
 import AttachmentEditor from './AttachmentEditor.jsx'
+import DatePicker from '../../DatePicker.jsx'
 
 /**
  * @param {{
@@ -131,11 +132,10 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
         </label>
         <label className="block text-xs font-medium text-slate-600">
           {t('inquiry.deadline')}
-          <input
-            type="date"
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+          <DatePicker
+            className="mt-1"
             value={form.requestedDeadline}
-            onChange={(e) => setForm({ ...form, requestedDeadline: e.target.value })}
+            onChange={(iso) => setForm({ ...form, requestedDeadline: iso })}
           />
         </label>
         <label className="md:col-span-2 block text-xs font-medium text-slate-600">

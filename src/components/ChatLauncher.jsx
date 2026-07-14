@@ -3,7 +3,7 @@ import { useDb } from '../data/useDb.js'
 import { useLanguage } from '../i18n/useLanguage.js'
 import { selectInquiryMessages } from '../domains/communications/selectors.js'
 import InquiryChatPanel from './erp/offers/InquiryChatPanel.jsx'
-import { dmThreadKey } from '../pages/MessagesPage.jsx'
+import { dmThreadKey } from '../domains/communications/threadKeys.js'
 
 function initials(name = '?') {
   return name.split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()

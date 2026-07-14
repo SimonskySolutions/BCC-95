@@ -6,6 +6,7 @@ import {
   exportReportAsPdf,
   exportReportAsXlsx,
 } from '../services/reporting/exportService.js'
+import DatePicker from '../components/DatePicker.jsx'
 
 /**
  * @param {{ db: import('../data/mockDatabase.js').MockDatabase }} props
@@ -58,21 +59,11 @@ export default function ReportsPage({ db }) {
           </label>
           <label className="block text-xs font-medium text-slate-600">
             {t('reports.from')}
-            <input
-              type="date"
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
+            <DatePicker className="mt-1" value={from} onChange={(iso) => setFrom(iso)} />
           </label>
           <label className="block text-xs font-medium text-slate-600">
             {t('reports.to')}
-            <input
-              type="date"
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
+            <DatePicker className="mt-1" value={to} onChange={(iso) => setTo(iso)} />
           </label>
           <label className="block text-xs font-medium text-slate-600">
             {t('reports.product')}

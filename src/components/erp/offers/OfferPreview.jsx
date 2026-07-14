@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import { Printer } from 'lucide-react'
+import Logo from '../../branding/Logo.jsx'
+import { logoMarkSvg, LOGO_INK } from '../../branding/logoMark.js'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { useFactoryConfig } from '../../../config/useFactoryConfig.js'
 import { buildOrderConfirmationModel } from '../../../services/offers/offerDocumentService.js'
@@ -35,7 +37,8 @@ function offerHtml(m, photos = []) {
   const sections = (m.productGroups || []).map((g) => {
     const body = g.rows.map((r, i) => {
       const value = r.qty * (showDap ? r.unitPrice : r.exwUnitPrice)
-      return `<tr><td class="num">${i + 1}</td><td class="right">${groupInt(r.qty)}${r.uom ? ' ' + esc(r.uom) : ''}</td>${showExw ? `<td class="right">${money(r.exwUnitPrice)}</td>` : ''}${showDap ? `<td class="right">${money(r.unitPrice)}</td>` : ''}<td class="right">${money(value)}</td></tr>`
+      const label = r.isOneOff ? esc(r.article) : `${groupInt(r.qty)}${r.uom ? ' ' + esc(r.uom) : ''}`
+      return `<tr><td class="num">${i + 1}</td><td class="right">${label}</td>${showExw ? `<td class="right">${money(r.exwUnitPrice)}</td>` : ''}${showDap ? `<td class="right">${money(r.unitPrice)}</td>` : ''}<td class="right">${money(value)}</td></tr>`
     }).join('')
     return `<div class="prod"><strong>${esc(g.product)}</strong>${g.requirements ? `<div class="sub">${esc(g.requirements)}</div>` : ''}</div>
       <table><thead><tr>${headCells}</tr></thead><tbody>${body || `<tr><td colspan="${colCount}" class="num">—</td></tr>`}</tbody></table>`
@@ -67,10 +70,13 @@ function offerHtml(m, photos = []) {
     @media print { body { margin: 12mm; } button { display: none; } }
   </style></head><body>
     <div class="head">
-      <div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="display:inline-flex;width:40px;height:40px">${logoMarkSvg({ ink: LOGO_INK, size: 40 })}</span>
+        <div>
         <div class="firm">${esc(m.firm.name)}</div>
         ${m.firm.subtitle ? `<div class="firm-sub">${esc(m.firm.subtitle)}</div>` : ''}
         ${m.firm.vat ? `<div class="firm-vat">${esc(L.vat)} ${esc(m.firm.vat)}</div>` : ''}
+        </div>
       </div>
       <div class="meta">
         <div class="title">${esc(L.docTitle)}</div>
@@ -83,12 +89,14 @@ function offerHtml(m, photos = []) {
       <div>
         <div class="label">${esc(L.to)}</div>
         <div><strong>${esc(m.customer.companyName)}</strong></div>
+        ${m.customer.address ? `<div>${esc(m.customer.address)}</div>` : ''}
         ${m.customer.cityLine ? `<div>${esc(m.customer.cityLine)}</div>` : ''}
         ${m.customer.country ? `<div>${esc(m.customer.country)}</div>` : ''}
         ${m.customer.vat ? `<div>${esc(L.vat)} ${esc(m.customer.vat)}</div>` : ''}
         ${m.contact ? `<div>${esc(L.attention)} ${esc(m.contact)}</div>` : ''}
       </div>
       <div style="text-align:right">
+        ${m.deliveryAddress ? `<div style="margin-bottom:4px"><div class="label">${esc(L.addressOfDelivery)}</div><div>${esc(m.deliveryAddress)}</div></div>` : ''}
         ${m.customerOrderRef ? `<div>${esc(L.yourOrder)} ${esc(m.customerOrderRef)}</div>` : ''}
         ${m.leadTimeDays != null ? `<div>${esc(L.leadTime)}: ${m.leadTimeDays}</div>` : ''}
       </div>
@@ -103,7 +111,6 @@ function offerHtml(m, photos = []) {
       <div style="display:flex;flex-wrap:wrap;gap:12px">${photos.map((p) => `<figure style="width:48%;margin:0"><img src="${p.storageRef}" alt="${esc(p.name)}" style="width:100%;max-height:280px;object-fit:contain;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px" />${p.caption ? `<figcaption style="font-size:11px;color:#475569;margin-top:3px;line-height:1.4">${esc(p.caption)}</figcaption>` : ''}</figure>`).join('')}</div></div>` : ''}
 
     <div class="footer">
-      ${m.deliveryAddress ? `<div><span class="k">${esc(L.addressOfDelivery)}</span> ${esc(m.deliveryAddress)}</div>` : ''}
       ${m.termsOfDelivery ? `<div><span class="k">${esc(L.termsOfDelivery)}</span> ${esc(m.termsOfDelivery)}</div>` : ''}
       ${m.termsOfPayment ? `<div><span class="k">${esc(L.termsOfPayment)}</span> ${esc(m.termsOfPayment)}</div>` : ''}
       ${m.notes ? `<div><span class="k">${esc(L.notes)}</span> ${esc(m.notes)}</div>` : ''}
@@ -186,10 +193,13 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
       <div className="rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm">
         {/* Branded header band */}
         <div className="flex items-start justify-between gap-4 border-b-2 border-blue-600 pb-2.5">
-          <div>
-            <p className="text-base font-bold text-slate-900">{model.firm.name}</p>
-            {model.firm.subtitle ? <p className="text-xs text-slate-500">{model.firm.subtitle}</p> : null}
-            {model.firm.vat ? <p className="text-[11px] text-slate-400">{L.vat} {model.firm.vat}</p> : null}
+          <div className="flex items-center gap-2.5">
+            <Logo variant="mark" size={38} className="shrink-0" />
+            <div>
+              <p className="text-base font-bold text-slate-900">{model.firm.name}</p>
+              {model.firm.subtitle ? <p className="text-xs text-slate-500">{model.firm.subtitle}</p> : null}
+              {model.firm.vat ? <p className="text-[11px] text-slate-400">{L.vat} {model.firm.vat}</p> : null}
+            </div>
           </div>
           <div className="text-right">
             <p className="text-sm font-bold tracking-wide text-blue-700">{L.docTitle}</p>
@@ -203,12 +213,19 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
           <div>
             <p className="text-[10px] uppercase text-slate-400">{L.to}</p>
             <p className="font-semibold text-slate-800">{model.customer.companyName || '—'}</p>
+            {model.customer.address ? <p className="text-slate-600">{model.customer.address}</p> : null}
             {model.customer.cityLine ? <p className="text-slate-600">{model.customer.cityLine}</p> : null}
             {model.customer.country ? <p className="text-slate-600">{model.customer.country}</p> : null}
             {model.customer.vat ? <p className="text-slate-600">{L.vat} {model.customer.vat}</p> : null}
             {model.contact ? <p className="text-slate-600">{L.attention} {model.contact}</p> : null}
           </div>
-          <div className="text-right text-slate-600">
+          <div className="max-w-[48%] text-right text-slate-600">
+            {model.deliveryAddress ? (
+              <div className="mb-1.5">
+                <p className="text-[10px] uppercase text-slate-400">{L.addressOfDelivery}</p>
+                <p>{model.deliveryAddress}</p>
+              </div>
+            ) : null}
             {model.customerOrderRef ? <p>{L.yourOrder} {model.customerOrderRef}</p> : null}
             {model.leadTimeDays != null ? <p>{L.leadTime}: {model.leadTimeDays}</p> : null}
           </div>
@@ -243,7 +260,7 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
                   return (
                     <tr key={r.no} className="text-slate-700">
                       <td className="py-1.5 pr-2">{i + 1}</td>
-                      <td className="py-1.5 pr-2 font-medium">{groupInt(r.qty)}{r.uom ? ` ${r.uom}` : ''}</td>
+                      <td className="py-1.5 pr-2 font-medium">{r.isOneOff ? r.article : `${groupInt(r.qty)}${r.uom ? ` ${r.uom}` : ''}`}</td>
                       {showExw ? <td className="py-1.5 pr-2 text-right">{group(r.exwUnitPrice)}</td> : null}
                       {showDap ? <td className="py-1.5 pr-2 text-right font-semibold">{group(r.unitPrice)}</td> : null}
                       <td className="py-1.5 text-right text-slate-500">{group(value)}</td>
@@ -261,7 +278,7 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {photos.map((p) => (
                 <figure key={p.id} className="m-0">
-                  <img src={p.storageRef} alt={p.name} className="h-64 w-full rounded-md border border-slate-200 object-contain bg-slate-50" />
+                  <img src={p.storageRef} alt={p.name} loading="lazy" decoding="async" className="h-64 w-full rounded-md border border-slate-200 object-contain bg-slate-50" />
                   {p.caption ? <figcaption className="mt-1 text-xs leading-snug text-slate-600">{p.caption}</figcaption> : null}
                 </figure>
               ))}
@@ -270,7 +287,6 @@ export default function OfferPreview({ db, quote, version, acceptanceLink }) {
         ) : null}
 
         <div className="mt-4 space-y-1 text-xs text-slate-600">
-          {model.deliveryAddress ? <p><span className="text-slate-400">{L.addressOfDelivery}</span> {model.deliveryAddress}</p> : null}
           {model.termsOfDelivery ? <p><span className="text-slate-400">{L.termsOfDelivery}</span> {model.termsOfDelivery}</p> : null}
           {model.termsOfPayment ? <p><span className="text-slate-400">{L.termsOfPayment}</span> {model.termsOfPayment}</p> : null}
           {model.notes ? <p><span className="text-slate-400">{L.notes}</span> {model.notes}</p> : null}

@@ -9,15 +9,16 @@
 #   Database + Adminer:                       docker compose up db adminer
 #     → Adminer http://localhost:8081  (server: db, user/pass/db: bcc95)
 #
-# NOTE: the app currently persists in the browser (localStorage). The Postgres
-# service below is the foundation for a future backend — nothing connects to it
-# yet.
+# The API persists all working data in Postgres; the web images proxy /api to
+# the api service (nginx in production, Vite proxy in dev).
 services:
   web:
     build: .
     image: bcc95-web
     ports:
       - "8080:80"
+    depends_on:
+      - api
     restart: unless-stopped
 
   web-dev:
@@ -32,8 +33,26 @@ services:
     profiles:
       - dev
 
+  api:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && node index.js"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    environment:
+      PGHOST: db
+      PGUSER: bcc95
+      PGPASSWORD: bcc95
+      PGDATABASE: bcc95
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    restart: unless-stopped
+
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: bcc95
       POSTGRES_PASSWORD: bcc95
@@ -41,7 +60,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - bcc95_pgdata:/var/lib/postgresql/data
+      # PG 18+ stores data in a version subdir under /var/lib/postgresql
+      - bcc95_pgdata:/var/lib/postgresql
     restart: unless-stopped
 
   adminer:

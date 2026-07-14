@@ -238,6 +238,18 @@ export function runModuleAgent(db, moduleId) {
     }
     case 'people': {
       const workloads = computeWorkloadByEmployee(db)
+      if (workloads.length === 0) {
+        return {
+          moduleId,
+          agentName: 'People Agent',
+          summary: 'No assignable workload yet.',
+          recommendations: [
+            'Add employees and assign tasks to see workload balance.',
+            'No rebalancing needed while the queue is empty.',
+          ],
+          actions: [],
+        }
+      }
       const max = workloads.reduce((a, b) => (a.openTaskCount > b.openTaskCount ? a : b), workloads[0])
       const min = workloads.reduce((a, b) => (a.openTaskCount < b.openTaskCount ? a : b), workloads[0])
       return {

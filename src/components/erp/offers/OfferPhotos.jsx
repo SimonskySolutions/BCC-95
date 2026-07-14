@@ -41,7 +41,7 @@ function downscaleImage(file, maxDim = 1000, quality = 0.72) {
  *   onChange?: () => void
  * }} props
  */
-export default function OfferPhotos({ db, versionId, isLocked, onChange }) {
+export default function OfferPhotos({ db, versionId, isLocked, actorId, onChange }) {
   const { t } = useLanguage()
   const fileRef = useRef(/** @type {HTMLInputElement | null} */ (null))
   const [busy, setBusy] = useState(false)
@@ -55,7 +55,7 @@ export default function OfferPhotos({ db, versionId, isLocked, onChange }) {
     setBusy(true)
     for (const f of files) {
       const dataUrl = await downscaleImage(f)
-      if (dataUrl) appendQuoteDocument(db, { quoteVersionId: versionId, kind: 'photo', name: f.name, storageRef: dataUrl })
+      if (dataUrl) appendQuoteDocument(db, { quoteVersionId: versionId, kind: 'photo', name: f.name, storageRef: dataUrl, uploadedById: actorId })
     }
     setBusy(false)
     onChange?.()
@@ -115,6 +115,9 @@ export default function OfferPhotos({ db, versionId, isLocked, onChange }) {
                     onChange={(e) => { patchQuoteDocument(db, p.id, { caption: e.target.value }); onChange?.() }}
                   />
                 )}
+                <span className="mt-1 block truncate text-[10px] text-slate-400">
+                  {(db.employees ?? []).find((e) => e.id === p.uploadedById)?.name ?? '—'} · {String(p.createdAt ?? '').slice(0, 10)}
+                </span>
               </figcaption>
             </figure>
           ))}

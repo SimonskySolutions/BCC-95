@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Trash2, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
-import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
+import { useFactoryConfig } from '../../../config/useFactoryConfig.js'
+import { getGroupDrivers, getCustomMethod } from '../../../config/factoryConfig.js'
+import { groupAmount } from '../../../lib/money.js'
 
 const fieldCls =
   'w-full rounded-md border border-slate-200 bg-white px-1.5 py-1 text-right text-xs focus:outline-none focus:ring-2 focus:ring-blue-300'
@@ -90,7 +92,25 @@ function NumField({ label, value, onChange, suffix }) {
  */
 export default function CostLineRow({ line, amount, currency, catalog = [], onPatch, onRemove, collapsed = false, onToggleCollapse }) {
   const { t } = useLanguage()
-  const drivers = GROUP_DRIVERS[line.group] ?? ['count']
+  const { config } = useFactoryConfig()
+  // Driver options for this section come from config (Settings → Cost drivers);
+  // always include the line's current driver so existing data never breaks.
+  let driverOptions = getGroupDrivers(config, line.group).map((d) => ({
+    method: d.method,
+    label: d.label || getCustomMethod(config, d.method)?.label || t(`cost.driver.${d.method}`, d.method),
+  }))
+  if (!driverOptions.some((o) => o.method === line.driver)) {
+    const cm = getCustomMethod(config, line.driver)
+    driverOptions = [{ method: line.driver, label: cm?.label || t(`cost.driver.${line.driver}`, line.driver) }, ...driverOptions]
+  }
+
+  // Switching driver: snapshot a custom method's formula+fields onto the line,
+  // or clear them when switching back to a built-in.
+  function onDriverChange(method) {
+    const cm = getCustomMethod(config, method)
+    if (cm) onPatch({ driver: method, formula: cm.formula, fields: cm.fields, values: {} })
+    else onPatch({ driver: method, formula: undefined, fields: undefined, values: undefined })
+  }
   const driverRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const focusOnExpand = useRef(false)
 
@@ -156,17 +176,17 @@ export default function CostLineRow({ line, amount, currency, catalog = [], onPa
             onChange={(e) => onPatch({ note: e.target.value })}
           />
         )}
-        {/* Driver selector (only if the group allows more than one) */}
-        {!collapsed && drivers.length > 1 ? (
+        {/* Driver selector (only if the section offers more than one method) */}
+        {!collapsed && driverOptions.length > 1 ? (
           <select
             className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs"
             value={line.driver}
-            onChange={(e) => onPatch({ driver: e.target.value })}
+            onChange={(e) => onDriverChange(e.target.value)}
             title={t('cost.line.driver')}
           >
-            {drivers.map((d) => (
-              <option key={d} value={d}>
-                {t(`cost.driver.${d}`, d)}
+            {driverOptions.map((o) => (
+              <option key={o.method} value={o.method}>
+                {o.label}
               </option>
             ))}
           </select>
@@ -174,7 +194,7 @@ export default function CostLineRow({ line, amount, currency, catalog = [], onPa
         {/* Amount + remove */}
         <div className="ml-auto flex items-center gap-2">
           <span className="text-sm font-semibold text-slate-800">
-            {amount.toFixed(4)} <span className="text-[10px] font-normal text-slate-400">{currency}</span>
+            {groupAmount(amount)} <span className="text-[10px] font-normal text-slate-400">{currency}</span>
           </span>
           <button
             type="button"
@@ -190,7 +210,24 @@ export default function CostLineRow({ line, amount, currency, catalog = [], onPa
       {/* Driver-specific inputs — hidden when the line is collapsed */}
       {collapsed ? null : (
       <div ref={driverRef} className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        {line.driver === 'count' ? (
+        {/* Custom method: one input per defined field */}
+        {line.formula ? (
+          (line.fields ?? []).length ? (
+            (line.fields ?? []).map((f) => (
+              <NumField
+                key={f.name}
+                label={f.suffix ? `${f.label}` : f.label}
+                suffix={f.suffix}
+                value={(line.values ?? {})[f.name]}
+                onChange={(n) => onPatch({ values: { ...(line.values ?? {}), [f.name]: n } })}
+              />
+            ))
+          ) : (
+            <span className="text-[10px] text-slate-400">{t('cost.f.noFields', 'No fields')}</span>
+          )
+        ) : null}
+
+        {!line.formula && line.driver === 'count' ? (
           <>
             <NumField label={t('cost.f.qty')} value={line.qty} onChange={(n) => onPatch({ qty: n })} />
             <NumField label={`${t('cost.f.unitCost')} (${currency})`} value={line.unitCost} onChange={(n) => onPatch({ unitCost: n })} />

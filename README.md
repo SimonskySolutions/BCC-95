@@ -50,6 +50,13 @@ This is a standalone, unauthenticated page (`src/pages/public/OfferAcceptancePag
 
 The Reports page (`src/pages/ReportsPage.jsx`) exposes filterable reports for Products, Inquiries, Offers, Offer line items, Tasks and the Audit trail. All reports can be exported as **CSV / XLSX / PDF** via `src/services/reporting/exportService.js`.
 
+### Data & persistence
+
+- **Postgres-backed store** — `src/data/store.js` wraps an in-memory database object, loads the saved document from the backend on boot (`GET /api/state`) and debounce-saves the whole working dataset on every commit (`PUT /api/state`). The backend lives in `server/` and is the single source of truth; there is no `localStorage`.
+- **Empty by default** — the app boots from `createEmptyDatabase()` in `src/data/mockDatabase.js`, so a fresh system starts with no data. The seeded `createMockDatabase()` is kept only for `npm run validate`.
+- **Relational master data** — the nomenclatures from `Номенклатури.xlsx` live in 6 Postgres tables: `suppliers` plus `nomenclature_{materials,operations,tools,overheads,logistics}`. They are seeded on `api` boot from `server/nomenclatures.seed.json`, exposed via `GET /api/nomenclatures`, and mapped by the store into `db.vendors` / `db.costCatalog` to populate the cost-sheet and purchase dropdowns.
+- **Factory reset** — the Settings page (`POST /api/factory-reset`) drops the working data (the `erp_state` row) but **keeps** the nomenclature tables.
+
 ---
 
 ## Getting started
@@ -78,18 +85,29 @@ docker compose up --build web          # → http://localhost:8080
 # Hot-reload dev (Vite, source mounted)
 docker compose --profile dev up web-dev   # → http://localhost:5173
 
+# Backend API (Node + Express) — persists state in Postgres
+docker compose up api db                # api → http://localhost:3001
+
 # Database + Adminer (DB browser)
 docker compose up db adminer
 #   Adminer  → http://localhost:8081   (system: PostgreSQL, server: db, user/pass/db: bcc95)
 ```
 
-Files: `Dockerfile` (multi-stage build → nginx), `nginx.conf` (SPA fallback),
-`docker-compose.yml` (web / web-dev / db / adminer).
+The `api` service runs the Node backend from `server/` (`node index.js` on
+port **3001**), connects to the `db` (Postgres) service, creates its tables on
+first boot and seeds the nomenclatures. The `web` / `web-dev` SPA reaches it
+through the `/api` prefix, so bring `api` (and `db`) up alongside the frontend.
 
-> **Note on the database:** the app currently persists in the browser
-> (`localStorage`). The `db` (Postgres) service is included as the foundation
-> for a future backend API — the frontend does **not** talk to it yet. Wiring
-> the domains to a real backend + database is a separate piece of work.
+Files: `Dockerfile` (multi-stage build → nginx), `nginx.conf` (SPA fallback),
+`docker-compose.yml` (web / web-dev / **api** / db / adminer), `server/`
+(the backend API).
+
+> **Note on the database:** the app persists to **Postgres**, not the browser.
+> On boot the store loads the saved document from the backend
+> (`GET /api/state`); every commit debounce-saves the whole working dataset back
+> (`PUT /api/state`, ~400 ms debounce). There is no `localStorage` — an empty
+> system simply has no row in the database, and the frontend talks to the `api`
+> service over the `/api` prefix. See `src/data/store.js` and `server/index.js`.
 
 ---
 
@@ -143,9 +161,13 @@ erp-dashboard-ui/
 │   ├── pages/            # Page scaffolds (dashboard, products, tasks, reports, public/*)
 │   ├── i18n/             # EN + BG translations
 │   ├── config/           # Navigation + shell config
-│   └── data/             # In-memory mock database
+│   └── data/             # In-memory db + Postgres-backed store (store.js)
+├── server/               # Node/Express backend API (the `api` service)
+│   ├── index.js          # /api/state, /api/nomenclatures, /api/factory-reset
+│   └── nomenclatures.seed.json  # First-boot seed for the master-data tables
 ├── scripts/
 │   └── validate-erp.mjs  # Functional checks (selectors, services, KPIs)
+├── docker-compose.yml    # web / web-dev / api / db / adminer
 ├── vercel.json           # Vercel deploy config (SPA rewrites, caching)
 └── vite.config.js
 ```

@@ -7,9 +7,11 @@ import { selectOperationsByProduct } from '../domains/operations/selectors.js'
 import { selectPathLinkByProduct, selectPathTemplateById } from '../domains/manufacturing-path/selectors.js'
 import { buildTaskDefaultsFromOperation } from '../services/tasks/taskAutofillService.js'
 import { useLanguage } from '../i18n/useLanguage.js'
+import { useCurrentUser } from '../auth/useCurrentUser.js'
+import { useDb } from '../data/useDb.js'
 import TaskDetailDrawer from '../components/erp/TaskDetailDrawer.jsx'
+import DatePicker from '../components/DatePicker.jsx'
 
-const CURRENT_USER_ID = 'emp-1'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 const KANBAN_COLS = [
@@ -134,13 +136,16 @@ function TaskCard({ task, db, onStatusChange, onOpen }) {
  */
 export default function MyTasksPage({ db }) {
   const { t } = useLanguage()
+  const { user } = useCurrentUser()
+  const { commit } = useDb()
+  const currentUserId = user?.id ?? ''
   const [version, setVersion] = useState(0)
   const [search, setSearch] = useState('')
   const [productFilter, setProductFilter] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [yearFilter, setYearFilter] = useState(2026)
   const [quarterFilter, setQuarterFilter] = useState(/** @type {'all' | import('../domains/tasks/model.js').PlannedQuarter} */ ('all'))
-  const [assigneeFilter, setAssigneeFilter] = useState(CURRENT_USER_ID)
+  const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [workstreamFilter, setWorkstreamFilter] = useState('all')
   const [labelFilter, setLabelFilter] = useState('all')
@@ -149,7 +154,7 @@ export default function MyTasksPage({ db }) {
 
   const [form, setForm] = useState({
     title: '',
-    assigneeId: CURRENT_USER_ID,
+    assigneeId: '',
     productId: db.products[0]?.id ?? 'prod-1',
     operationId: '',
     dueDate: '2026-06-30',
@@ -258,7 +263,7 @@ export default function MyTasksPage({ db }) {
       operationId: form.operationId || undefined,
     })
     if (!v.ok) { setFormError(v.errors.join(', ')); return }
-    appendTask(db, v.task)
+    commit(() => appendTask(db, v.task))
     setVersion((x) => x + 1)
     setAutofillNote('')
     setForm((f) => ({ ...f, title: '' }))
@@ -266,7 +271,7 @@ export default function MyTasksPage({ db }) {
   }
 
   function handleStatusChange(taskId, newStatus) {
-    patchTask(db, taskId, { status: newStatus, ...(newStatus === 'resolved' ? { completedAt: TODAY } : {}) })
+    commit(() => patchTask(db, taskId, { status: newStatus, ...(newStatus === 'resolved' ? { completedAt: TODAY } : {}) }))
     setVersion((x) => x + 1)
   }
 
@@ -324,7 +329,7 @@ export default function MyTasksPage({ db }) {
         >
           <option value="all">{t('tasks.filter.allAssignees')}</option>
           {db.employees.map((emp) => (
-            <option key={emp.id} value={emp.id}>{emp.id === CURRENT_USER_ID ? `${emp.name} (${t('tasks.filter.me')})` : emp.name}</option>
+            <option key={emp.id} value={emp.id}>{emp.id === currentUserId ? `${emp.name} (${t('tasks.filter.me')})` : emp.name}</option>
           ))}
         </select>
         <select
@@ -358,11 +363,11 @@ export default function MyTasksPage({ db }) {
         ) : null}
         <label className="flex items-center gap-1 text-xs text-slate-500">
           {t('tasks.filter.dueFrom')}
-          <input type="date" className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700" value={dueFrom} onChange={(e) => setDueFrom(e.target.value)} />
+          <DatePicker className="w-40" value={dueFrom} onChange={(iso) => setDueFrom(iso)} />
         </label>
         <label className="flex items-center gap-1 text-xs text-slate-500">
           {t('tasks.filter.dueTo')}
-          <input type="date" className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700" value={dueTo} onChange={(e) => setDueTo(e.target.value)} />
+          <DatePicker className="w-40" value={dueTo} onChange={(iso) => setDueTo(iso)} />
         </label>
 
         <div className="ml-auto flex items-center gap-2">
@@ -445,12 +450,9 @@ export default function MyTasksPage({ db }) {
                   <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
                     {t('common.due')}
                   </label>
-                  <input
-                    type="date"
-                    className={inputCls}
+                  <DatePicker
                     value={form.dueDate}
-                    onChange={(e) => {
-                      const d = e.target.value
+                    onChange={(d) => {
                       setForm((f) => ({ ...f, dueDate: d }))
                       if (form.operationId) applyOperationDefaults(form.productId, form.operationId, d)
                     }}
@@ -617,9 +619,9 @@ export default function MyTasksPage({ db }) {
         <TaskDetailDrawer
           db={db}
           taskId={openTaskId}
-          actorId={CURRENT_USER_ID}
+          actorId={currentUserId}
           onClose={() => setOpenTaskId(null)}
-          onChange={() => setVersion((x) => x + 1)}
+          onChange={() => { commit(); setVersion((x) => x + 1) }}
         />
       ) : null}
     </div>

@@ -13,7 +13,7 @@ import { useLanguage } from '../i18n/useLanguage.js'
  *   onNavigate: (page: string) => void
  * }} props
  */
-export default function CommandPalette({ db, open, onClose, onOpenProduct, onOpenClient, onNavigate }) {
+export default function CommandPalette({ db, open, onClose, onOpenProduct, onOpenClient }) {
   const { t } = useLanguage()
   const inputRef = useRef(/** @type {HTMLInputElement|null} */ (null))
   const [query, setQuery] = useState('')

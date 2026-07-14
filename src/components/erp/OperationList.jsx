@@ -1,6 +1,7 @@
 import { selectMachineById } from '../../domains/machines/selectors.js'
 import { selectEmployeeById } from '../../domains/people/selectors.js'
 import { useLanguage } from '../../i18n/useLanguage.js'
+import OperationActions, { OperationStatusChip } from './OperationActions.jsx'
 
 /**
  * @param {{
@@ -49,8 +50,9 @@ export default function OperationList({ db, operations }) {
                 </p>
               ) : null}
             </div>
-            <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-              {op.status}
+            <span className="flex shrink-0 items-center gap-1.5">
+              <OperationStatusChip status={op.status} />
+              <OperationActions operation={op} />
             </span>
           </li>
         )

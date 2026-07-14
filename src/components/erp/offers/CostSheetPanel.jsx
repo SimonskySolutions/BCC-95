@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { advanceOnEnter } from '../../../lib/forms.js'
-import { GROUP_DRIVERS } from '../../../domains/quotations/model.js'
+import { useFactoryConfig } from '../../../config/useFactoryConfig.js'
+import { getGroupDrivers } from '../../../config/factoryConfig.js'
 import {
   selectCostSheetByQuote,
   selectCostSheetsByQuote,
+  selectCostSheetsByVersion,
+  selectQuoteVersionById,
   selectCostSheetLines,
   selectCostCatalog,
   computeCostRollup,
@@ -14,6 +17,7 @@ import {
   appendCostSheetLine,
   patchCostSheetLine,
   removeCostSheetLine,
+  cloneCostSheetsToVersion,
 } from '../../../domains/quotations/mutations.js'
 import {
   ensureQuoteForProduct,
@@ -24,6 +28,7 @@ import {
 } from '../../../services/offers/index.js'
 import CostGroupSection from './CostGroupSection.jsx'
 import CombinedSummary from './CombinedSummary.jsx'
+import ToolingBillingConfig from './ToolingBillingConfig.jsx'
 import AllProductsSummary from './AllProductsSummary.jsx'
 import GateTasksPanel from './GateTasksPanel.jsx'
 
@@ -62,6 +67,7 @@ function FlashBanner({ type, message, onDismiss }) {
  */
 export default function CostSheetPanel({ db, productId, clientId, inquiryId, quote, actorId, onChange }) {
   const { t } = useLanguage()
+  const { config } = useFactoryConfig()
   const [flash, setFlash] = useState(/** @type {{type:'success'|'error'|'info';message:string}|null} */ (null))
   const [selectedSheetId, setSelectedSheetId] = useState(/** @type {string | null} */ (null))
 
@@ -69,26 +75,52 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
   // opened. Both helpers are idempotent, so this runs at most once effectively.
   useEffect(() => {
     const q = quote ?? ensureQuoteForProduct(db, { productId, clientId, inquiryId, actorId })
+    const cv = q.currentVersionId ? selectQuoteVersionById(db, q.currentVersionId) : undefined
     const inquiry = (db.inquiries ?? []).find((i) => i.id === inquiryId)
     let changed = false
-    if (!selectCostSheetByQuote(db, q.id)) {
-      ensureCostSheet(db, {
-        quoteId: q.id,
-        productId,
-        currency: q.currency,
-        marginPercent: q.marginPercent,
-        annualQty: inquiry?.requestedQuantity,
-        quantities: inquiry?.requestedQuantities,
-        actorId,
-      })
+    const freshSheet = () => ensureCostSheet(db, {
+      quoteId: q.id,
+      quoteVersionId: cv?.id,
+      productId,
+      currency: q.currency,
+      marginPercent: q.marginPercent,
+      annualQty: inquiry?.requestedQuantity,
+      quantities: inquiry?.requestedQuantities,
+      actorId,
+    })
+    if (cv) {
+      // This version owns no calculation yet (e.g. a fresh revision). Preload it
+      // from the most recent earlier version that has one, so "Send new offer"
+      // always starts from the previous offer's data instead of a blank sheet.
+      const ownSheets = (db.costSheets ?? []).filter((s) => s.quoteVersionId === cv.id)
+      if (ownSheets.length === 0) {
+        const priorSheets = (db.quoteVersions ?? [])
+          .filter((v) => v.quoteId === q.id && v.id !== cv.id)
+          .sort((a, b) => (a.versionNo ?? 0) - (b.versionNo ?? 0))
+          .map((v) => (db.costSheets ?? []).filter((s) => s.quoteVersionId === v.id))
+          .filter((arr) => arr.length)
+          .pop()
+        if (priorSheets) {
+          cloneCostSheetsToVersion(db, priorSheets, { quoteId: q.id, quoteVersionId: cv.id })
+        } else {
+          // Bind any legacy quote-level sheet, else create a fresh one.
+          const legacy = (db.costSheets ?? []).filter((s) => s.quoteId === q.id && !s.quoteVersionId)
+          if (legacy.length) legacy.forEach((s) => patchCostSheet(db, s.id, { quoteVersionId: cv.id }))
+          else freshSheet()
+        }
+        changed = true
+      }
+    } else if (!selectCostSheetByQuote(db, q.id)) {
+      freshSheet()
       changed = true
     }
     // A cost sheet per additional product captured on the inquiry.
-    const existing = selectCostSheetsByQuote(db, q.id)
+    const existing = cv ? selectCostSheetsByVersion(db, cv) : selectCostSheetsByQuote(db, q.id)
     for (const ep of inquiry?.extraProducts ?? []) {
       if (!ep.name || existing.some((s) => (s.productLabel || '') === ep.name)) continue
       addProductCostSheet(db, {
         quoteId: q.id,
+        quoteVersionId: cv?.id,
         productId: ep.productId,
         productLabel: ep.name,
         productDescription: ep.description,
@@ -102,7 +134,16 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const allSheets = quote ? selectCostSheetsByQuote(db, quote.id) : []
+  // Scope the calculation to the current offer version, so each offer owns its
+  // own sheets. Before any version exists, fall back to the quote-level
+  // (unversioned) sheets that the first draft will bind.
+  const currentVersion =
+    quote?.currentVersionId ? selectQuoteVersionById(db, quote.currentVersionId) : undefined
+  const allSheets = currentVersion
+    ? selectCostSheetsByVersion(db, currentVersion)
+    : quote
+      ? selectCostSheetsByQuote(db, quote.id).filter((s) => !s.quoteVersionId)
+      : []
   // Only feasible products are costed — drop any whose feasibility is "blocked".
   const inquiryRec = (db.inquiries ?? []).find((i) => i.id === inquiryId)
   const pf = inquiryRec?.productFeasibility ?? {}
@@ -120,6 +161,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
     if (!quote) return
     const created = addProductCostSheet(db, {
       quoteId: quote.id,
+      quoteVersionId: currentVersion?.id,
       productLabel: t('cost.newProduct'),
       currency: sheet.currency,
       marginPercent: sheet.marginPercent,
@@ -143,7 +185,7 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
   const removeLine = (id) => { removeCostSheetLine(db, id); onChange?.() }
   const addLine = (group) => (entry) => {
     if (entry) appendCostSheetLine(db, lineFromCatalog(sheet.id, entry))
-    else appendCostSheetLine(db, { costSheetId: sheet.id, group, driver: GROUP_DRIVERS[group][0], description: '' })
+    else appendCostSheetLine(db, { costSheetId: sheet.id, group, driver: getGroupDrivers(config, group)[0]?.method ?? 'count', description: '' })
     onChange?.()
   }
 
@@ -239,7 +281,9 @@ export default function CostSheetPanel({ db, productId, clientId, inquiryId, quo
         lines={linesIn('tooling')} ctx={ctx} subtotal={rollup.toolingTotal}
         currency={currency} catalog={catalog('tooling')}
         onAdd={addLine('tooling')} onPatchLine={patchLine} onRemoveLine={removeLine}
-      />
+      >
+        <ToolingBillingConfig sheet={sheet} rollup={rollup} currency={currency} onPatchSheet={patchSheet} />
+      </CostGroupSection>
       {/* 4 — Общи разходи */}
       <CostGroupSection
         index={4} accent="amber" group="other"

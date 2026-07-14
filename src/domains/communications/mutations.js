@@ -84,3 +84,34 @@ export function removeInquiryMessage(db, messageId) {
   if (!db.inquiryMessages) return
   db.inquiryMessages = db.inquiryMessages.filter((m) => m.id !== messageId)
 }
+
+/**
+ * Create a named sub-channel (discussion) under a product's channel.
+ * @param {{ discussionChannels?: import('./model.js').DiscussionChannel[] }} db
+ * @param {{ productId: string; name: string; createdById?: string }} input
+ */
+export function appendDiscussionChannel(db, input) {
+  const name = String(input.name ?? '').trim()
+  if (!name || !input.productId) return null
+  if (!db.discussionChannels) db.discussionChannels = []
+  /** @type {import('./model.js').DiscussionChannel} */
+  const channel = {
+    id: `ch-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    productId: input.productId,
+    name,
+    createdById: input.createdById,
+    createdAt: new Date().toISOString(),
+  }
+  db.discussionChannels.push(channel)
+  return channel
+}
+
+/**
+ * Delete a discussion sub-channel together with its messages.
+ * @param {{ discussionChannels?: import('./model.js').DiscussionChannel[]; inquiryMessages?: import('./model.js').InquiryMessage[] }} db
+ * @param {string} channelId
+ */
+export function removeDiscussionChannel(db, channelId) {
+  db.discussionChannels = (db.discussionChannels ?? []).filter((c) => c.id !== channelId)
+  db.inquiryMessages = (db.inquiryMessages ?? []).filter((m) => !String(m.threadKey).endsWith(`:ch:${channelId}`))
+}

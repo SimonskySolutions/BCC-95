@@ -4,14 +4,20 @@ import { useFactoryConfig } from '../config/useFactoryConfig.js'
 import { ACCENT_THEMES, CURRENCIES, DEFAULT_FACTORY_CONFIG } from '../config/factoryConfig.js'
 import { ERP_NAV_ITEMS } from '../config/erpNav.js'
 import { useDb } from '../data/useDb.js'
-import { resetDemoData } from '../data/store.js'
+import { factoryReset } from '../data/store.js'
+import { useCurrentUser } from '../auth/useCurrentUser.js'
+import UsersAdmin from '../components/UsersAdmin.jsx'
+import CostDriversAdmin from '../components/CostDriversAdmin.jsx'
 import { useLanguage } from '../i18n/useLanguage.js'
+import { useConfirm } from '../components/ui/feedbackContext.js'
 import { selectTermsOfDelivery, selectTermsOfPayment } from '../domains/quotations/selectors.js'
 import { appendTerm, patchTerm, removeTerm } from '../domains/quotations/mutations.js'
 
 const TABS = [
   { id: 'company', labelKey: 'settings.tab.company' },
   { id: 'modules', labelKey: 'settings.tab.modules' },
+  { id: 'users', labelKey: 'settings.tab.users', perm: 'users.manage' },
+  { id: 'drivers', labelKey: 'settings.tab.drivers' },
   { id: 'kpi', labelKey: 'settings.tab.kpi' },
   { id: 'terms', labelKey: 'settings.tab.terms' },
   { id: 'appearance', labelKey: 'settings.tab.appearance' },
@@ -415,9 +421,13 @@ function OfferTermsTab() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { t } = useLanguage()
+  const confirmDialog = useConfirm()
   const { config, updateConfig } = useFactoryConfig()
+  const { can } = useCurrentUser()
   const [tab, setTab] = useState('company')
   const [saved, setSaved] = useState(false)
+
+  const visibleTabs = TABS.filter((tabItem) => !tabItem.perm || can(tabItem.perm))
 
   function handleSave(patch) {
     updateConfig(patch)
@@ -429,7 +439,7 @@ export default function SettingsPage() {
     <div className="space-y-5 max-w-3xl">
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
-        {TABS.map((tabItem) => (
+        {visibleTabs.map((tabItem) => (
           <button
             key={tabItem.id}
             type="button"
@@ -452,12 +462,14 @@ export default function SettingsPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         {tab === 'company'    && <CompanyTab    config={config} onSave={handleSave} />}
         {tab === 'modules'    && <ModulesTab    config={config} onSave={handleSave} />}
+        {tab === 'users'      && can('users.manage') && <UsersAdmin />}
+        {tab === 'drivers'    && <CostDriversAdmin config={config} onSave={handleSave} />}
         {tab === 'kpi'        && <KpiTab        config={config} onSave={handleSave} />}
         {tab === 'terms'      && <OfferTermsTab />}
         {tab === 'appearance' && <AppearanceTab config={config} onSave={handleSave} />}
       </div>
 
-      {/* Demo data reset */}
+      {/* Factory reset — drops all data from the database */}
       <div className="flex items-center justify-between rounded-2xl border border-rose-100 bg-rose-50/50 px-6 py-4">
         <div>
           <p className="text-sm font-semibold text-rose-900">{t('settings.resetData')}</p>
@@ -465,7 +477,7 @@ export default function SettingsPage() {
         </div>
         <button
           type="button"
-          onClick={() => { if (window.confirm(t('settings.resetData.confirm'))) resetDemoData() }}
+          onClick={async () => { if (await confirmDialog({ title: t('settings.resetData'), message: t('settings.resetData.confirm'), confirmLabel: t('settings.resetData'), danger: true })) factoryReset() }}
           className="rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"
         >
           {t('settings.resetData')}

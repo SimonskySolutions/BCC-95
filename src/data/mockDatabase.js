@@ -121,18 +121,33 @@ export function createMockDatabase() {
     stockLocations: structuredClone(stockLocations),
     stockQuants: structuredClone(stockQuants),
     stockMoves: structuredClone(stockMoves),
+    notifications: [],
   }
+}
+
+/**
+ * Empty database with the exact same shape as the seed but no records.
+ * This is what the running app boots with — demo data lives only in the
+ * seeded `createMockDatabase()` (kept for tests / `npm run validate`).
+ * @returns {MockDatabase}
+ */
+export function createEmptyDatabase() {
+  const db = createMockDatabase()
+  for (const key of Object.keys(db)) {
+    if (Array.isArray(db[key])) db[key] = []
+  }
+  return db
 }
 
 /** @type {MockDatabase | null} */
 let singleton = null
 
-/** Shared read-only default instance for React tree (reset in tests via resetMockDatabase). */
+/** Shared default instance for the React tree — starts empty (no demo data). */
 export function getMockDatabase() {
-  if (!singleton) singleton = createMockDatabase()
+  if (!singleton) singleton = createEmptyDatabase()
   return singleton
 }
 
 export function resetMockDatabase() {
-  singleton = createMockDatabase()
+  singleton = createEmptyDatabase()
 }

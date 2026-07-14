@@ -10,6 +10,7 @@ import { selectEmployeeById } from '../domains/people/selectors.js'
 import { selectMachineById } from '../domains/machines/selectors.js'
 import { selectOperationById } from '../domains/operations/selectors.js'
 import { useLanguage } from '../i18n/useLanguage.js'
+import DatePicker from '../components/DatePicker.jsx'
 
 /** Color token per shift-template index (cycles if more than 4 templates) */
 const SHIFT_COLORS = [
@@ -167,12 +168,7 @@ export default function PlanningPage({ db }) {
         </button>
         <label className="block text-sm">
           <span className="sr-only">{t('planning.scheduleDate')}</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="block rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
+          <DatePicker className="w-48" value={date} onChange={(iso) => setDate(iso)} />
         </label>
         <button
           type="button"

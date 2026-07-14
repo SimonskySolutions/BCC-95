@@ -1,3 +1,5 @@
+import { evaluateFormula } from '../../lib/formula.js'
+
 /**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {string} quoteId
@@ -65,9 +67,9 @@ export function selectQuoteOfferLines(db, versionId) {
  * @param {import('./model.js').QuoteOfferLine} line
  */
 export function offerLineNetTotal(line) {
-  const qty = Number(line.confirmedQty ?? line.requestedQty) || 0
-  const gross = qty * (Number(line.unitPrice) || 0)
-  const disc = Number(line.discountPercent) || 0
+  const qty = toNum(line.confirmedQty ?? line.requestedQty)
+  const gross = qty * toNum(line.unitPrice)
+  const disc = toNum(line.discountPercent)
   return gross * (1 - disc / 100)
 }
 
@@ -78,6 +80,63 @@ export function offerLineNetTotal(line) {
  */
 export function selectOfferLinesTotal(db, versionId) {
   return selectQuoteOfferLines(db, versionId).reduce((sum, l) => sum + offerLineNetTotal(l), 0)
+}
+
+/** Shared row builder for offer-history rows (per product or per client). */
+function offerHistoryRows(db, quotes) {
+  const byId = new Map(quotes.map((q) => [q.id, q]))
+  return (db.quoteVersions ?? [])
+    .filter((v) => byId.has(v.quoteId))
+    .map((v) => {
+      const quote = byId.get(v.quoteId)
+      const client = (db.clients ?? []).find((c) => c.id === quote.clientId)
+      const product = (db.products ?? []).find((p) => p.id === quote.productId)
+      return {
+        versionId: v.id,
+        quoteId: v.quoteId,
+        versionNo: v.versionNo,
+        offerNo: quote.offerNo ?? quote.id,
+        kind: quote.kind ?? 'goods',
+        status: v.status,
+        clientId: quote.clientId,
+        clientName: client?.companyName ?? client?.name ?? '—',
+        productId: quote.productId,
+        productName: product?.name ?? quote.productId ?? '—',
+        currency: v.currency ?? quote.currency ?? 'EUR',
+        date: v.orderDate ?? v.createdAt?.slice(0, 10) ?? '',
+        total: selectOfferLinesTotal(db, v.id),
+      }
+    })
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.versionNo - a.versionNo)
+}
+
+/**
+ * Every offer (quote version) ever raised for a product, across all of its
+ * quotes/clients — the per-product offer history. Newest first.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} productId
+ */
+export function selectOffersByProduct(db, productId) {
+  return offerHistoryRows(db, (db.quoteDrafts ?? []).filter((q) => q.productId === productId))
+}
+
+/**
+ * Every offer raised for a client, across all their products — the per-customer
+ * offer history shown on the CRM profile. Newest first.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} clientId
+ */
+export function selectOffersByClient(db, clientId) {
+  return offerHistoryRows(db, (db.quoteDrafts ?? []).filter((q) => q.clientId === clientId))
+}
+
+/**
+ * Every offer raised across the whole company — newest first. Used by the
+ * dashboard "recent offers" / "expiring offers" widgets.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ */
+export function selectAllOffers(db) {
+  return offerHistoryRows(db, db.quoteDrafts ?? [])
 }
 
 /** @param {import('../../data/mockDatabase.js').MockDatabase} db */
@@ -144,6 +203,27 @@ export function selectCostSheetsByQuote(db, quoteId) {
 }
 
 /**
+ * Cost sheets that belong to a specific offer version. Each version owns its own
+ * calculation. Falls back to legacy quote-level sheets (no `quoteVersionId`) so
+ * older offers keep working until they are stamped/copied.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {{ id: string; quoteId: string } | undefined} version
+ */
+export function selectCostSheetsByVersion(db, version) {
+  if (!version) return []
+  const all = db.costSheets ?? []
+  const owned = all.filter((s) => s.quoteVersionId === version.id)
+  if (owned.length) return owned
+  // Legacy: quote-level sheets not yet bound to any version.
+  return all.filter((s) => s.quoteId === version.quoteId && !s.quoteVersionId)
+}
+
+/** The first cost sheet owned by a version (single-product convenience). */
+export function selectCostSheetByVersion(db, version) {
+  return selectCostSheetsByVersion(db, version)[0]
+}
+
+/**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {string} costSheetId
  */
@@ -163,8 +243,20 @@ export function selectCostCatalog(db, group) {
   return group ? all.filter((c) => c.group === group) : all
 }
 
-const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100
-const round4 = (n) => Math.round((Number(n) || 0) * 10000) / 10000
+/**
+ * Coerce a stored value to a number, tolerating locale/UI formats: a decimal
+ * comma ("12,3"), thousands spaces ("1 234.5") or a plain number. Invalid → 0.
+ * `Number("12,3")` is NaN, so reading cost fields with bare `Number()` silently
+ * produced 0 for comma decimals — this is the fix.
+ */
+export const toNum = (v) => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+  const n = Number(String(v ?? '').replace(/\s/g, '').replace(',', '.'))
+  return Number.isFinite(n) ? n : 0
+}
+
+const round2 = (n) => Math.round(toNum(n) * 100) / 100
+const round4 = (n) => Math.round(toNum(n) * 10000) / 10000
 
 /**
  * Per-unit EUR amount contributed by a single cost line, given a context that
@@ -175,29 +267,34 @@ const round4 = (n) => Math.round((Number(n) || 0) * 10000) / 10000
  * @param {{ netKg?: number; costBase?: number }} [ctx]
  */
 export function computeLineAmount(line, ctx = {}) {
+  // Custom method: evaluate its snapshotted formula over the line's values + context.
+  if (line.formula) {
+    const vars = { ...(line.values ?? {}), netKg: ctx.netKg ?? 0, costBase: ctx.costBase ?? 0 }
+    return round4(evaluateFormula(line.formula, vars))
+  }
   switch (line.driver) {
     case 'weight': {
-      const netKg = line.linkNetKg ? (ctx.netKg ?? 0) : (Number(line.netKg) || 0)
-      const gross = netKg * (1 + (Number(line.scrapPct) || 0) / 100)
-      return round4(gross * (Number(line.costPerKg) || 0))
+      const netKg = line.linkNetKg ? (ctx.netKg ?? 0) : toNum(line.netKg)
+      const gross = netKg * (1 + toNum(line.scrapPct) / 100)
+      return round4(gross * toNum(line.costPerKg))
     }
     case 'surface': {
-      const kg = ((Number(line.areaDm2) || 0) * (Number(line.gPerDm2) || 0)) / 1000
-      return round4(kg * (Number(line.costPerKg) || 0))
+      const kg = (toNum(line.areaDm2) * toNum(line.gPerDm2)) / 1000
+      return round4(kg * toNum(line.costPerKg))
     }
     case 'percent':
-      return round4(((ctx.costBase ?? 0) * (Number(line.percent) || 0)) / 100)
+      return round4(((ctx.costBase ?? 0) * toNum(line.percent)) / 100)
     case 'allocation': {
-      const units = Number(line.allocationUnits) || 0
-      return units > 0 ? round4((Number(line.fixedTotal) || 0) / units) : 0
+      const units = toNum(line.allocationUnits)
+      return units > 0 ? round4(toNum(line.fixedTotal) / units) : 0
     }
     case 'pack': {
-      const per = Number(line.unitsPerPack) || 0
-      return per > 0 ? round4((Number(line.costPerPack) || 0) / per) : 0
+      const per = toNum(line.unitsPerPack)
+      return per > 0 ? round4(toNum(line.costPerPack) / per) : 0
     }
     case 'count':
     default:
-      return round4((Number(line.qty) || 0) * (Number(line.unitCost) || 0))
+      return round4(toNum(line.qty) * toNum(line.unitCost))
   }
 }
 
@@ -209,7 +306,7 @@ export function computeLineAmount(line, ctx = {}) {
 export function sheetNetKg(lines) {
   return lines
     .filter((l) => l.group === 'material' && l.driver === 'weight' && !l.linkNetKg)
-    .reduce((sum, l) => sum + (Number(l.netKg) || 0), 0)
+    .reduce((sum, l) => sum + toNum(l.netKg), 0)
 }
 
 /**
@@ -232,12 +329,23 @@ export function computeCostRollup(sheet, lines) {
 
   const toolingTotal = lines
     .filter((l) => l.group === 'tooling')
-    .reduce((sum, l) => sum + (Number(l.qty) || 0) * (Number(l.unitCost) || 0), 0)
+    .reduce((sum, l) => sum + toNum(l.qty) * toNum(l.unitCost), 0)
   const amortUnits = Number(sheet?.amortisationUnits) || 0
-  const toolingPerUnit =
-    sheet?.toolingMode === 'amortise' && amortUnits > 0 ? toolingTotal / amortUnits : 0
+  let toolingPerUnit = 0
+  if (sheet?.toolingMode === 'amortise') {
+    if (sheet?.amortisationMode === 'cost') {
+      // Amortise tooling proportionally to each unit's own cost: spread the
+      // total tooling over a cost/value base (e.g. expected production cost).
+      const costExclTooling = materials + operations + burden
+      const base = Number(sheet?.amortisationCost) || 0
+      toolingPerUnit = base > 0 ? (toolingTotal * costExclTooling) / base : 0
+    } else {
+      toolingPerUnit = amortUnits > 0 ? toolingTotal / amortUnits : 0
+    }
+  }
 
-  const costPrice = materials + operations + burden + toolingPerUnit
+  const costPriceExclTooling = materials + operations + burden
+  const costPrice = costPriceExclTooling + toolingPerUnit
   const margin = Number(sheet?.marginPercent) || 0
   const profit = costPrice * (margin / 100)
   const exw = costPrice + profit
@@ -254,6 +362,7 @@ export function computeCostRollup(sheet, lines) {
     toolingTotal: round2(toolingTotal),
     toolingPerUnit: round4(toolingPerUnit),
     costPrice: round4(costPrice),
+    costPriceExclTooling: round4(costPriceExclTooling),
     profit: round4(profit),
     exw: round4(exw),
     logistics: round4(logistics),
@@ -267,11 +376,12 @@ export function computeCostRollup(sheet, lines) {
  * @param {{ costPrice: number; logistics: number }} rollup
  * @param {import('./model.js').QuantityBreak[]} [breaks]
  */
-export function priceBreakRows(rollup, breaks = []) {
+export function priceBreakRows(rollup, breaks = [], baseCostPrice) {
+  const base = baseCostPrice != null ? baseCostPrice : rollup.costPrice
   return [...breaks]
     .sort((a, b) => (Number(a.qty) || 0) - (Number(b.qty) || 0))
     .map((b) => {
-      const exw = rollup.costPrice * (1 + (Number(b.marginPercent) || 0) / 100)
+      const exw = base * (1 + (Number(b.marginPercent) || 0) / 100)
       return {
         id: b.id,
         qty: Number(b.qty) || 0,

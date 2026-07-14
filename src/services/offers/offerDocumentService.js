@@ -147,6 +147,7 @@ export function buildOrderConfirmationModel(input) {
       productId: l.productId,
       article: l.description || '—',
       requirements: l.requirements ?? '',
+      isOneOff: !!l.isOneOff,
       qty,
       uom: l.uom ?? '',
       dispatchDate: date,

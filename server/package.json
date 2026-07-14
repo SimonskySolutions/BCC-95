@@ -1,0 +1,15 @@
+{
+  "name": "bcc95-api",
+  "private": true,
+  "type": "module",
+  "description": "Persistence API for BCC-95 — stores the ERP dataset as a jsonb document in Postgres.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "multer": "^2.2.0",
+    "pg": "^8.13.1"
+  }
+}

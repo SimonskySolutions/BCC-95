@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react'
-import { Plus, Trash2, Paperclip } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Trash2, Paperclip, Languages } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
+import UserHoverCard from '../UserHoverCard.jsx'
+import { appendNotification } from '../../../domains/notifications/mutations.js'
 import {
   selectInquiryMessages,
   selectInquiryThreadTags,
@@ -52,7 +54,24 @@ function MessageBody({ text }) {
  * }} props
  */
 export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
+  const [aiAvailable, setAiAvailable] = useState(false)
+  // Per-message translation: id → { text, show, busy }
+  const [tr, setTr] = useState(/** @type {Record<string, { text?: string, show?: boolean, busy?: boolean }>} */ ({}))
+  useEffect(() => {
+    fetch('/api/ai/status').then((r) => (r.ok ? r.json() : null)).then((d) => setAiAvailable(!!d?.available)).catch(() => {})
+  }, [])
+
+  async function toggleTranslate(m) {
+    const cur = tr[m.id]
+    if (cur?.text) { setTr((s) => ({ ...s, [m.id]: { ...cur, show: !cur.show } })); return }
+    setTr((s) => ({ ...s, [m.id]: { busy: true } }))
+    const d = await fetch('/api/ai/translate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: m.body, target: language }),
+    }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    setTr((s) => ({ ...s, [m.id]: { text: d?.translation ?? '', show: !!d?.translation, busy: false } }))
+  }
+
   const taRef = useRef(/** @type {HTMLTextAreaElement | null} */ (null))
   const fileRef = useRef(/** @type {HTMLInputElement | null} */ (null))
   const [files, setFiles] = useState(/** @type {{id:string;name:string;size?:number}[]} */ ([]))
@@ -127,6 +146,12 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
 
   function send() {
     if (!body.trim() && files.length === 0) return
+    // Resolve @FirstName tokens in the body to teammate ids.
+    const handles = (body.match(/@(\w+)/g) ?? []).map((h) => h.slice(1).toLowerCase())
+    const mentions = (db.employees ?? [])
+      .filter((e) => handles.includes((e.name ?? '').split(' ')[0].toLowerCase()) && e.id !== author?.id)
+      .map((e) => e.id)
+
     appendInquiryMessage(db, {
       threadKey,
       authorId: author?.id,
@@ -134,7 +159,24 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
       body: body.trim(),
       tags,
       attachments: files,
+      mentions,
     })
+
+    // Notify mentioned teammates with a link back to this conversation.
+    const link = threadKey.startsWith('product:') || threadKey.startsWith('dm:')
+      ? { page: 'messages' }
+      : { page: 'offer-workspace', quoteId: threadKey }
+    for (const uid of mentions) {
+      appendNotification(db, {
+        userId: uid,
+        type: 'mention',
+        title: t('notif.mentionedBy').replace('{name}', author?.name ?? '—'),
+        body: body.trim().slice(0, 120),
+        link,
+        fromId: author?.id,
+      })
+    }
+
     setBody('')
     setTags([])
     setFiles([])
@@ -185,7 +227,9 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
             </div>
             <div className="min-w-0 flex-1 rounded-xl rounded-tl-sm bg-slate-50 px-3 py-2">
               <div className="mb-0.5 flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-800">{m.authorLabel}</span>
+                <span className="text-xs font-semibold text-slate-800">
+                  <UserHoverCard db={db} userId={m.authorId}>{m.authorLabel}</UserHoverCard>
+                </span>
                 <span className="text-[10px] text-slate-400">{m.createdAt.replace('T', ' ').slice(0, 16)}</span>
                 {m.editedAt ? <span className="text-[10px] italic text-slate-300">{t('chat.edited')}</span> : null}
                 <button
@@ -197,7 +241,22 @@ export default function InquiryChatPanel({ db, threadKey, actorId, onChange }) {
                   <Trash2 size={12} />
                 </button>
               </div>
-              {m.body ? <MessageBody text={m.body} /> : null}
+              {m.body ? (
+                tr[m.id]?.show
+                  ? <p className="whitespace-pre-wrap text-sm text-slate-700">{tr[m.id].text}</p>
+                  : <MessageBody text={m.body} />
+              ) : null}
+              {m.body && aiAvailable ? (
+                <button
+                  type="button"
+                  onClick={() => toggleTranslate(m)}
+                  disabled={tr[m.id]?.busy}
+                  className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-violet-600 hover:text-violet-800 disabled:opacity-50"
+                >
+                  <Languages size={11} />
+                  {tr[m.id]?.busy ? t('chat.translating') : tr[m.id]?.show ? t('chat.showOriginal') : t('chat.translate')}
+                </button>
+              ) : null}
               {(m.attachments ?? []).length > 0 ? (
                 <div className="mt-1.5 space-y-1">
                   {m.attachments.map((a) => (

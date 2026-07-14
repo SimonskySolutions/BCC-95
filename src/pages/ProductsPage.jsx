@@ -42,7 +42,21 @@ export default function ProductsPage({ db, onOpenProduct }) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [viewMode, setViewMode] = useState(/** @type {'grid'|'list'} */ ('grid'))
+  const [viewMode, setViewMode] = useState(/** @type {'grid'|'list'} */ (() => {
+    try {
+      return localStorage.getItem('bcc95:products-view') === 'list' ? 'list' : 'grid'
+    } catch {
+      return 'grid'
+    }
+  }))
+  const setView = (v) => {
+    setViewMode(v)
+    try {
+      localStorage.setItem('bcc95:products-view', v)
+    } catch {
+      /* ignore */
+    }
+  }
 
   const clientsById = useMemo(() => {
     /** @type {Record<string, import('../domains/crm/model.js').Client>} */
@@ -110,19 +124,21 @@ export default function ProductsPage({ db, onOpenProduct }) {
           <div className="flex rounded-lg border border-slate-200 bg-white overflow-hidden">
             <button
               type="button"
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs transition ${viewMode === 'grid' ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-500 hover:bg-slate-50'}`}
+              onClick={() => setView('grid')}
+              aria-pressed={viewMode === 'grid'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
               title={t('products.gridView')}
             >
-              <LayoutGrid size={13} />
+              <LayoutGrid size={14} /> <span className="hidden sm:inline">{t('products.gridView')}</span>
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1 px-2.5 py-1.5 text-xs border-l border-slate-200 transition ${viewMode === 'list' ? 'bg-slate-100 text-slate-900 font-medium' : 'text-slate-500 hover:bg-slate-50'}`}
+              onClick={() => setView('list')}
+              aria-pressed={viewMode === 'list'}
+              className={`flex items-center gap-1.5 border-l border-slate-200 px-3 py-1.5 text-xs font-medium transition ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
               title={t('products.listView')}
             >
-              <List size={13} />
+              <List size={14} /> <span className="hidden sm:inline">{t('products.listView')}</span>
             </button>
           </div>
 

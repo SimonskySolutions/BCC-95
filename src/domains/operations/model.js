@@ -23,6 +23,7 @@
  * @property {string} [siloId]
  * @property {string} [silo]
  * @property {string} [ownerId] — employee id
+ * @property {string} [startedAt] — ISO datetime when work began (set on in_progress)
  * @property {OperationDailyKpiTarget} dailyKpiTarget
  * @property {string} [stationCode]
  */

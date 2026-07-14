@@ -3,16 +3,17 @@ import { TrendingUp, Clock, CheckCircle, AlertTriangle, BarChart2, ChevronRight,
 import { useLanguage } from '../i18n/useLanguage.js'
 import { QUOTE_STATUSES } from '../domains/quotations/model.js'
 import { selectQuoteVersionById } from '../domains/quotations/selectors.js'
+import { groupAmount } from '../lib/money.js'
 import { daysUntil, daysAgo } from '../lib/clock.js'
 
 const STATUS_CONFIG = {
-  draft:              { label: 'Draft',              color: 'bg-sky-100 text-sky-700',     border: 'border-sky-200',   header: 'bg-sky-50'  },
-  pending_approval:   { label: 'Pending approval',   color: 'bg-amber-100 text-amber-700', border: 'border-amber-200', header: 'bg-amber-50' },
-  approved:           { label: 'Approved',           color: 'bg-indigo-100 text-indigo-700', border: 'border-indigo-200', header: 'bg-indigo-50' },
-  sent:               { label: 'Sent',               color: 'bg-violet-100 text-violet-700', border: 'border-violet-200', header: 'bg-violet-50' },
-  revision_requested: { label: 'Revision requested', color: 'bg-orange-100 text-orange-700', border: 'border-orange-200', header: 'bg-orange-50' },
-  accepted:           { label: 'Accepted',           color: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-200', header: 'bg-emerald-50' },
-  rejected:           { label: 'Rejected',           color: 'bg-slate-100 text-slate-500',   border: 'border-slate-200',   header: 'bg-slate-50' },
+  draft:              { color: 'bg-sky-100 text-sky-700',       border: 'border-sky-200',     header: 'bg-sky-50',     bar: 'bg-sky-400' },
+  pending_approval:   { color: 'bg-amber-100 text-amber-700',   border: 'border-amber-200',   header: 'bg-amber-50',   bar: 'bg-amber-400' },
+  approved:           { color: 'bg-indigo-100 text-indigo-700', border: 'border-indigo-200',  header: 'bg-indigo-50',  bar: 'bg-indigo-400' },
+  sent:               { color: 'bg-violet-100 text-violet-700', border: 'border-violet-200',  header: 'bg-violet-50',  bar: 'bg-violet-400' },
+  revision_requested: { color: 'bg-orange-100 text-orange-700', border: 'border-orange-200',  header: 'bg-orange-50',  bar: 'bg-orange-400' },
+  accepted:           { color: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-200', header: 'bg-emerald-50', bar: 'bg-emerald-400' },
+  rejected:           { color: 'bg-slate-100 text-slate-500',   border: 'border-slate-200',   header: 'bg-slate-50',   bar: 'bg-slate-300' },
 }
 
 const PIPELINE_STATUSES = ['draft', 'pending_approval', 'approved', 'sent', 'revision_requested']
@@ -81,7 +82,11 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
     const avgDays   = active.length
       ? Math.round(active.reduce((s, { q }) => s + daysAgo(q.updatedAt), 0) / active.length)
       : 0
-    return { active: active.length, pipeline, winRate, avgDays, decided: decided.length, accepted: accepted.length, rejected: decided.length - accepted.length }
+    // Display currency: the most common one among active quotes.
+    const counts = new Map()
+    for (const { q } of active) counts.set(q.currency ?? 'EUR', (counts.get(q.currency ?? 'EUR') ?? 0) + 1)
+    const currency = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'EUR'
+    return { active: active.length, pipeline, currency, winRate, avgDays, decided: decided.length, accepted: accepted.length, rejected: decided.length - accepted.length }
   }, [enriched])
 
   // Group filtered by status for kanban
@@ -106,10 +111,10 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
     <div className="space-y-6">
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <KpiCard icon={<Clock size={16} />} label={t('quotations.totalActive')} value={metrics.active} color="text-sky-600" />
-        <KpiCard icon={<TrendingUp size={16} />} label={t('quotations.pipelineValue')} value={`€${metrics.pipeline.toLocaleString()}`} color="text-violet-600" />
-        <KpiCard icon={<CheckCircle size={16} />} label={t('quotations.winRate')} value={`${metrics.winRate}%`} color="text-emerald-600" />
-        <KpiCard icon={<BarChart2 size={16} />} label={t('quotations.avgDaysOpen')} value={`${metrics.avgDays}d`} color="text-amber-600" />
+        <KpiCard icon={Clock} label={t('quotations.totalActive')} value={metrics.active} accent="bg-sky-50 text-sky-600" />
+        <KpiCard icon={TrendingUp} label={t('quotations.pipelineValue')} value={`${groupAmount(metrics.pipeline)} ${metrics.currency}`} accent="bg-violet-50 text-violet-600" />
+        <KpiCard icon={CheckCircle} label={t('quotations.winRate')} value={`${metrics.winRate}%`} accent="bg-emerald-50 text-emerald-600" />
+        <KpiCard icon={BarChart2} label={t('quotations.avgDaysOpen')} value={`${metrics.avgDays}${t('quotations.daysSuffix', 'd')}`} accent="bg-amber-50 text-amber-600" />
       </div>
 
       {/* Filters + actions */}
@@ -119,12 +124,12 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('quotations.search')}
-          className="h-9 w-56 rounded-lg border border-slate-300 bg-white px-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="h-9 w-56 rounded-lg border border-slate-200 bg-white px-3 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300"
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatus(e.target.value)}
-          className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
         >
           <option value="all">{t('quotations.allStatuses')}</option>
           {QUOTE_STATUSES.map((s) => (
@@ -134,7 +139,7 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
         <select
           value={clientFilter}
           onChange={(e) => setClient(e.target.value)}
-          className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
         >
           <option value="all">{t('quotations.allClients')}</option>
           {uniqueClients.map((c) => (
@@ -175,7 +180,7 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
           </div>
           {/* Mini bar chart: pipeline by status */}
           <div className="mt-5">
-            <p className="mb-2 text-xs font-medium text-slate-500">Pipeline by status</p>
+            <p className="mb-2 text-xs font-medium text-slate-500">{t('quotations.pipelineByStatus', 'Pipeline by status')}</p>
             <div className="space-y-1.5">
               {PIPELINE_STATUSES.map((status) => {
                 const count = enriched.filter(({ q }) => q.status === status).length
@@ -185,7 +190,7 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
                   <div key={status} className="flex items-center gap-2 text-xs">
                     <span className="w-36 truncate text-slate-600">{t(`offer.status.${status}`)}</span>
                     <div className="flex-1 rounded-full bg-slate-100 h-2">
-                      <div className={`h-2 rounded-full ${cfg.color.split(' ')[0].replace('text', 'bg').replace('-700', '-400').replace('-600', '-400').replace('-500', '-400')}`} style={{ width: `${pct}%` }} />
+                      <div className={`h-2 rounded-full transition-all duration-500 ${cfg.bar}`} style={{ width: `${pct}%` }} />
                     </div>
                     <span className="w-6 text-right font-medium text-slate-700">{count}</span>
                   </div>
@@ -263,14 +268,17 @@ export default function QuotationsPage({ db, onOpenOffer, onOpenProduct, onNewIn
   )
 }
 
-function KpiCard({ icon, label, value, color }) {
+function KpiCard({ icon, label, value, accent }) {
+  const Icon = icon
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-card">
-      <div className={`mb-1 flex items-center gap-1.5 text-xs font-medium ${color}`}>
-        {icon}
-        <span>{label}</span>
-      </div>
-      <p className="text-xl font-bold text-slate-900">{value}</p>
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent}`}>
+        <Icon size={18} />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</span>
+        <span className="block text-lg font-semibold leading-tight text-slate-900">{value}</span>
+      </span>
     </div>
   )
 }
@@ -293,7 +301,7 @@ function QuoteCard({ quote, product, label, allNames, client, daysExp, t, onOpen
     <button
       type="button"
       onClick={onOpen}
-      title="Open in product workspace"
+      title={t('quotations.openCard', 'Open the offer')}
       className={`group w-full rounded-lg border text-left transition hover:shadow-md ${flat ? 'border-slate-200 bg-white p-3' : 'border-slate-100 bg-slate-50/60 p-2.5 hover:bg-white'}`}
     >
       <div className="flex items-start justify-between gap-1">
@@ -311,10 +319,10 @@ function QuoteCard({ quote, product, label, allNames, client, daysExp, t, onOpen
       ) : null}
       <div className="mt-2 flex items-center justify-between gap-1">
         <span className="text-sm font-bold text-slate-900">
-          {quote.currency ?? 'EUR'} {(quote.subtotal || 0).toLocaleString()}
+          {groupAmount(quote.subtotal || 0)} {quote.currency ?? 'EUR'}
         </span>
         <span className="flex items-center gap-0.5 text-[10px] text-slate-300 group-hover:text-blue-400 transition">
-          <span className="hidden group-hover:inline">Open</span>
+          <span className="hidden group-hover:inline">{t('quotations.openCard.short', 'Open')}</span>
           <ChevronRight size={13} />
         </span>
       </div>

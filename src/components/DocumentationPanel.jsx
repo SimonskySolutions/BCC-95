@@ -11,6 +11,7 @@ function isOverviewTitle(value) {
   const title = normalizeTitle(value)
   return [
     'процесна карта и описание на процесите в бкк 95 as/is',
+    'процесна карта и описание на процеса „офериране" в bcc 95 to-be',
     'цел на документа',
     'структура на документа',
     'част i: основен поток (value stream)',
@@ -42,16 +43,16 @@ export default function DocumentationPanel({ stats, library }) {
   const contentRef = useRef(null)
 
   useEffect(() => {
-    if (activeView !== 'as-is') return
     let isCancelled = false
+    const docUrl = activeView === 'to-be' ? '/docs/vsm-to-be.html' : '/docs/vsm-as-is.html'
 
-    async function loadAsIsDocument() {
+    async function loadDocument() {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch('/docs/vsm-as-is.html')
+        const response = await fetch(docUrl)
         if (!response.ok) {
-          throw new Error(`Failed to load AS-IS file (${response.status})`)
+          throw new Error(`Failed to load ${activeView.toUpperCase()} file (${response.status})`)
         }
 
         const rawHtml = await response.text()
@@ -101,7 +102,7 @@ export default function DocumentationPanel({ stats, library }) {
       }
     }
 
-    loadAsIsDocument()
+    loadDocument()
     return () => {
       isCancelled = true
     }
@@ -332,10 +333,12 @@ export default function DocumentationPanel({ stats, library }) {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        {activeView === 'as-is' ? (
+        {(
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-900">{t('doc.integratedTitle')}</h3>
+              <h3 className="text-sm font-semibold text-slate-900">
+                {activeView === 'to-be' ? t('doc.toBe') : t('doc.integratedTitle')}
+              </h3>
               <input
                 type="search"
                 value={searchQuery}
@@ -450,12 +453,6 @@ export default function DocumentationPanel({ stats, library }) {
                 </article>
               </div>
             )}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
-            {t('doc.toBePlaceholder')}{' '}
-            <code className="mx-1 rounded bg-white px-1.5 py-0.5 text-xs text-slate-700">public/docs/vsm-to-be.html</code>{' '}
-            {t('doc.toBePlaceholderSuffix')}
           </div>
         )}
       </section>

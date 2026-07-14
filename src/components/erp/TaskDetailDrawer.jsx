@@ -4,6 +4,7 @@ import { useLanguage } from '../../i18n/useLanguage.js'
 import { TASK_STATUSES, TASK_PRIORITIES } from '../../domains/tasks/model.js'
 import { patchTask } from '../../domains/tasks/mutations.js'
 import InquiryChatPanel from './offers/InquiryChatPanel.jsx'
+import DatePicker from '../DatePicker.jsx'
 
 const STATUS_STYLE = {
   draft: 'bg-slate-100 text-slate-600',
@@ -108,7 +109,7 @@ export default function TaskDetailDrawer({ db, taskId, actorId, onClose, onChang
             </label>
             <label className="block text-xs font-medium text-slate-600">
               {t('task.due')}
-              <input type="date" className={fieldCls} value={task.dueDate ?? ''} onChange={(e) => patch({ dueDate: e.target.value })} />
+              <DatePicker className="mt-0.5" value={task.dueDate ?? ''} onChange={(iso) => patch({ dueDate: iso })} />
             </label>
           </div>
 

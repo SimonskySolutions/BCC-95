@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { computeLineAmount } from '../../../domains/quotations/selectors.js'
+import { groupAmount } from '../../../lib/money.js'
 import CostLineRow from './CostLineRow.jsx'
 
 const ACCENTS = {
@@ -35,7 +36,7 @@ const ACCENTS = {
  * }} props
  */
 export default function CostGroupSection({
-  index, title, hint, accent = 'slate', group, lines, ctx, subtotal, currency, catalog,
+  index, title, hint, accent = 'slate', lines, ctx, subtotal, currency, catalog,
   onAdd, onPatchLine, onRemoveLine, children,
 }) {
   const { t } = useLanguage()
@@ -74,7 +75,7 @@ export default function CostGroupSection({
         </div>
         <div className="text-right">
           <span className="block text-[10px] font-medium uppercase tracking-wide text-slate-400">{t('cost.group.subtotal')}</span>
-          <span className="text-sm font-bold text-slate-800">{subtotal.toFixed(4)} <span className="text-[10px] font-normal text-slate-400">{currency}</span></span>
+          <span className="text-sm font-bold text-slate-800">{groupAmount(subtotal)} <span className="text-[10px] font-normal text-slate-400">{currency}</span></span>
         </div>
         <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -101,8 +102,6 @@ export default function CostGroupSection({
           />
         ))}
       </div>
-
-      {children}
 
       {/* Add-line affordance with catalog picker */}
       <div className="relative mt-2">
@@ -143,6 +142,8 @@ export default function CostGroupSection({
           </div>
         ) : null}
       </div>
+
+      {children}
       </div>
       )}
     </div>

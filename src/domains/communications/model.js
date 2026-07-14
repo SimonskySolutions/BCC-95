@@ -35,4 +35,17 @@
  * @property {string} [editedAt]            — ISO datetime if edited
  */
 
+/**
+ * A named sub-channel (discussion) under a product's channel — e.g. "Tooling",
+ * "Pricing", "Спецификация". Messages live in the thread keyed by
+ * `productSubThreadKey(productId, id)`; the product's main channel remains
+ * `productThreadKey(productId)`.
+ * @typedef {Object} DiscussionChannel
+ * @property {string} id
+ * @property {string} productId
+ * @property {string} name
+ * @property {string} [createdById]         — employee id of the creator
+ * @property {string} createdAt             — ISO datetime
+ */
+
 export {}

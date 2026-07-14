@@ -31,6 +31,8 @@
  * @property {number} [currentVersionNo]
  * @property {string} [currentVersionId]
  * @property {string} [offerNo]                         — customer-facing offer number (OF-YYYY-####)
+ * @property {'goods' | 'tooling'} [kind]               — 'tooling' = a separately-billed tooling/amortisation offer
+ * @property {string} [parentQuoteId]                   — for a tooling offer, the goods quote it belongs to
  */
 
 /**
@@ -184,6 +186,7 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {number} [discountPercent]                — per-line discount (e.g. volume discount)
  * @property {string} [requirements]                   — spec / requirements (ResourceRequiments)
  * @property {string} [remark]                         — line remark (ResourceRemarks)
+ * @property {boolean} [isOneOff]                       — a one-off charge (e.g. separately-billed tooling), qty-independent
  * @property {number} [sortOrder]
  */
 
@@ -238,14 +241,18 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @typedef {Object} CostSheet
  * @property {string} id
  * @property {string} quoteId
+ * @property {string} [quoteVersionId]                — the offer version this calculation belongs to; each version owns its own copy (legacy sheets have none)
  * @property {string} [productId]                     — linked product (optional for ad-hoc products)
  * @property {string} [productLabel]                  — product name being costed (one offer can cost several products)
  * @property {string} [productDescription]            — product description shown on the offer
  * @property {import('./model.js').QuoteCurrency} currency
  * @property {number} marginPercent                  — profit % applied to cost price
  * @property {number} [annualQty]                    — informational (Pcs/year)
- * @property {'separate' | 'amortise'} toolingMode   — tooling billed separately or amortised into burden
+ * @property {'separate' | 'amortise'} toolingMode   — amortise into the goods offer, or bill separately (its own offer)
+ * @property {'blended' | 'line'} [amortiseDisplay]  — amortise mode: spread into unit price ('blended') or show as its own line ('line')
+ * @property {'units' | 'cost'} [amortisationMode]   — amortise tooling over a unit count or over a cost base
  * @property {number} [amortisationUnits]            — units the tooling cost is spread over (editable)
+ * @property {number} [amortisationCost]             — cost/value base the tooling is spread over (mode 'cost')
  * @property {QuantityBreak[]} [priceBreaks]         — per-quantity margin tiers (100/200/500…)
  * @property {string} [notes]                        — free-text note for the whole calculation
  * @property {string} updatedAt
@@ -265,7 +272,10 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {string} id
  * @property {string} costSheetId
  * @property {CostGroup} group
- * @property {CostDriver} driver
+ * @property {CostDriver | string} driver            — built-in driver, or a custom method key (`cm-…`)
+ * @property {string} [formula]                      — custom method: expression over field names + netKg/costBase (snapshot)
+ * @property {{ name: string; label: string; suffix?: string }[]} [fields]  — custom method: input field defs (snapshot)
+ * @property {Record<string, number>} [values]       — custom method: entered values keyed by field name
  * @property {string} description
  * @property {string} [note]                         — free-text clarification next to the item (бланка col. B)
  * @property {string} [catalogRefId]                 — catalog entry it was picked from

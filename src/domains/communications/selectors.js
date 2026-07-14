@@ -41,3 +41,14 @@ export function selectInquiryThreadTags(db, threadKey) {
   }
   return [...tags].sort()
 }
+
+/**
+ * Sub-channels (discussions) of a product's channel, oldest first.
+ * @param {{ discussionChannels?: import('./model.js').DiscussionChannel[] }} db
+ * @param {string} productId
+ */
+export function selectDiscussionChannels(db, productId) {
+  return (db.discussionChannels ?? [])
+    .filter((c) => c.productId === productId)
+    .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+}

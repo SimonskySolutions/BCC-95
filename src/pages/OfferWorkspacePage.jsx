@@ -1,7 +1,9 @@
 import { ArrowLeft, Package } from 'lucide-react'
 import OfferWizard from '../components/erp/offers/OfferWizard.jsx'
 import OfferStatusBadge from '../components/erp/offers/OfferStatusBadge.jsx'
+import OfferActions from '../components/erp/offers/OfferActions.jsx'
 import { useLanguage } from '../i18n/useLanguage.js'
+import { useCurrentUser } from '../auth/useCurrentUser.js'
 
 /**
  * Offer-centric workspace: the offer is the anchor (customer first), reached
@@ -18,6 +20,7 @@ import { useLanguage } from '../i18n/useLanguage.js'
  */
 export default function OfferWorkspacePage({ db, quoteId, onBack, onOpenProduct, onOpenReports }) {
   const { t } = useLanguage()
+  const { user } = useCurrentUser()
   const quote = db.quoteDrafts.find((q) => q.id === quoteId)
 
   if (!quote) {
@@ -105,12 +108,15 @@ export default function OfferWorkspacePage({ db, quoteId, onBack, onOpenProduct,
             </div>
           ) : null}
         </div>
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <OfferActions db={db} quote={quote} actorId={user?.id} />
+        </div>
       </div>
 
       <OfferWizard
         db={db}
         productId={quote.productId}
-        actorId={db.employees[0]?.id}
+        actorId={user?.id}
         onOpenReports={onOpenReports}
       />
     </div>

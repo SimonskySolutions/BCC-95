@@ -28,6 +28,20 @@ import { isLifecyclePhaseId } from '../lifecycle/model.js'
 let idCounter = 9000
 
 /**
+ * Reseed the task id counter past existing tasks (counters reset on page load
+ * but data persists). Call once after the db loads.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ */
+export function syncCounters(db) {
+  let max = 9000
+  for (const x of db.tasks ?? []) {
+    const n = Number(String(x?.id ?? '').replace(/^\D+/, ''))
+    if (Number.isFinite(n) && n > max) max = n
+  }
+  idCounter = max
+}
+
+/**
  * @param {TaskCreateInput} input
  * @param {string} [id]
  * @returns {import('./model.js').Task}

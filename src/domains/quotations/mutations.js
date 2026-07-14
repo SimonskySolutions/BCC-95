@@ -9,6 +9,39 @@ let termCounter = 30000
 let costSheetCounter = 30000
 let costSheetLineCounter = 30000
 
+/** Highest numeric id suffix across the given collections (or `base`). */
+function maxIdNum(base, ...arrays) {
+  let max = base
+  for (const arr of arrays) {
+    for (const x of arr ?? []) {
+      const n = Number(String(x?.id ?? '').replace(/^\D+/, ''))
+      if (Number.isFinite(n) && n > max) max = n
+    }
+  }
+  return max
+}
+
+/**
+ * Reseed the id counters past whatever already exists in the loaded database.
+ * Module counters reset on every page load, but data persists — without this,
+ * a newly created quote/version/cost-sheet reuses an id that already exists
+ * (e.g. two versions ending up as `qv-30001`). Call once after the db loads.
+ *
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ */
+export function syncCounters(db) {
+  quoteCounter = maxIdNum(30000, db.quoteDrafts)
+  versionCounter = maxIdNum(30000, db.quoteVersions)
+  lineItemCounter = maxIdNum(30000, db.quoteLineItems)
+  approvalCounter = maxIdNum(30000, db.quoteApprovals)
+  documentCounter = maxIdNum(30000, db.quoteDocuments)
+  decisionCounter = maxIdNum(30000, db.quoteDecisions)
+  offerLineCounter = maxIdNum(30000, db.quoteOfferLines)
+  termCounter = maxIdNum(30000, db.termsOfDelivery, db.termsOfPayment)
+  costSheetCounter = maxIdNum(30000, db.costSheets)
+  costSheetLineCounter = maxIdNum(30000, db.costSheetLines)
+}
+
 /**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
  * @param {Partial<import('./model.js').QuoteDraft> & { clientId: string; productId: string }} input
@@ -37,6 +70,8 @@ export function appendQuote(db, input) {
     paymentTerms: input.paymentTerms,
     moq: input.moq,
     offerNo: input.offerNo,
+    kind: input.kind,
+    parentQuoteId: input.parentQuoteId,
   }
   db.quoteDrafts.push(quote)
   return quote
@@ -153,7 +188,9 @@ export function appendQuoteDocument(db, input) {
     quoteVersionId: input.quoteVersionId,
     kind: input.kind,
     name: input.name,
+    caption: input.caption,
     storageRef: input.storageRef,
+    uploadedById: input.uploadedById,
     createdAt: input.createdAt ?? new Date().toISOString(),
   }
   db.quoteDocuments.push(doc)
@@ -229,6 +266,7 @@ export function appendQuoteOfferLine(db, input) {
     discountPercent: input.discountPercent,
     requirements: input.requirements,
     remark: input.remark,
+    isOneOff: input.isOneOff,
     sortOrder: input.sortOrder ?? db.quoteOfferLines.filter((l) => l.quoteVersionId === input.quoteVersionId).length,
   }
   db.quoteOfferLines.push(line)
@@ -316,6 +354,7 @@ export function appendCostSheet(db, input) {
   const sheet = {
     id: input.id ?? `cs-${++costSheetCounter}`,
     quoteId: input.quoteId,
+    quoteVersionId: input.quoteVersionId,
     productId: input.productId,
     productLabel: input.productLabel,
     productDescription: input.productDescription,
@@ -323,6 +362,9 @@ export function appendCostSheet(db, input) {
     marginPercent: input.marginPercent ?? 10,
     annualQty: input.annualQty,
     toolingMode: input.toolingMode ?? 'amortise',
+    amortiseDisplay: input.amortiseDisplay,
+    amortisationMode: input.amortisationMode,
+    amortisationCost: input.amortisationCost,
     amortisationUnits: input.amortisationUnits,
     priceBreaks: input.priceBreaks ?? [],
     notes: input.notes,
@@ -330,6 +372,35 @@ export function appendCostSheet(db, input) {
   }
   db.costSheets.push(sheet)
   return sheet
+}
+
+/**
+ * Deep-copy a set of cost sheets (and their lines) onto a target version, so
+ * the new offer owns an independent calculation. Returns the created sheets.
+ *
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {import('./model.js').CostSheet[]} sourceSheets
+ * @param {{ quoteId: string; quoteVersionId: string }} target
+ */
+export function cloneCostSheetsToVersion(db, sourceSheets, target) {
+  if (!db.costSheets) db.costSheets = []
+  if (!db.costSheetLines) db.costSheetLines = []
+  const created = []
+  for (const src of sourceSheets) {
+    const sheet = appendCostSheet(db, {
+      ...src,
+      id: undefined,
+      quoteId: target.quoteId,
+      quoteVersionId: target.quoteVersionId,
+      priceBreaks: structuredClone(src.priceBreaks ?? []),
+      updatedAt: undefined,
+    })
+    for (const line of db.costSheetLines.filter((l) => l.costSheetId === src.id)) {
+      appendCostSheetLine(db, { ...line, id: undefined, costSheetId: sheet.id })
+    }
+    created.push(sheet)
+  }
+  return created
 }
 
 /**

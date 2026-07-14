@@ -1,290 +1,148 @@
-import { useMemo } from 'react'
-import {
-  AlertTriangle,
-  Clock,
-} from 'lucide-react'
-import StatCard from '../components/StatCard.jsx'
-import {
-  computeDeliveryMetrics,
-  computeProcessHealthMetrics,
-  computeProductivityMetrics,
-  computeQualityMetrics,
-} from '../services/kpis/kpiCalculator.js'
+import { useEffect, useRef, useState } from 'react'
+import { GripVertical, LayoutGrid, Plus, RotateCcw, X as XIcon } from 'lucide-react'
 import { useLanguage } from '../i18n/useLanguage.js'
 import { useFactoryConfig } from '../config/useFactoryConfig.js'
+import { useCurrentUser } from '../auth/useCurrentUser.js'
+import { WIDGET_DEFS, WIDGET_MAP, DEFAULT_LAYOUT } from '../components/erp/dashboard/dashboardRegistry.js'
 
-const PIPELINE_STAGES = ['received', 'intake_pending', 'intake_complete', 'feasibility_done']
+const KEY_PREFIX = 'bcc95:dashboard:'
 
-const STAGE_COLORS = {
-  received: 'bg-slate-100 text-slate-700',
-  intake_pending: 'bg-amber-100 text-amber-800',
-  intake_complete: 'bg-blue-100 text-blue-800',
-  feasibility_done: 'bg-emerald-100 text-emerald-800',
-}
-
-const STAGE_DOT = {
-  received: 'bg-slate-400',
-  intake_pending: 'bg-amber-400',
-  intake_complete: 'bg-blue-500',
-  feasibility_done: 'bg-emerald-500',
+function loadLayout(userId) {
+  try {
+    const raw = localStorage.getItem(KEY_PREFIX + (userId ?? 'default'))
+    if (raw) {
+      const ids = JSON.parse(raw)
+      if (Array.isArray(ids)) return ids.filter((id) => WIDGET_MAP[id])
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_LAYOUT
 }
 
 /**
+ * User-customisable dashboard: a fixed brand hero plus a grid of preset widgets
+ * that each user can add, remove and reorder. The layout is saved per user.
+ *
  * @param {{ db: import('../data/mockDatabase.js').MockDatabase }} props
  */
-export default function DashboardPage({ db }) {
+export default function DashboardPage({ db, onOpenOffer, onOpenClient }) {
   const { t } = useLanguage()
   const { config, theme } = useFactoryConfig()
-  const { kpiTargets } = config
-  const ref = new Date('2026-04-10')
-  const delivery = computeDeliveryMetrics(db, ref)
-  const productivity = computeProductivityMetrics(db)
-  const quality = computeQualityMetrics(db)
-  const process = computeProcessHealthMetrics(db)
+  const { user } = useCurrentUser()
+  const userId = user?.id ?? null
 
-  const cards = useMemo(
-    () => [
-      {
-        id: 'delivery',
-        label: t('dashboard.card.delivery.label'),
-        value: `${delivery.onTimeDoneRatioPercent}%`,
-        trend: t('dashboard.card.delivery.trend').replace('{overdue}', String(delivery.overdueOpenCount)),
-        positive: delivery.overdueOpenCount === 0 || delivery.onTimeDoneRatioPercent >= kpiTargets.deliveryPercent,
-        icon: 'ClipboardList',
-        color: 'blue',
-      },
-      {
-        id: 'productivity',
-        label: t('dashboard.card.productivity.label'),
-        value: `${productivity.operationThroughputPercent}%`,
-        trend: t('dashboard.card.productivity.trend')
-          .replace('{done}', String(productivity.operationDoneCount))
-          .replace('{total}', String(productivity.operationTotal)),
-        positive: productivity.operationThroughputPercent >= kpiTargets.productivityPercent,
-        icon: 'FolderKanban',
-        color: 'violet',
-      },
-      {
-        id: 'quality',
-        label: t('dashboard.card.quality.label'),
-        value: `${quality.firstPassYieldPercent}%`,
-        trend: t('dashboard.card.quality.trend')
-          .replace('{fails}', String(quality.failCount))
-          .replace('{samples}', String(quality.sampleCount)),
-        positive: quality.firstPassYieldPercent >= kpiTargets.qualityPercent,
-        icon: 'Building2',
-        color: 'emerald',
-      },
-      {
-        id: 'process',
-        label: t('dashboard.card.process.label'),
-        value: `${process.avgCompletionPercent}%`,
-        trend: t('dashboard.card.process.trend').replace('{count}', String(process.productCount)),
-        positive: process.avgCompletionPercent >= kpiTargets.processPercent,
-        icon: 'Users',
-        color: 'amber',
-      },
-    ],
-    [delivery, productivity, quality, process, t, kpiTargets],
-  )
+  const [layout, setLayout] = useState(() => loadLayout(userId))
+  const [editing, setEditing] = useState(false)
+  const dragFrom = useRef(/** @type {number | null} */ (null))
 
-  // Inquiries pipeline grouped by stage
-  const pipeline = useMemo(() => {
-    /** @type {Record<string, import('../domains/inquiries/model.js').Inquiry[]>} */
-    const buckets = { received: [], intake_pending: [], intake_complete: [], feasibility_done: [] }
-    for (const inq of db.inquiries) {
-      if (buckets[inq.status]) buckets[inq.status].push(inq)
-    }
-    return buckets
-  }, [db.inquiries])
+  // Reload the saved layout when the acting user changes.
+  useEffect(() => { setLayout(loadLayout(userId)) }, [userId])
+  // Persist on every change.
+  useEffect(() => {
+    try { localStorage.setItem(KEY_PREFIX + (userId ?? 'default'), JSON.stringify(layout)) } catch { /* ignore */ }
+  }, [layout, userId])
 
-  const totalActive = useMemo(
-    () => PIPELINE_STAGES.reduce((sum, s) => sum + pipeline[s].length, 0),
-    [pipeline],
-  )
+  const ctx = { db, onOpenOffer, onOpenClient }
+  const available = WIDGET_DEFS.filter((w) => !layout.includes(w.id))
+  const widgetTitle = (w) => t(w.titleKey, w.defaultTitle)
 
-  // Client lookup map
-  const clientsById = useMemo(() => {
-    /** @type {Record<string, import('../domains/crm/model.js').Client>} */
-    const map = {}
-    for (const c of db.clients) map[c.id] = c
-    return map
-  }, [db.clients])
-
-  // Due soon / overdue / blocked
-  const dueSoonItems = useMemo(() => {
-    const today = new Date()
-    const windowEnd = new Date(today.getTime() + 90 * 86400000)
-
-    const latestInquiry = /** @type {Record<string, import('../domains/inquiries/model.js').Inquiry>} */ ({})
-    for (const inq of db.inquiries) {
-      if (inq.status === 'closed_rejected' || !inq.requestedDeadline) continue
-      const prev = latestInquiry[inq.productId]
-      if (!prev || inq.receivedAt > prev.receivedAt) latestInquiry[inq.productId] = inq
-    }
-
-    const lcMap = /** @type {Record<string, import('../domains/lifecycle/model.js').ProductLifecycleState>} */ ({})
-    for (const lc of db.productLifecycleStates) lcMap[lc.productId] = lc
-
-    const prodMap = /** @type {Record<string, import('../domains/products/model.js').Product>} */ ({})
-    for (const p of db.products) prodMap[p.id] = p
-
-    const results = []
-    for (const [productId, inq] of Object.entries(latestInquiry)) {
-      const deadline = new Date(inq.requestedDeadline)
-      if (deadline > windowEnd) continue
-      const product = prodMap[productId]
-      if (!product) continue
-      const lc = lcMap[productId]
-      results.push({
-        product,
-        inquiry: inq,
-        deadline,
-        blocked: lc?.blocked ?? false,
-        client: inq.customerId ? clientsById[inq.customerId] : undefined,
-      })
-    }
-    results.sort((a, b) => a.deadline - b.deadline)
-    return results
-  }, [db, clientsById])
-
-  function deadlineBadge(deadline) {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const d = new Date(deadline)
-    d.setHours(0, 0, 0, 0)
-    const diffDays = Math.round((d - today) / 86400000)
-    if (diffDays < 0) return { label: t('dashboard.dueSoon.overdue'), cls: 'bg-rose-100 text-rose-700' }
-    if (diffDays === 0) return { label: t('dashboard.dueSoon.today'), cls: 'bg-orange-100 text-orange-700' }
-    return {
-      label: t('dashboard.dueSoon.daysLeft').replace('{n}', String(diffDays)),
-      cls: diffDays <= 14 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600',
-    }
-  }
+  const addWidget = (id) => setLayout((l) => (l.includes(id) ? l : [...l, id]))
+  const removeWidget = (id) => setLayout((l) => l.filter((x) => x !== id))
+  const move = (from, to) => setLayout((l) => {
+    if (from == null || to == null || from === to) return l
+    const next = [...l]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    return next
+  })
 
   return (
     <div className="space-y-6">
-      {/* Gradient hero banner */}
+      {/* Brand hero (fixed) */}
       <section className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${theme.gradientFrom} ${theme.gradientTo} p-6 text-white shadow-lg`}>
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),_transparent_60%)]" />
-        <div className="relative">
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/60">{t('dashboard.hero.label', 'Live operations')}</p>
-          <h2 className="mt-1 text-2xl font-bold">{config.companyName}</h2>
-          <p className="mt-0.5 text-sm text-white/70">{t('dashboard.hero.subtitle', 'Real-time KPI overview — all figures from mock data')}</p>
+        <div className="relative flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/60">{t('dashboard.hero.label', 'Live operations')}</p>
+            <h2 className="mt-1 text-2xl font-bold">{config.companyName}</h2>
+            <p className="mt-0.5 text-sm text-white/70">{t('dashboard.hero.subtitle', 'Real-time KPI overview')}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-white/15 px-3 py-2 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/25"
+          >
+            <LayoutGrid size={14} />
+            {editing ? t('dash.customize.done', 'Done') : t('dash.customize.edit', 'Customize')}
+          </button>
         </div>
       </section>
 
-      {/* KPI Stat Cards */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((item) => (
-          <StatCard key={item.id} item={item} />
-        ))}
-      </section>
-
-      {/* Pipeline + Due Soon */}
-      <div className="grid gap-6 lg:grid-cols-2">
-
-        {/* Inquiries Pipeline */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-900">{t('dashboard.pipeline.title')}</h2>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {totalActive}
-            </span>
+      {/* Edit toolbar: widgets you can add + reset */}
+      {editing ? (
+        <section className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('dash.customize.addWidgets', 'Add widgets')}</p>
+            <button type="button" onClick={() => setLayout(DEFAULT_LAYOUT)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+              <RotateCcw size={13} /> {t('dash.customize.reset', 'Reset to default')}
+            </button>
           </div>
-
-          {totalActive === 0 ? (
-            <p className="text-sm text-slate-400">{t('dashboard.pipeline.empty')}</p>
+          {available.length === 0 ? (
+            <p className="text-xs text-slate-400">{t('dash.customize.allAdded', 'All widgets are on your dashboard.')}</p>
           ) : (
-            <div className="space-y-4">
-              {PIPELINE_STAGES.map((stage) => {
-                const items = pipeline[stage]
-                if (items.length === 0) return null
-                return (
-                  <div key={stage}>
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STAGE_COLORS[stage]}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${STAGE_DOT[stage]}`} />
-                        {t(`dashboard.pipeline.${stage}`)}
-                      </span>
-                      <span className="text-xs text-slate-400">{items.length}</span>
-                    </div>
-                    <ul className="space-y-1.5">
-                      {items.map((inq) => {
-                        const client = inq.customerId ? clientsById[inq.customerId] : undefined
-                        return (
-                          <li
-                            key={inq.id}
-                            className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate text-xs font-medium text-slate-800">
-                                {inq.summary ?? inq.id}
-                              </p>
-                              {client ? (
-                                <p className="mt-0.5 truncate text-xs text-slate-500">{client.name}</p>
-                              ) : null}
-                            </div>
-                            {inq.requestedQuantity ? (
-                              <span className="shrink-0 text-xs text-slate-400">
-                                {inq.requestedQuantity} {t('dashboard.pipeline.qty')}
-                              </span>
-                            ) : null}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                )
-              })}
+            <div className="flex flex-wrap gap-2">
+              {available.map((w) => (
+                <button key={w.id} type="button" onClick={() => addWidget(w.id)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">
+                  <Plus size={13} /> {widgetTitle(w)}
+                </button>
+              ))}
             </div>
           )}
+          <p className="mt-3 text-[11px] text-slate-400">{t('dash.customize.hint', 'Drag widgets by the handle to reorder. Changes save automatically.')}</p>
         </section>
+      ) : null}
 
-        {/* Due Soon / Overdue / Blocked */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-900">{t('dashboard.dueSoon.title')}</h2>
-            <Clock size={15} className="text-slate-400" />
-          </div>
-
-          {dueSoonItems.length === 0 ? (
-            <p className="text-sm text-slate-400">{t('dashboard.dueSoon.empty')}</p>
-          ) : (
-            <ul className="space-y-2">
-              {dueSoonItems.map(({ product, inquiry, deadline, blocked, client }) => {
-                const badge = deadlineBadge(deadline)
-                return (
-                  <li
-                    key={product.id}
-                    className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold text-slate-800">{product.name}</p>
-                      <p className="mt-0.5 truncate text-xs text-slate-500">
-                        {client?.name ?? '—'} · {product.lifecyclePhaseId}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badge.cls}`}>
-                        {badge.label}
-                      </span>
-                      {blocked ? (
-                        <span className="flex items-center gap-1 text-xs font-medium text-rose-600">
-                          <AlertTriangle size={11} />
-                          {t('dashboard.dueSoon.blocked')}
-                        </span>
-                      ) : null}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      <p className="text-sm text-slate-500">{t('dashboard.footerNote')}</p>
+      {/* Widget grid */}
+      {layout.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-400">
+          {t('dash.customize.empty', 'Your dashboard is empty. Click Customize to add widgets.')}
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {layout.map((id, index) => {
+            const def = WIDGET_MAP[id]
+            if (!def) return null
+            const Widget = def.Component
+            const spanClass = def.span === 'full' ? 'lg:col-span-2' : ''
+            return (
+              <div
+                key={id}
+                className={`${spanClass} ${editing ? 'rounded-2xl ring-2 ring-dashed ring-slate-300' : ''}`}
+                draggable={editing}
+                onDragStart={() => { dragFrom.current = index }}
+                onDragOver={(e) => { if (editing) e.preventDefault() }}
+                onDrop={(e) => { if (editing) { e.preventDefault(); move(dragFrom.current, index); dragFrom.current = null } }}
+              >
+                {editing ? (
+                  <div className="flex items-center justify-between gap-2 rounded-t-2xl border-b border-slate-200 bg-slate-50 px-3 py-1.5">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                      <GripVertical size={14} className="cursor-grab text-slate-400" /> {widgetTitle(def)}
+                    </span>
+                    <button type="button" onClick={() => removeWidget(id)}
+                      className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600" title={t('dash.customize.remove', 'Remove')}>
+                      <XIcon size={14} />
+                    </button>
+                  </div>
+                ) : null}
+                <div className={editing ? 'pointer-events-none p-2 opacity-95' : ''}>
+                  <Widget {...ctx} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

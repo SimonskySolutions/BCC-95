@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Plus, ChevronDown, Check } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { useDb } from '../../../data/useDb.js'
 import { APP_TODAY } from '../../../lib/clock.js'
+import { groupAmount } from '../../../lib/money.js'
 import {
   computeOfferProgress,
 } from '../../../services/offers/offerSubStateMachine.js'
@@ -14,6 +15,8 @@ import {
   selectQuoteVersions,
   selectQuoteVersionById,
   selectOfferLinesTotal,
+  selectCostSheetsByVersion,
+  selectQuoteOfferLines,
 } from '../../../domains/quotations/selectors.js'
 import {
   appendQuoteDocument,
@@ -21,6 +24,8 @@ import {
   buildQuoteVersion,
   appendQuoteVersion,
   patchQuoteVersion,
+  cloneCostSheetsToVersion,
+  appendQuoteOfferLine,
 } from '../../../domains/quotations/mutations.js'
 import CostSheetPanel from './CostSheetPanel.jsx'
 import OfferDetailsPanel from './OfferDetailsPanel.jsx'
@@ -131,6 +136,29 @@ function Section({ index, title, summary, progressLabel, done, open, onToggle, c
   )
 }
 
+/** Renders the heavy offer-document preview only after the section has painted,
+ *  so expanding a step feels instant; a light skeleton holds the space. */
+function DeferredOfferPreview(props) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const ric = typeof window !== 'undefined' && window.requestIdleCallback
+    const id = ric ? window.requestIdleCallback(() => setReady(true), { timeout: 250 }) : setTimeout(() => setReady(true), 0)
+    return () => {
+      if (ric && window.cancelIdleCallback) window.cancelIdleCallback(id)
+      else clearTimeout(id)
+    }
+  }, [])
+  if (!ready) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+        <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
+        <div className="h-48 animate-pulse rounded-lg bg-slate-100" />
+      </div>
+    )
+  }
+  return <OfferPreview {...props} />
+}
+
 /** Maps a sub-state-machine step to the accordion section that resolves it. */
 const STEP_TO_SECTION = {
   inquiry_received: 'feasibility',
@@ -178,6 +206,10 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   const [attachKind, setAttachKind] = useState(/** @type {'drawing'|'spec'|'other'} */ ('drawing'))
   const [openSection, setOpenSection] = useState(/** @type {string | null} */ (null))
   const [orderFlash, setOrderFlash] = useState('')
+  // Expanding a section can mount heavy content (the offer document preview).
+  // Run the toggle as a transition so the current view stays put until the new
+  // content is ready — no blank flash while it renders.
+  const [, startTransition] = useTransition()
 
   const progress = useMemo(() => computeOfferProgress(db, productId), [db, productId, dbVersion])
   const activeQuote = progress.activeQuote
@@ -209,7 +241,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         ? 'offer'
         : 'send'
   const effectiveOpen = openSection ?? activeSection
-  const toggle = (id) => setOpenSection((cur) => ((cur ?? activeSection) === id ? '__none__' : id))
+  const toggle = (id) => startTransition(() => setOpenSection((cur) => ((cur ?? activeSection) === id ? '__none__' : id)))
 
   // Expiration
   const validUntilStr = version?.validUntil ?? activeQuote?.validUntil
@@ -230,6 +262,23 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
       supersedesVersionId: version.id,
     })
     appendQuoteVersion(db, newV)
+    // Carry the full calculation and the customer-facing offer lines into the
+    // new draft so "Send again" / revise truly loads the same data (editable),
+    // not an empty sheet.
+    cloneCostSheetsToVersion(db, selectCostSheetsByVersion(db, version), {
+      quoteId: activeQuote.id,
+      quoteVersionId: newV.id,
+    })
+    for (const line of selectQuoteOfferLines(db, version.id)) {
+      appendQuoteOfferLine(db, { ...line, id: undefined, quoteVersionId: newV.id })
+    }
+    // Carry over attachments (photos, drawings, specs) — but not per-send
+    // artifacts like the acceptance receipt.
+    for (const d of selectQuoteDocuments(db, version.id)) {
+      if (['photo', 'drawing', 'spec', 'other'].includes(d.kind)) {
+        appendQuoteDocument(db, { ...d, id: undefined, quoteVersionId: newV.id })
+      }
+    }
     patchQuoteVersion(db, version.id, { status: 'superseded' })
     patchQuote(db, activeQuote.id, {
       status: 'draft',
@@ -238,6 +287,14 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
     })
     setSelectedVersionId(newV.id)
     onChange()
+  }
+
+  // "Send again" — clone the offer into a fresh editable draft for the SAME
+  // client (all data copied), then land the user in the editor. Nothing is sent
+  // until they review, approve and send.
+  function handleSendAgain() {
+    handleCreateRevision()
+    setOpenSection('costing')
   }
 
   function handleCreateOrder() {
@@ -254,6 +311,9 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   const clientId = activeQuote?.clientId ?? progress.inquiry?.customerId ?? db.clients[0]?.id ?? ''
   const clientName = db.clients.find((c) => c.id === clientId)?.name
   const offerTotal = version ? selectOfferLinesTotal(db, version.id) : 0
+  // A sent/decided version is immutable — any change must become a new offer
+  // (via Send again). The costing panel is shown read-only for such versions.
+  const versionLocked = Boolean(version) && version.status !== 'draft'
 
   /** Per-section "x/y" sub-progress from the state machine. */
   function sectionProgress(sectionId) {
@@ -283,7 +343,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   // Overall progress across the four steps — drives the summary progress bar.
   const stepFlags = [
     progress.status.feasibility_done,
-    Boolean(version),
+    Boolean(version) && (version.unitPrice ?? 0) > 0,
     Boolean(version) && progress.status.approved,
     progress.status.sent,
   ]
@@ -364,7 +424,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
             </div>
             <p className="mt-0.5 truncate text-xs text-slate-500">
               {clientName ?? '—'}
-              {version ? <> · {t('offer.details.total')}: <span className="font-semibold text-slate-700">{offerTotal.toFixed(2)} {version.currency ?? 'EUR'}</span> · v{version.versionNo}</> : null}
+              {version ? <> · {t('offer.details.total')}: <span className="font-semibold text-slate-700">{groupAmount(offerTotal)} {version.currency ?? 'EUR'}</span> · v{version.versionNo}</> : null}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -435,22 +495,36 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         index={2}
         title={t('offer.section.costing')}
         progressLabel={sectionProgress('costing')}
-        done={Boolean(version)}
-        summary={version
-          ? `${t('offer.section.costing.sell')}: ${(version.unitPrice ?? 0).toFixed(2)} ${version.currency ?? 'EUR'}`
+        done={Boolean(version) && (version.unitPrice ?? 0) > 0}
+        summary={version && (version.unitPrice ?? 0) > 0
+          ? `${t('offer.section.costing.sell')}: ${groupAmount(version.unitPrice ?? 0)} ${version.currency ?? 'EUR'}`
           : t('offer.section.costing.todo')}
         open={effectiveOpen === 'costing'}
         onToggle={() => toggle('costing')}
       >
-        <CostSheetPanel
-          db={db}
-          productId={productId}
-          clientId={clientId}
-          inquiryId={progress.inquiry?.id}
-          quote={activeQuote}
-          actorId={actorId}
-          onChange={onChange}
-        />
+        {versionLocked ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+            <p className="text-xs font-medium text-amber-800">{t('offer.locked.calcHint', 'This offer was sent — the calculation is read-only. Use “Send again” to change it as a new offer.')}</p>
+            <button
+              type="button"
+              onClick={handleSendAgain}
+              className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+            >
+              <RotateCcw size={12} /> {t('offer.sendAgain', 'Send new offer')}
+            </button>
+          </div>
+        ) : null}
+        <div className={versionLocked ? 'pointer-events-none select-none opacity-70' : ''} aria-disabled={versionLocked}>
+          <CostSheetPanel
+            db={db}
+            productId={productId}
+            clientId={clientId}
+            inquiryId={progress.inquiry?.id}
+            quote={activeQuote}
+            actorId={actorId}
+            onChange={onChange}
+          />
+        </div>
       </Section>
 
       {/* Step 3 — Offer (customer-facing) */}
@@ -473,7 +547,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
             onChange={onChange}
           />
           {version && activeQuote ? (
-            <OfferPreview
+            <DeferredOfferPreview
               db={db}
               quote={activeQuote}
               version={version}
@@ -500,7 +574,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         <div className="space-y-4">
           {/* The document is the hero — what the customer will actually see */}
           {version && activeQuote ? (
-            <OfferPreview
+            <DeferredOfferPreview
               db={db}
               quote={activeQuote}
               version={version}
@@ -531,17 +605,20 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
             </div>
           ) : null}
 
-          {/* A sent offer stays revisable — open a new editable draft version,
-              preserving the sent one as immutable history. */}
-          {version && version.status === 'sent' ? (
+          {/* A sent or decided offer can be re-sent — clone it into a new
+              editable draft for the same client, preserving the original as
+              immutable history. Nothing is sent until reviewed + approved. */}
+          {version && version.sentAt ? (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-xs text-slate-600">{t('offer.sent.editHint')}</p>
+              <p className="text-xs text-slate-600">
+                {t('offer.sendAgain.hint', 'Loads the same offer as an editable copy for this client — edit anything, then approve and send.')}
+              </p>
               <button
                 type="button"
-                onClick={handleCreateRevision}
+                onClick={handleSendAgain}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
               >
-                <RotateCcw size={12} /> {t('offer.sent.edit')}
+                <RotateCcw size={12} /> {t('offer.sendAgain', 'Send new offer')}{clientName ? ` — ${clientName}` : ''}
               </button>
             </div>
           ) : null}

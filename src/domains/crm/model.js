@@ -37,6 +37,9 @@
  * @property {string} [email]
  * @property {ClientContact[]} [contacts]
  * @property {ClientAddress[]} [addresses]
+ * @property {string} [status]                    — lead | active | on_hold | inactive
+ * @property {string} [assignedRepId]             — user id of the assigned sales rep
+ * @property {{ platform?: string, url?: string, username?: string, password?: string, notes?: string }} [externalAccess] — customer's external platform (e.g. SharePoint) + shared login
  */
 
 /**

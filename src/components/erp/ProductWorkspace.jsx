@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useDb } from '../../data/useDb.js'
+import { useToast } from '../ui/feedbackContext.js'
 import { ChevronRight } from 'lucide-react'
 import TaskTable from './TaskTable.jsx'
 import TaskDetailDrawer from './TaskDetailDrawer.jsx'
 import OperationList from './OperationList.jsx'
 import BomEditor from './BomEditor.jsx'
 import InquiryIntakeForm from './offers/InquiryIntakeForm.jsx'
+import OfferHistory from './offers/OfferHistory.jsx'
+import ProductDocuments from './ProductDocuments.jsx'
 import { ensureQuoteForProduct } from '../../services/offers/index.js'
 import AuditTimeline from './AuditTimeline.jsx'
 import { useLanguage } from '../../i18n/useLanguage.js'
@@ -15,12 +18,13 @@ import { LIFECYCLE_PHASE_DEFINITIONS, LIFECYCLE_PHASE_ORDER, ALLOWED_PHASE_TRANS
 import { attemptPhaseTransition } from '../../services/lifecycle/phaseTransitionService.js'
 import { computeOfferProgress } from '../../services/offers/offerSubStateMachine.js'
 
-const TAB_IDS = /** @type {const} */ (['overview', 'inquiry', 'offer', 'bom', 'operations', 'tasks', 'timeline'])
+const TAB_IDS = /** @type {const} */ (['overview', 'inquiry', 'offer', 'documents', 'bom', 'operations', 'tasks', 'timeline'])
 
-const TAB_LABELS = {
+const TAB_FALLBACKS = {
   overview:   'Overview',
   inquiry:    'Inquiry',
   offer:      'Offer',
+  documents:  'Documents',
   bom:        'BOM',
   operations: 'Operations',
   tasks:      'Tasks',
@@ -40,17 +44,17 @@ function stepToTab(step) {
   return 'offer'
 }
 
-/** Human-readable blocker hints */
-function blockerHint(blocker = '') {
-  if (blocker.startsWith('task:quote-tech-review')) return 'Complete the Technical Review task'
-  if (blocker.startsWith('task:quote-costing'))     return 'Complete the Costing task'
-  if (blocker.startsWith('task:'))                  return `Complete task: ${blocker.replace('task:', '')}`
-  if (blocker === 'feasibility:not_recorded')        return 'Record feasibility result in Inquiry tab'
-  if (blocker === 'quote:no_version')                return 'Create a quote version'
-  if (blocker === 'quote:not_approved')              return 'Get the quote internally approved'
-  if (blocker === 'quote:not_sent')                  return 'Send the quote to the client'
-  if (blocker === 'customer:pending')                return 'Waiting for client decision'
-  if (blocker.startsWith('intake:'))                 return `Fill in missing fields: ${blocker.replace('intake:', '')}`
+/** Human-readable, localized blocker hints */
+function blockerHint(blocker = '', t) {
+  if (blocker.startsWith('task:quote-tech-review')) return t('pws.blocker.techReview', 'Complete the Technical Review task')
+  if (blocker.startsWith('task:quote-costing'))     return t('pws.blocker.costing', 'Complete the Costing task')
+  if (blocker.startsWith('task:'))                  return `${t('pws.blocker.task', 'Complete task:')} ${blocker.replace('task:', '')}`
+  if (blocker === 'feasibility:not_recorded')        return t('pws.blocker.feasibility', 'Record the feasibility result in the Inquiry tab')
+  if (blocker === 'quote:no_version')                return t('pws.blocker.noVersion', 'Create a quote version')
+  if (blocker === 'quote:not_approved')              return t('pws.blocker.notApproved', 'Get the quote internally approved')
+  if (blocker === 'quote:not_sent')                  return t('pws.blocker.notSent', 'Send the quote to the client')
+  if (blocker === 'customer:pending')                return t('pws.blocker.customerPending', 'Waiting for the client decision')
+  if (blocker.startsWith('intake:'))                 return `${t('pws.blocker.intake', 'Fill in the missing fields:')} ${blocker.replace('intake:', '')}`
   return blocker
 }
 
@@ -61,11 +65,11 @@ function blockerHint(blocker = '') {
  *   onOpenReports?: () => void
  * }} props
  */
-export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffer }) {
+export default function ProductWorkspace({ db, bundle, onOpenOffer }) {
   const { t } = useLanguage()
+  const toast = useToast()
   const { commit } = useDb()
   const forceRefresh = () => commit()
-  const [transitionMsg, setTransitionMsg] = useState(/** @type {string | null} */ (null))
   const [openTaskId, setOpenTaskId] = useState(/** @type {string | null} */ (null))
 
   const productId = bundle?.product?.id ?? null
@@ -109,7 +113,11 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
 
   function handleMoveToPhase(targetPhaseId) {
     const result = commit(() => attemptPhaseTransition(db, productId, targetPhaseId))
-    setTransitionMsg(result.ok ? `Phase advanced to ${targetPhaseId}.` : (result.message ?? 'Unable to change phase.'))
+    if (result.ok) {
+      toast(t('pws.phaseAdvanced', 'Phase advanced to {phase}.').replace('{phase}', t(`lifecycle.phase.${targetPhaseId}`, targetPhaseId)))
+    } else {
+      toast(result.message ?? t('pws.phaseChangeFailed', 'Unable to change phase.'), { type: 'error' })
+    }
   }
 
   return (
@@ -140,7 +148,7 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
                     onClick={() => handleMoveToPhase(target)}
                     className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition"
                   >
-                    Advance to {def?.label ?? target}
+                    {t('pws.advanceTo', 'Advance to {phase}').replace('{phase}', t(`lifecycle.phase.${target}`, def?.label ?? target))}
                     <ChevronRight size={12} />
                   </button>
                 )
@@ -148,23 +156,23 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
             </div>
           )}
           {allowedTargets.length === 0 && lifecycle?.phaseId === 'released' && (
-            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Released</span>
+            <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t('lifecycle.phase.released', 'Released')}</span>
           )}
         </div>
 
         {/* Product name */}
         <h2 className="mt-2 text-xl font-bold text-slate-900">{product.name}</h2>
 
-        {/* Description */}
-        {product.description && (
+        {/* Description (skip when it just repeats the name) */}
+        {product.description && product.description.trim() !== product.name.trim() && (
           <p className="mt-0.5 text-sm text-slate-500 line-clamp-2">{product.description}</p>
         )}
 
         {/* Metadata chips */}
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-          {product.uom && <span>UoM: <span className="font-medium text-slate-600">{product.uom}</span></span>}
-          {product.priceAverage != null && <span>Avg price: <span className="font-medium text-slate-600">€{product.priceAverage.toFixed(2)}</span></span>}
-          {bundle.pathTemplate && <span>Path: <span className="font-medium text-slate-600">{bundle.pathTemplate.name}</span></span>}
+          {product.uom && <span>{t('pws.uom', 'UoM')}: <span className="font-medium text-slate-600">{product.uom}</span></span>}
+          {product.priceAverage != null && <span>{t('pws.avgPrice', 'Avg price')}: <span className="font-medium text-slate-600">€{product.priceAverage.toFixed(2)}</span></span>}
+          {bundle.pathTemplate && <span>{t('pws.path', 'Path')}: <span className="font-medium text-slate-600">{bundle.pathTemplate.name}</span></span>}
         </div>
 
         {/* Inline phase strip */}
@@ -180,79 +188,75 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
                   : done  ? 'bg-emerald-100 text-emerald-700'
                   :          'bg-slate-100 text-slate-400'
                 }`}>
-                  {done ? '✓ ' : ''}{phase.label}
+                  {done ? '✓ ' : ''}{t(`lifecycle.phase.${phase.id}`, phase.label)}
                 </span>
               </span>
             )
           })}
           {lifecycle?.blocked && (
             <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-              ⚠ Blocked
+              ⚠ {t('pws.blocked', 'Blocked')}
             </span>
           )}
         </div>
 
-        {transitionMsg && (
-          <p className="mt-2 text-xs text-slate-500">{transitionMsg}</p>
-        )}
       </div>
 
       {/* ── Tab bar ──────────────────────────────────────────────── */}
-      <div className="border-b border-slate-200 pb-2">
-        <nav className="flex flex-wrap gap-1.5" role="tablist">
-          {TAB_IDS.map((id) => {
-            const badge = id === 'tasks' && openTaskCount > 0
-              ? openTaskCount
-              : id === 'inquiry' && pendingInquiryCount > 0
-                ? pendingInquiryCount
-                : null
-            return (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => setTab(id)}
-                className={`relative rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                  tab === id
-                    ? 'bg-slate-900 text-white shadow'
-                    : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                {TAB_LABELS[id]}
-                {badge ? (
-                  <span className={`ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold ${
-                    tab === id ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'
-                  }`}>
-                    {badge}
-                  </span>
-                ) : null}
-              </button>
-            )
-          })}
-        </nav>
-      </div>
+      <nav className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white p-1 shadow-card" role="tablist">
+        {TAB_IDS.map((id) => {
+          const badge = id === 'tasks' && openTaskCount > 0
+            ? openTaskCount
+            : id === 'inquiry' && pendingInquiryCount > 0
+              ? pendingInquiryCount
+              : null
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`relative rounded-xl px-3.5 py-2 text-xs font-semibold transition-all ${
+                tab === id
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+              }`}
+            >
+              {t(`pws.tab.${id}`, TAB_FALLBACKS[id])}
+              {badge ? (
+                <span className={`ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold ${
+                  tab === id ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'
+                }`}>
+                  {badge}
+                </span>
+              ) : null}
+            </button>
+          )
+        })}
+      </nav>
 
       {/* ── Tab content ─────────────────────────────────────────── */}
 
+      <div key={tab} className="animate-fade-in-up">
       {tab === 'overview' && (
         <div className="space-y-3">
           {/* Next action card */}
           {progress?.nextStep && (
             <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Next step</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400">{t('pws.nextStepLabel', 'Next step')}</p>
               <p className="mt-0.5 text-sm font-semibold text-blue-900">
                 {t(`offer.step.${progress.nextStep}`, progress.nextStep.replace(/_/g, ' '))}
               </p>
               {progress.blockers[0] && (
-                <p className="mt-0.5 text-xs text-blue-700">{blockerHint(progress.blockers[0])}</p>
+                <p className="mt-0.5 text-xs text-blue-700">{blockerHint(progress.blockers[0], t)}</p>
               )}
               <button
                 type="button"
                 onClick={() => setTab(stepToTab(progress.nextStep))}
                 className="mt-2.5 flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
               >
-                Go to {TAB_LABELS[stepToTab(progress.nextStep)]}
+                {t('pws.goTo', 'Go to {tab}').replace('{tab}', t(`pws.tab.${stepToTab(progress.nextStep)}`, TAB_FALLBACKS[stepToTab(progress.nextStep)]))}
                 <ChevronRight size={12} />
               </button>
             </div>
@@ -319,7 +323,7 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
           {inquiries.length > 1 && (
             <details className="rounded-xl border border-slate-200 bg-white p-3">
               <summary className="cursor-pointer text-xs font-semibold text-slate-600">
-                Previous inquiries ({inquiries.length - 1})
+                {t('pws.prevInquiries', 'Previous inquiries')} ({inquiries.length - 1})
               </summary>
               <ul className="mt-2 space-y-1 text-xs text-slate-500">
                 {inquiries.slice(0, -1).map((i) => (
@@ -343,6 +347,7 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
           ? (db.quoteDrafts ?? []).find((q) => q.inquiryId === inq.id)
           : (db.quoteDrafts ?? []).find((q) => q.productId === product.id)
         const count = inq ? 1 + (inq.extraProducts ?? []).filter((e) => e.productId).length : 1
+        const combined = count > 1
         const openOffer = () => {
           let q = offerQuote
           if (!q) {
@@ -352,10 +357,15 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
           if (q) onOpenOffer?.(q.id)
         }
         return (
+          <div className="space-y-4">
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900">{t('pw.offer.combinedTitle')}</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t(combined ? 'pw.offer.combinedTitle' : 'pw.offer.singleTitle')}
+            </h3>
             <p className="mt-1 text-xs text-slate-500">
-              {t('pw.offer.combinedDesc').replace('{n}', String(count))}
+              {combined
+                ? t('pw.offer.combinedDesc').replace('{n}', String(count))
+                : t('pw.offer.singleDesc')}
               {offerQuote?.offerNo ? ` · ${offerQuote.offerNo}` : ''}
             </p>
             <button
@@ -363,11 +373,20 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
               onClick={openOffer}
               className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
-              {t('pw.offer.openCombined')} →
+              {t(combined ? 'pw.offer.openCombined' : 'pw.offer.openOffer')} →
             </button>
           </section>
+          <OfferHistory db={db} productId={product.id} onOpenOffer={onOpenOffer} />
+          </div>
         )
       })()}
+
+      {tab === 'documents' && (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">{t('pdocs.title')}</h3>
+          <ProductDocuments db={db} productId={product.id} />
+        </section>
+      )}
 
       {tab === 'bom' && (
         <BomEditor db={db} productId={product.id} />
@@ -395,6 +414,7 @@ export default function ProductWorkspace({ db, bundle, onOpenReports, onOpenOffe
           </div>
         </section>
       )}
+      </div>
 
       {openTaskId ? (
         <TaskDetailDrawer

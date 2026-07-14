@@ -8,7 +8,8 @@ import {
 } from '../../domains/quotations/mutations.js'
 import {
   selectCostSheetByQuote,
-  selectCostSheetsByQuote,
+  selectCostSheetByVersion,
+  selectCostSheetsByVersion,
   selectCostSheetLines,
   selectCostCatalog,
   computeCostRollup,
@@ -21,6 +22,7 @@ import {
 import { selectProductById } from '../../domains/products/selectors.js'
 import { appendAuditEntry } from '../../domains/audit/mutations.js'
 import { draftQuoteVersion } from './quoteVersioningService.js'
+import { ensureToolingOffer } from './toolingOfferService.js'
 
 /**
  * The starter rows a fresh cost sheet is seeded with — one representative line
@@ -97,6 +99,7 @@ export function addProductCostSheet(db, input) {
   const product = input.productId ? selectProductById(db, input.productId) : undefined
   const sheet = appendCostSheet(db, {
     quoteId: input.quoteId,
+    quoteVersionId: input.quoteVersionId,
     productId: input.productId,
     productLabel: input.productLabel ?? product?.name,
     productDescription: input.productDescription ?? product?.description,
@@ -137,7 +140,15 @@ export function ensureCostSheet(db, input) {
  * @param {{ quoteId: string; inquiryId?: string; clientId?: string; productId?: string; actorId?: string }} input
  */
 export function draftVersionFromCostSheet(db, input) {
-  const sheet = selectCostSheetByQuote(db, input.quoteId)
+  // Snapshot the current version's sheet when one exists; otherwise the
+  // (legacy) quote-level sheet for the very first version.
+  const quote0 = selectQuoteById(db, input.quoteId)
+  const currentVersion = quote0?.currentVersionId
+    ? selectQuoteVersionById(db, quote0.currentVersionId)
+    : undefined
+  const sheet =
+    (currentVersion && selectCostSheetByVersion(db, currentVersion)) ||
+    selectCostSheetByQuote(db, input.quoteId)
   if (!sheet) return { ok: /** @type {const} */ (false), code: 'no_cost_sheet' }
 
   const lines = selectCostSheetLines(db, sheet.id)
@@ -161,7 +172,9 @@ export function draftVersionFromCostSheet(db, input) {
   if (sheet.toolingMode === 'amortise' && rollup.toolingPerUnit > 0) {
     snapshotLines.push({
       kind: 'tooling',
-      description: `Tooling amortised (${rollup.toolingTotal} ÷ ${sheet.amortisationUnits || 0})`,
+      description: sheet.amortisationMode === 'cost'
+        ? `Tooling amortised (${rollup.toolingTotal} over cost base ${sheet.amortisationCost || 0})`
+        : `Tooling amortised (${rollup.toolingTotal} ÷ ${sheet.amortisationUnits || 0})`,
       quantity: 1,
       unitPrice: rollup.toolingPerUnit,
     })
@@ -227,7 +240,8 @@ export function generateOfferMatrix(db, versionId) {
   const inquiry = (db.inquiries ?? []).find((i) => i.id === quote0?.inquiryId)
   const pf = inquiry?.productFeasibility ?? {}
   // Only feasible products are offered — exclude any marked "blocked".
-  const sheets = selectCostSheetsByQuote(db, version.quoteId).filter((s) => pf[s.productId] !== 'blocked')
+  // Use the version's own sheets so each offer prices from its own calculation.
+  const sheets = selectCostSheetsByVersion(db, version).filter((s) => pf[s.productId] !== 'blocked')
   if (!sheets.length) return { ok: /** @type {const} */ (false), code: 'no_cost_sheet' }
 
   ensureOfferNo(db, version.quoteId)
@@ -239,14 +253,31 @@ export function generateOfferMatrix(db, versionId) {
     patchQuoteVersion(db, versionId, { validUntil: base.toISOString().slice(0, 10) })
   }
 
+  // "First batch": no earlier version of this quote has been sent yet. Used by
+  // the "first batch separate, then in price" tooling option.
+  const isFirstBatch = !(db.quoteVersions ?? []).some(
+    (v) => v.quoteId === version.quoteId && v.id !== version.id && v.sentAt,
+  )
+
   // One offer line per (product × quantity tier), across every product sheet.
   clearQuoteOfferLines(db, versionId)
   let sort = 0
   let count = 0
   for (const sheet of sheets) {
     const rollup = computeCostRollup(sheet, selectCostSheetLines(db, sheet.id))
-    let rows = priceBreakRows(rollup, sheet.priceBreaks)
-    if (!rows.length) rows = [{ qty: sheet.amortisationUnits || 1, exw: rollup.exw, dap: rollup.dap }]
+    // Resolve the effective display. 'first_batch' = a separate one-off line on
+    // the first batch, then blended into the unit price on later batches.
+    const display = sheet.amortiseDisplay ?? 'blended'
+    const effectiveDisplay = display === 'first_batch' ? (isFirstBatch ? 'line' : 'blended') : display
+    // Tooling handling: blended keeps it in the unit price; 'line' and 'separate'
+    // exclude it from the unit price (shown as a line / its own offer).
+    const blended = sheet.toolingMode === 'amortise' && effectiveDisplay !== 'line'
+    const baseCostPrice = blended ? rollup.costPrice : rollup.costPriceExclTooling
+    let rows = priceBreakRows(rollup, sheet.priceBreaks, baseCostPrice)
+    if (!rows.length) {
+      const exw = baseCostPrice * (1 + (Number(sheet.marginPercent) || 0) / 100)
+      rows = [{ qty: sheet.amortisationUnits || 1, exw, dap: exw + rollup.logistics }]
+    }
     const product = sheet.productId ? selectProductById(db, sheet.productId) : undefined
     const label = sheet.productLabel || product?.name || ''
     for (const r of rows) {
@@ -263,7 +294,25 @@ export function generateOfferMatrix(db, versionId) {
       })
       count++
     }
+    // Amortise + "separate line" (or first batch): one-off tooling line here.
+    if (sheet.toolingMode === 'amortise' && effectiveDisplay === 'line' && rollup.toolingTotal > 0) {
+      const oneOff = Math.round(rollup.toolingTotal * 100) / 100
+      appendQuoteOfferLine(db, {
+        quoteVersionId: versionId,
+        productId: sheet.productId,
+        description: version.language === 'bg' ? 'Инструменти' : 'Tooling',
+        uom: version.language === 'bg' ? 'еднократно' : 'one-off',
+        requestedQty: 1,
+        unitPrice: oneOff,
+        exwUnitPrice: oneOff,
+        isOneOff: true,
+        sortOrder: sort++,
+      })
+      count++
+    }
   }
+  // Billed-separately tooling → its own linked offer (not a line here).
+  ensureToolingOffer(db, version.quoteId)
   return { ok: /** @type {const} */ (true), count }
 }
 

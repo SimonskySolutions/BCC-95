@@ -24,7 +24,7 @@ import { mandatoryQuotationTaskKeysForProduct } from '../quotations/quotationAut
  * @param {string} [actorId]
  * @param {string} [productName]   — appended to the task titles so each product's tasks are identifiable
  */
-export function ensureQuotationGateTasks(db, productId, actorId, productName) {
+export function ensureQuotationGateTasks(db, productId, actorId, productName, assignees = {}) {
   const [techKey, costKey] = mandatoryQuotationTaskKeysForProduct(productId)
   const name = productName ?? db.products?.find((p) => p.id === productId)?.name ?? ''
   const suffix = name ? ` — ${name}` : ''
@@ -53,15 +53,15 @@ export function ensureQuotationGateTasks(db, productId, actorId, productName) {
   }
   const engineer = db.employees.find((e) => /engineer|engineering|технолог/i.test(e.role))
   const planner = db.employees.find((e) => /plan|планов/i.test(e.role))
-  addIfMissing(techKey, `Technical review (VSM 1.3)${suffix}`, engineer?.id ?? db.employees[0]?.id)
-  addIfMissing(costKey, `Costing rollup (VSM 1.4)${suffix}`, planner?.id ?? db.employees[0]?.id)
+  addIfMissing(techKey, `Technical review (VSM 1.3)${suffix}`, assignees.tech || engineer?.id || db.employees[0]?.id)
+  addIfMissing(costKey, `Costing rollup (VSM 1.4)${suffix}`, assignees.cost || planner?.id || db.employees[0]?.id)
 }
 
 export function registerInquiry(db, input) {
   const inquiry = createInquiryDraft(input)
   appendInquiry(db, inquiry)
 
-  ensureQuotationGateTasks(db, input.productId, input.actorId)
+  ensureQuotationGateTasks(db, input.productId, input.actorId, undefined, input.taskAssignees)
 
   appendAuditEntry(db, {
     productId: input.productId,
