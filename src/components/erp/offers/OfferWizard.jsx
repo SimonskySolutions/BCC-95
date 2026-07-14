@@ -1,33 +1,33 @@
-import { useMemo, useState } from 'react'
-import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Layers, Plus, ChevronDown, Check } from 'lucide-react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
+import { CheckCircle2, AlertTriangle, RotateCcw, Paperclip, GitCompare, Plus, ChevronDown, Check } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
 import { useDb } from '../../../data/useDb.js'
 import { APP_TODAY } from '../../../lib/clock.js'
+import { groupAmount } from '../../../lib/money.js'
 import {
   computeOfferProgress,
 } from '../../../services/offers/offerSubStateMachine.js'
 import { convertAcceptedOfferToOrder } from '../../../services/offers/orderHandoffService.js'
-import { mandatoryQuotationTaskKeysForProduct } from '../../../services/quotations/quotationAutomationService.js'
-import { patchTask } from '../../../domains/tasks/mutations.js'
 import {
   selectQuoteApprovals,
   selectQuoteDocuments,
   selectQuoteDecision,
-  selectQuoteLineItems,
   selectQuoteVersions,
   selectQuoteVersionById,
   selectOfferLinesTotal,
+  selectCostSheetsByVersion,
+  selectQuoteOfferLines,
 } from '../../../domains/quotations/selectors.js'
 import {
   appendQuoteDocument,
-  appendQuoteLineItem,
-  clearQuoteLineItems,
   patchQuote,
   buildQuoteVersion,
   appendQuoteVersion,
   patchQuoteVersion,
+  cloneCostSheetsToVersion,
+  appendQuoteOfferLine,
 } from '../../../domains/quotations/mutations.js'
-import OfferCalculationPanel from './OfferCalculationPanel.jsx'
+import CostSheetPanel from './CostSheetPanel.jsx'
 import OfferDetailsPanel from './OfferDetailsPanel.jsx'
 import OfferVersionList from './OfferVersionList.jsx'
 import OfferApprovalPanel from './OfferApprovalPanel.jsx'
@@ -35,6 +35,8 @@ import OfferPreview from './OfferPreview.jsx'
 import OfferSendDialog from './OfferSendDialog.jsx'
 import OfferStatusBadge from './OfferStatusBadge.jsx'
 import FeasibilityPanel from './FeasibilityPanel.jsx'
+import InquiryChatPanel from './InquiryChatPanel.jsx'
+import { selectInquiryMessages } from '../../../domains/communications/selectors.js'
 
 function VersionDelta({ vA, vB, t }) {
   if (!vA || !vB) return null
@@ -72,21 +74,6 @@ function VersionDelta({ vA, vB, t }) {
   )
 }
 
-const LINE_TEMPLATES = {
-  standard: [
-    { kind: 'material',  description: 'Steel (tube / sheet)',     quantity: 1, unitPrice: 0 },
-    { kind: 'labor',     description: 'Cut + weld + powder coat', quantity: 1, unitPrice: 0 },
-    { kind: 'logistics', description: 'Freight & packaging',      quantity: 1, unitPrice: 0 },
-  ],
-  toolingLabor: [
-    { kind: 'tooling',   description: 'Jig / die setup',          quantity: 1, unitPrice: 0 },
-    { kind: 'labor',     description: 'Labor',                    quantity: 1, unitPrice: 0 },
-  ],
-  materialsOnly: [
-    { kind: 'material',  description: 'Materials',                quantity: 1, unitPrice: 0 },
-  ],
-}
-
 /** Converts internal blocker codes to readable, localised instructions. */
 function blockerLabel(blocker = '', t) {
   if (blocker.startsWith('task:quote-tech-review')) return t('offer.blocker.techReview')
@@ -116,19 +103,21 @@ function blockerLabel(blocker = '', t) {
  */
 function Section({ index, title, summary, progressLabel, done, open, onToggle, children }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-white shadow-card transition ${open ? 'border-blue-200' : 'border-slate-200'}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-white transition-all duration-200 ${
+      open ? 'border-blue-300 shadow-cardHover ring-1 ring-blue-100' : 'border-slate-200 shadow-card hover:border-slate-300 hover:shadow-cardHover'
+    }`}>
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50/80"
       >
-        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
           done ? 'bg-emerald-100 text-emerald-700' : open ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
         }`}>
           {done ? <Check size={14} /> : index}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-slate-900">{title}</span>
+          <span className={`block text-sm font-semibold transition-colors ${open ? 'text-blue-900' : 'text-slate-900'}`}>{title}</span>
           {!open && summary ? <span className="block truncate text-xs text-slate-500">{summary}</span> : null}
         </span>
         {progressLabel ? (
@@ -138,11 +127,36 @@ function Section({ index, title, summary, progressLabel, done, open, onToggle, c
             {progressLabel}
           </span>
         ) : null}
-        <ChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors ${open ? 'bg-blue-50 text-blue-600' : 'text-slate-400'}`}>
+          <ChevronDown size={16} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </span>
       </button>
-      {open ? <div className="border-t border-slate-100 p-4">{children}</div> : null}
+      {open ? <div className="animate-fade-in-up border-t border-slate-100 p-4">{children}</div> : null}
     </div>
   )
+}
+
+/** Renders the heavy offer-document preview only after the section has painted,
+ *  so expanding a step feels instant; a light skeleton holds the space. */
+function DeferredOfferPreview(props) {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const ric = typeof window !== 'undefined' && window.requestIdleCallback
+    const id = ric ? window.requestIdleCallback(() => setReady(true), { timeout: 250 }) : setTimeout(() => setReady(true), 0)
+    return () => {
+      if (ric && window.cancelIdleCallback) window.cancelIdleCallback(id)
+      else clearTimeout(id)
+    }
+  }, [])
+  if (!ready) {
+    return (
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+        <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
+        <div className="h-48 animate-pulse rounded-lg bg-slate-100" />
+      </div>
+    )
+  }
+  return <OfferPreview {...props} />
 }
 
 /** Maps a sub-state-machine step to the accordion section that resolves it. */
@@ -162,62 +176,6 @@ const SECTION_STEPS = {
   feasibility: ['inquiry_received', 'intake_complete', 'feasibility_done'],
   costing: ['tech_review_done', 'costing_done', 'quote_drafted'],
   send: ['approved', 'sent', 'decided_accepted'],
-}
-
-/**
- * The two mandatory VSM gate tasks (tech review + costing), resolvable inline
- * so the user is never sent hunting through assignee-filtered task boards.
- * @param {{
- *   db: import('../../../data/mockDatabase.js').MockDatabase
- *   productId: string
- *   onChange: () => void
- * }} props
- */
-function GateTasksPanel({ db, productId, onChange }) {
-  const { t } = useLanguage()
-  const keys = mandatoryQuotationTaskKeysForProduct(productId)
-  const gateTasks = keys.map((key) => ({
-    key,
-    task: db.tasks.find((x) => x.productId === productId && x.taskKey === key && x.workstream === 'quotation'),
-  }))
-  if (gateTasks.every(({ task }) => task?.status === 'resolved')) return null
-  return (
-    <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
-      <p className="text-xs font-semibold text-amber-900">{t('offer.gateTasks.title')}</p>
-      <p className="mt-0.5 text-[11px] text-amber-700">{t('offer.gateTasks.hint')}</p>
-      <ul className="mt-2 space-y-1.5">
-        {gateTasks.map(({ key, task }) => {
-          const assignee = task ? db.employees.find((e) => e.id === task.assigneeId) : undefined
-          const resolved = task?.status === 'resolved'
-          return (
-            <li key={key} className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-amber-100">
-              <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${resolved ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              <span className="min-w-0 flex-1 text-xs font-medium text-slate-800">
-                {task?.title ?? key}
-                {assignee ? <span className="ml-2 font-normal text-slate-400">{assignee.name}</span> : null}
-              </span>
-              {resolved ? (
-                <span className="text-[10px] font-semibold text-emerald-600">✓ {t('offer.gateTasks.resolved')}</span>
-              ) : task ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    patchTask(db, task.id, { status: 'resolved', completedAt: new Date().toISOString().slice(0, 10) })
-                    onChange()
-                  }}
-                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700"
-                >
-                  {t('offer.gateTasks.resolve')}
-                </button>
-              ) : (
-                <span className="text-[10px] text-slate-400">{t('offer.gateTasks.missing')}</span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
 }
 
 /**
@@ -248,6 +206,10 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   const [attachKind, setAttachKind] = useState(/** @type {'drawing'|'spec'|'other'} */ ('drawing'))
   const [openSection, setOpenSection] = useState(/** @type {string | null} */ (null))
   const [orderFlash, setOrderFlash] = useState('')
+  // Expanding a section can mount heavy content (the offer document preview).
+  // Run the toggle as a transition so the current view stays put until the new
+  // content is ready — no blank flash while it renders.
+  const [, startTransition] = useTransition()
 
   const progress = useMemo(() => computeOfferProgress(db, productId), [db, productId, dbVersion])
   const activeQuote = progress.activeQuote
@@ -257,13 +219,18 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   )
   const chosenVersionId = selectedVersionId ?? activeQuote?.currentVersionId
   const version = chosenVersionId ? selectQuoteVersionById(db, chosenVersionId) : undefined
-  const lineItems = version ? selectQuoteLineItems(db, version.id) : []
   const approvals = version ? selectQuoteApprovals(db, version.id) : []
   const attachments = version ? selectQuoteDocuments(db, version.id) : []
   const decision = version ? selectQuoteDecision(db, version.id) : undefined
   const lastSentEmail = (db.outboundEmails ?? [])
     .filter((m) => m.productId === productId)
     .slice(-1)[0]
+
+  // Discussion thread — one per quotation, so it carries across versions when
+  // the calculation is revised after an offer has been sent. Falls back to the
+  // product only before a quote exists.
+  const threadKey = activeQuote?.id ?? `product:${productId}`
+  const chatCount = selectInquiryMessages(db, threadKey).length
 
   // Which section should be open by default
   const activeSection = !progress.status.feasibility_done
@@ -274,23 +241,13 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         ? 'offer'
         : 'send'
   const effectiveOpen = openSection ?? activeSection
-  const toggle = (id) => setOpenSection((cur) => ((cur ?? activeSection) === id ? '__none__' : id))
+  const toggle = (id) => startTransition(() => setOpenSection((cur) => ((cur ?? activeSection) === id ? '__none__' : id)))
 
   // Expiration
   const validUntilStr = version?.validUntil ?? activeQuote?.validUntil
   const daysUntilExpiry = validUntilStr
     ? Math.round((new Date(validUntilStr) - APP_TODAY) / 86400000)
     : null
-
-  function applyTemplate(key) {
-    if (!version || !activeQuote) return
-    clearQuoteLineItems(db, version.id)
-    const rows = LINE_TEMPLATES[key] ?? []
-    for (const row of rows) {
-      appendQuoteLineItem(db, { ...row, quoteVersionId: version.id, totalPrice: 0 })
-    }
-    onChange()
-  }
 
   function handleCreateRevision() {
     if (!activeQuote || !version) return
@@ -305,6 +262,23 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
       supersedesVersionId: version.id,
     })
     appendQuoteVersion(db, newV)
+    // Carry the full calculation and the customer-facing offer lines into the
+    // new draft so "Send again" / revise truly loads the same data (editable),
+    // not an empty sheet.
+    cloneCostSheetsToVersion(db, selectCostSheetsByVersion(db, version), {
+      quoteId: activeQuote.id,
+      quoteVersionId: newV.id,
+    })
+    for (const line of selectQuoteOfferLines(db, version.id)) {
+      appendQuoteOfferLine(db, { ...line, id: undefined, quoteVersionId: newV.id })
+    }
+    // Carry over attachments (photos, drawings, specs) — but not per-send
+    // artifacts like the acceptance receipt.
+    for (const d of selectQuoteDocuments(db, version.id)) {
+      if (['photo', 'drawing', 'spec', 'other'].includes(d.kind)) {
+        appendQuoteDocument(db, { ...d, id: undefined, quoteVersionId: newV.id })
+      }
+    }
     patchQuoteVersion(db, version.id, { status: 'superseded' })
     patchQuote(db, activeQuote.id, {
       status: 'draft',
@@ -313,6 +287,14 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
     })
     setSelectedVersionId(newV.id)
     onChange()
+  }
+
+  // "Send again" — clone the offer into a fresh editable draft for the SAME
+  // client (all data copied), then land the user in the editor. Nothing is sent
+  // until they review, approve and send.
+  function handleSendAgain() {
+    handleCreateRevision()
+    setOpenSection('costing')
   }
 
   function handleCreateOrder() {
@@ -329,6 +311,9 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
   const clientId = activeQuote?.clientId ?? progress.inquiry?.customerId ?? db.clients[0]?.id ?? ''
   const clientName = db.clients.find((c) => c.id === clientId)?.name
   const offerTotal = version ? selectOfferLinesTotal(db, version.id) : 0
+  // A sent/decided version is immutable — any change must become a new offer
+  // (via Send again). The costing panel is shown read-only for such versions.
+  const versionLocked = Boolean(version) && version.status !== 'draft'
 
   /** Per-section "x/y" sub-progress from the state machine. */
   function sectionProgress(sectionId) {
@@ -355,8 +340,19 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
     if (next === 'sent' && version?.status === 'approved') setSendOpen(true)
   }
 
+  // Overall progress across the four steps — drives the summary progress bar.
+  const stepFlags = [
+    progress.status.feasibility_done,
+    Boolean(version) && (version.unitPrice ?? 0) > 0,
+    Boolean(version) && progress.status.approved,
+    progress.status.sent,
+  ]
+  const stepsDone = stepFlags.filter(Boolean).length
+  const stepsPct = Math.round((stepsDone / stepFlags.length) * 100)
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="min-w-0 flex-1 space-y-4">
 
       {/* Post-acceptance banner */}
       {activeQuote?.status === 'accepted' ? (
@@ -418,8 +414,8 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         ) : null
       ) : null}
 
-      {/* Sticky summary + guided action bar */}
-      <div className="sticky top-0 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-card backdrop-blur">
+      {/* Summary + guided action bar */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -428,7 +424,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
             </div>
             <p className="mt-0.5 truncate text-xs text-slate-500">
               {clientName ?? '—'}
-              {version ? <> · {t('offer.details.total')}: <span className="font-semibold text-slate-700">{offerTotal.toFixed(2)} {version.currency ?? 'EUR'}</span> · v{version.versionNo}</> : null}
+              {version ? <> · {t('offer.details.total')}: <span className="font-semibold text-slate-700">{groupAmount(offerTotal)} {version.currency ?? 'EUR'}</span> · v{version.versionNo}</> : null}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -454,6 +450,20 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
             ) : null}
           </div>
         </div>
+
+        {/* Overall step progress */}
+        <div className="mt-3 flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ease-out ${stepsDone === stepFlags.length ? 'bg-emerald-500' : 'bg-blue-600'}`}
+              style={{ width: `${stepsPct}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-[11px] font-medium text-slate-400">
+            {t('offer.progress.steps').replace('{done}', String(stepsDone)).replace('{total}', String(stepFlags.length))}
+          </span>
+        </div>
+
         {progress.blockers.length > 0 && progress.nextStep ? (
           <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">
             {blockerLabel(progress.blockers[0], t)}
@@ -485,42 +495,36 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         index={2}
         title={t('offer.section.costing')}
         progressLabel={sectionProgress('costing')}
-        done={Boolean(version)}
-        summary={version
-          ? `${t('offer.section.costing.sell')}: ${(version.unitPrice ?? 0).toFixed(2)} ${version.currency ?? 'EUR'}`
+        done={Boolean(version) && (version.unitPrice ?? 0) > 0}
+        summary={version && (version.unitPrice ?? 0) > 0
+          ? `${t('offer.section.costing.sell')}: ${groupAmount(version.unitPrice ?? 0)} ${version.currency ?? 'EUR'}`
           : t('offer.section.costing.todo')}
         open={effectiveOpen === 'costing'}
         onToggle={() => toggle('costing')}
       >
-        <GateTasksPanel db={db} productId={productId} onChange={onChange} />
-        {version && version.status === 'draft' ? (
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1 text-xs text-slate-500">
-              <Layers size={12} /> {t('offer.templates')}:
-            </span>
-            {['standard', 'toolingLabor', 'materialsOnly'].map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => applyTemplate(key)}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-700 transition"
-              >
-                {t(`offer.template.${key}`)}
-              </button>
-            ))}
+        {versionLocked ? (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+            <p className="text-xs font-medium text-amber-800">{t('offer.locked.calcHint', 'This offer was sent — the calculation is read-only. Use “Send again” to change it as a new offer.')}</p>
+            <button
+              type="button"
+              onClick={handleSendAgain}
+              className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+            >
+              <RotateCcw size={12} /> {t('offer.sendAgain', 'Send new offer')}
+            </button>
           </div>
         ) : null}
-        <OfferCalculationPanel
-          db={db}
-          productId={productId}
-          clientId={clientId}
-          inquiryId={progress.inquiry?.id}
-          quote={activeQuote}
-          version={version}
-          lineItems={lineItems}
-          actorId={actorId}
-          onChange={onChange}
-        />
+        <div className={versionLocked ? 'pointer-events-none select-none opacity-70' : ''} aria-disabled={versionLocked}>
+          <CostSheetPanel
+            db={db}
+            productId={productId}
+            clientId={clientId}
+            inquiryId={progress.inquiry?.id}
+            quote={activeQuote}
+            actorId={actorId}
+            onChange={onChange}
+          />
+        </div>
       </Section>
 
       {/* Step 3 — Offer (customer-facing) */}
@@ -534,13 +538,23 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         open={effectiveOpen === 'offer'}
         onToggle={() => toggle('offer')}
       >
-        <OfferDetailsPanel
-          db={db}
-          version={version}
-          clientId={clientId}
-          actorId={actorId}
-          onChange={onChange}
-        />
+        <div className="space-y-4">
+          <OfferDetailsPanel
+            db={db}
+            version={version}
+            clientId={clientId}
+            actorId={actorId}
+            onChange={onChange}
+          />
+          {version && activeQuote ? (
+            <DeferredOfferPreview
+              db={db}
+              quote={activeQuote}
+              version={version}
+              acceptanceLink={lastSentEmail?.acceptanceLink}
+            />
+          ) : null}
+        </div>
       </Section>
 
       {/* Step 4 — Approve & send */}
@@ -560,7 +574,7 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
         <div className="space-y-4">
           {/* The document is the hero — what the customer will actually see */}
           {version && activeQuote ? (
-            <OfferPreview
+            <DeferredOfferPreview
               db={db}
               quote={activeQuote}
               version={version}
@@ -587,6 +601,24 @@ export default function OfferWizard({ db, productId, actorId, onOpenReports }) {
                 className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
               >
                 {t('offer.send')} →
+              </button>
+            </div>
+          ) : null}
+
+          {/* A sent or decided offer can be re-sent — clone it into a new
+              editable draft for the same client, preserving the original as
+              immutable history. Nothing is sent until reviewed + approved. */}
+          {version && version.sentAt ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs text-slate-600">
+                {t('offer.sendAgain.hint', 'Loads the same offer as an editable copy for this client — edit anything, then approve and send.')}
+              </p>
+              <button
+                type="button"
+                onClick={handleSendAgain}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+              >
+                <RotateCcw size={12} /> {t('offer.sendAgain', 'Send new offer')}{clientName ? ` — ${clientName}` : ''}
               </button>
             </div>
           ) : null}
@@ -761,6 +793,20 @@ ${lastSentEmail.body}`}
           onChange()
         }}
       />
+      </div>
+
+      {/* Discussion — docked on the right, always visible while the quotation is open */}
+      <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-80 xl:w-96">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
+          <header className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('chat.title')}
+              {chatCount > 0 ? <span className="ml-1 font-normal text-slate-400">({chatCount})</span> : null}
+            </h3>
+          </header>
+          <InquiryChatPanel db={db} threadKey={threadKey} actorId={actorId} onChange={onChange} />
+        </div>
+      </aside>
     </div>
   )
 }

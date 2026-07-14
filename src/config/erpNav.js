@@ -10,6 +10,7 @@ export const ERP_NAV_ITEMS = [
   { id: 'purchase', labelKey: 'nav.purchase', icon: 'ShoppingCart' },
   { id: 'shipping', labelKey: 'nav.shipping', icon: 'Truck' },
   { id: 'people', labelKey: 'nav.people', icon: 'Users' },
+  { id: 'messages', labelKey: 'nav.messages', icon: 'MessageSquare' },
   { id: 'quality', labelKey: 'nav.quality', icon: 'BadgeCheck' },
   { id: 'analytics', labelKey: 'nav.analytics', icon: 'BarChart3' },
   { id: 'reports', labelKey: 'nav.reports', icon: 'FileBarChart2' },

@@ -6,6 +6,7 @@ import {
   updateInquiry,
 } from '../../../services/offers/inquiryIntakeService.js'
 import AttachmentEditor from './AttachmentEditor.jsx'
+import DatePicker from '../../DatePicker.jsx'
 
 /**
  * @param {{
@@ -28,13 +29,14 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
     customerContactName: inquiry?.customerContactName ?? '',
     customerContactEmail: inquiry?.customerContactEmail ?? '',
     attachments: inquiry?.attachments ?? [],
+    noAttachments: inquiry?.noAttachments ?? false,
   }))
   const [flash, setFlash] = useState(/** @type {string | null} */ (null))
 
   const missing = useMemo(() => {
     const m = /** @type {string[]} */ ([])
     const hasDrawing = form.attachments.some((a) => a.kind === 'drawing')
-    if (!hasDrawing) m.push('drawings')
+    if (!hasDrawing && !form.noAttachments) m.push('drawings')
     if (!form.requestedQuantity || Number(form.requestedQuantity) <= 0) m.push('quantity')
     if (!form.requestedDeadline) m.push('deadline')
     if (!String(form.specificationNote).trim()) m.push('specifications')
@@ -54,6 +56,7 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
       customerContactName: form.customerContactName || undefined,
       customerContactEmail: form.customerContactEmail || undefined,
       attachments: form.attachments,
+      noAttachments: form.noAttachments,
     }
     if (inquiry) {
       updateInquiry(db, inquiry.id, payload)
@@ -129,11 +132,10 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
         </label>
         <label className="block text-xs font-medium text-slate-600">
           {t('inquiry.deadline')}
-          <input
-            type="date"
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
+          <DatePicker
+            className="mt-1"
             value={form.requestedDeadline}
-            onChange={(e) => setForm({ ...form, requestedDeadline: e.target.value })}
+            onChange={(iso) => setForm({ ...form, requestedDeadline: iso })}
           />
         </label>
         <label className="md:col-span-2 block text-xs font-medium text-slate-600">
@@ -158,6 +160,8 @@ export default function InquiryIntakeForm({ db, productId, defaultClientId, inqu
       <AttachmentEditor
         attachments={form.attachments}
         onChange={(attachments) => setForm((f) => ({ ...f, attachments }))}
+        noAttachments={form.noAttachments}
+        onToggleNoAttachments={(noAttachments) => setForm((f) => ({ ...f, noAttachments }))}
       />
       <section className="rounded-lg bg-slate-50 p-3 text-xs">
         <div className="font-semibold text-slate-700">{t('inquiry.checklist.title')}</div>

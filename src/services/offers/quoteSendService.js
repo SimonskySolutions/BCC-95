@@ -59,55 +59,48 @@ function generateToken() {
 }
 
 /**
- * Build the human-readable email body for the offer. Supports EN and BG.
- * @param {{ productName: string; quoteId: string; versionNo: number; acceptanceLink: string; language?: string; subtotal: number; currency?: string }} input
+ * Subject line for the offer email. EN/BG cover-letter style:
+ * "Offer No <no> dated <date> — re your inquiry <ref>".
+ * @param {{ offerNo: string; orderDate?: string; inquiryRef?: string; language?: string }} input
+ */
+export function buildOfferEmailSubject(input) {
+  const date = input.orderDate ?? new Date().toISOString().slice(0, 10)
+  if (input.language === 'bg') {
+    return `Оферта № ${input.offerNo} от ${date}` + (input.inquiryRef ? ` — по Ваше запитване ${input.inquiryRef}` : '')
+  }
+  return `Offer No ${input.offerNo} dated ${date}` + (input.inquiryRef ? ` — re your inquiry ${input.inquiryRef}` : '')
+}
+
+/**
+ * Build the human-readable cover-letter email body for the offer (EN and BG).
+ * @param {{ contactName?: string; acceptanceLink?: string; language?: string; companyName?: string }} input
  */
 export function buildOfferEmailBody(input) {
-  const cur = input.currency ?? 'EUR'
-  const unitLine = input.unitPrice != null
-    ? (input.language === 'bg'
-        ? `Единична цена: ${input.unitPrice.toFixed(2)} ${cur}\n`
-        : `Unit price: ${input.unitPrice.toFixed(2)} ${cur}\n`)
+  const company = input.companyName || 'BCC 95'
+  const linkBg = input.acceptanceLink
+    ? `\nМожете да прегледате и да отговорите на офертата онлайн тук:\n${input.acceptanceLink}\n`
     : ''
-  const leadLine = input.leadTimeDays != null
-    ? (input.language === 'bg'
-        ? `Срок на изпълнение: ${input.leadTimeDays} дни\n`
-        : `Lead time: ${input.leadTimeDays} days\n`)
-    : ''
-  const validLine = input.validUntil
-    ? (input.language === 'bg'
-        ? `Оферта валидна до: ${input.validUntil}\n`
-        : `Offer valid until: ${input.validUntil}\n`)
-    : ''
-  const moqLine = input.moq
-    ? (input.language === 'bg'
-        ? `Мин. количество (MOQ): ${input.moq} бр.\n`
-        : `Minimum order quantity (MOQ): ${input.moq} units\n`)
+  const linkEn = input.acceptanceLink
+    ? `\nYou can review and respond to the offer online here:\n${input.acceptanceLink}\n`
     : ''
 
   if (input.language === 'bg') {
     return (
-      `Здравейте,\n\n` +
-      `Изпращаме Ви официална оферта за „${input.productName}" (ID ${input.quoteId}, версия ${input.versionNo}).\n\n` +
-      unitLine +
-      moqLine +
-      leadLine +
-      validLine +
-      `\nЗа приемане, искане на ценова корекция или отказ, моля, използвайте следния линк:\n${input.acceptanceLink}\n\n` +
-      `Прилагаме офертата в PDF формат.\n\n` +
-      `Благодарим за интереса.\n`
+      `Уважаеми ${input.contactName || 'дами и господа'},\n\n` +
+      `Благодарим Ви за запитването и с удоволствие Ви представяме приложената оферта.\n` +
+      `Ще се радваме да получим Вашата обратна връзка в рамките на една седмица.\n` +
+      `При въпроси, коментари или нужда от допълнителна информация или съдействие от наша страна, не се колебайте да се свържете с нас.\n` +
+      linkBg +
+      `\nС уважение,\n${company}\n`
     )
   }
   return (
-    `Hello,\n\n` +
-    `Please find attached our official offer for "${input.productName}" (ID ${input.quoteId}, version ${input.versionNo}).\n\n` +
-    unitLine +
-    moqLine +
-    leadLine +
-    validLine +
-    `\nTo accept, request a price revision, or decline, please use the link below:\n${input.acceptanceLink}\n\n` +
-    `The offer is also attached as a PDF.\n\n` +
-    `Thank you for your interest.\n`
+    `Dear ${input.contactName || 'Sir/Madam'},\n\n` +
+    `We thank you for your inquiry and are pleased to place the following offer, attached.\n` +
+    `We will be glad to have your feedback within a week.\n` +
+    `In case you have any questions or comments, or need additional information or assistance from our side, feel free to contact us.\n` +
+    linkEn +
+    `\nBest regards,\n${company}\n`
   )
 }
 
@@ -130,12 +123,19 @@ export function buildOfferEmailBody(input) {
 export function sendOffer(db, input) {
   const version = selectQuoteVersionById(db, input.quoteVersionId)
   if (!version) return { ok: /** @type {const} */ (false), code: 'not_found' }
-  if (version.status !== 'approved') {
-    return { ok: /** @type {const} */ (false), code: 'not_approved' }
-  }
-  const approvals = selectQuoteApprovals(db, version.id)
-  if (!approvals.some((a) => a.decision === 'approved')) {
-    return { ok: /** @type {const} */ (false), code: 'not_approved' }
+  // Re-send: an already-sent offer goes out again (same content, new link) —
+  // no approval gate, and the version is not transitioned again.
+  const resend = input.resend === true
+  if (resend) {
+    if (version.status !== 'sent') return { ok: /** @type {const} */ (false), code: 'not_sent' }
+  } else {
+    if (version.status !== 'approved') {
+      return { ok: /** @type {const} */ (false), code: 'not_approved' }
+    }
+    const approvals = selectQuoteApprovals(db, version.id)
+    if (!approvals.some((a) => a.decision === 'approved')) {
+      return { ok: /** @type {const} */ (false), code: 'not_approved' }
+    }
   }
 
   const quote = selectQuoteById(db, version.quoteId)
@@ -198,23 +198,28 @@ export function sendOffer(db, input) {
     body,
     language: version.language,
     acceptanceLink,
-    attachmentIds: [pdfDoc.id],
+    attachmentIds: [pdfDoc.id, ...(input.attachmentIds ?? [])],
   })
 
-  patchQuoteVersion(db, version.id, {
-    status: 'sent',
-    sentAt: email.sentAt,
-    lockedAt: email.sentAt,
-  })
-  patchQuote(db, quote.id, { status: 'sent' })
+  if (resend) {
+    // Keep the offer 'sent'; just record the latest dispatch time.
+    patchQuoteVersion(db, version.id, { sentAt: email.sentAt })
+  } else {
+    patchQuoteVersion(db, version.id, {
+      status: 'sent',
+      sentAt: email.sentAt,
+      lockedAt: email.sentAt,
+    })
+    patchQuote(db, quote.id, { status: 'sent' })
+  }
 
   appendAuditEntry(db, {
     productId: quote.productId,
     entityType: 'quoteSend',
     entityId: email.id,
-    action: 'quote.sent',
+    action: resend ? 'quote.resent' : 'quote.sent',
     actorId: input.actorId,
-    meta: { subject, to: input.to, versionNo: version.versionNo, acceptanceLink },
+    meta: { subject, to: input.to, versionNo: version.versionNo, acceptanceLink, resend },
   })
 
   return {

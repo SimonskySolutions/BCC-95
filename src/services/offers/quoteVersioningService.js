@@ -4,6 +4,8 @@ import {
   appendQuoteLineItem,
   buildQuoteVersion,
   clearQuoteLineItems,
+  cloneCostSheetsToVersion,
+  patchCostSheet,
   patchQuote,
   patchQuoteVersion,
 } from '../../domains/quotations/mutations.js'
@@ -12,6 +14,7 @@ import {
   selectQuoteVersionById,
   selectQuoteVersions,
   selectQuoteLineItems,
+  selectCostSheetsByVersion,
 } from '../../domains/quotations/selectors.js'
 import { appendAuditEntry } from '../../domains/audit/mutations.js'
 import { evaluateQuotationTaskReadiness } from '../quotations/quotationAutomationService.js'
@@ -25,12 +28,15 @@ export function ensureQuoteForProduct(db, input) {
     (q) => q.productId === input.productId && q.clientId === input.clientId && q.status !== 'rejected',
   )
   if (existing) return existing
+  // Default the offer language to the client's spoken language (set on intake)
+  // so a BG-speaking client gets the Bulgarian offer and an EN one the English.
+  const client = db.clients.find((c) => c.id === input.clientId)
   const quote = appendQuote(db, {
     productId: input.productId,
     clientId: input.clientId,
     inquiryId: input.inquiryId,
     status: 'draft',
-    language: input.language ?? 'en',
+    language: input.language ?? client?.spokenLanguage ?? 'en',
     currency: input.currency ?? 'EUR',
   })
   appendAuditEntry(db, {
@@ -93,14 +99,16 @@ export function draftQuoteVersion(db, input) {
   const matchedContact =
     contacts.find((c) => inquiry?.customerContactName && c.name === inquiry.customerContactName) ??
     contacts[0]
+  // Delivery address defaults from the client's dedicated delivery address(es),
+  // NOT the registered address — they are often different. Left blank when the
+  // client has no delivery address on file (the registered address shows as the
+  // bill-to on the offer regardless).
   const primaryAddress = client?.addresses?.[0]
   const deliveryAddress = primaryAddress
     ? [primaryAddress.address, [primaryAddress.postCode, primaryAddress.city].filter(Boolean).join(' '), primaryAddress.country]
         .filter(Boolean)
-        .join(', ')
-    : [client?.address, [client?.postCode, client?.city].filter(Boolean).join(' '), client?.country]
-        .filter(Boolean)
         .join(', ') || undefined
+    : undefined
 
   const subtotal = input.lineItems.reduce(
     (sum, li) => sum + Math.round(li.quantity * li.unitPrice * 100) / 100,
@@ -131,6 +139,23 @@ export function draftQuoteVersion(db, input) {
     dispatchDate: inquiry?.requestedDeadline,
   })
   appendQuoteVersion(db, version)
+
+  // Each offer version owns its own calculation. If a previous version exists,
+  // deep-copy its cost sheets so a revision starts from — but is independent of
+  // — the prior one. For the first version, bind any legacy quote-level sheets
+  // to it so editing them no longer leaks across offers.
+  const prevVersion = existingVersions[existingVersions.length - 1]
+  if (prevVersion) {
+    cloneCostSheetsToVersion(db, selectCostSheetsByVersion(db, prevVersion), {
+      quoteId: quote.id,
+      quoteVersionId: version.id,
+    })
+  } else {
+    for (const cs of (db.costSheets ?? []).filter((s) => s.quoteId === quote.id && !s.quoteVersionId)) {
+      patchCostSheet(db, cs.id, { quoteVersionId: version.id })
+    }
+  }
+
   input.lineItems.forEach((li) =>
     appendQuoteLineItem(db, {
       quoteVersionId: version.id,

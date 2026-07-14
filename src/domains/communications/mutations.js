@@ -26,3 +26,92 @@ export function appendOutboundEmail(db, input) {
   db.outboundEmails.push(email)
   return email
 }
+
+let messageCounter = 50000
+
+/** Parse @mentions in a message body into known employee ids. */
+function parseMentions(body, employees = []) {
+  const ids = new Set()
+  for (const emp of employees) {
+    const handle = (emp.name ?? '').split(' ')[0]
+    if (handle && new RegExp(`@${handle}\\b`, 'i').test(body)) ids.add(emp.id)
+  }
+  return [...ids]
+}
+
+/**
+ * @param {{ inquiryMessages?: import('./model.js').InquiryMessage[]; employees?: any[] }} db
+ * @param {Omit<import('./model.js').InquiryMessage, 'id' | 'createdAt' | 'mentions'> & { id?: string; createdAt?: string; mentions?: string[] }} input
+ */
+export function appendInquiryMessage(db, input) {
+  if (!db.inquiryMessages) db.inquiryMessages = []
+  /** @type {import('./model.js').InquiryMessage} */
+  const message = {
+    id: input.id ?? `msg-${++messageCounter}`,
+    threadKey: input.threadKey,
+    authorId: input.authorId,
+    authorLabel: input.authorLabel,
+    body: input.body,
+    tags: input.tags ?? [],
+    attachments: input.attachments ?? [],
+    mentions: input.mentions ?? parseMentions(input.body, db.employees),
+    createdAt: input.createdAt ?? new Date().toISOString(),
+  }
+  db.inquiryMessages.push(message)
+  return message
+}
+
+/**
+ * @param {{ inquiryMessages?: import('./model.js').InquiryMessage[]; employees?: any[] }} db
+ * @param {string} messageId
+ * @param {{ body?: string; tags?: string[] }} patch
+ */
+export function patchInquiryMessage(db, messageId, patch) {
+  if (!db.inquiryMessages) return null
+  const idx = db.inquiryMessages.findIndex((m) => m.id === messageId)
+  if (idx < 0) return null
+  const next = { ...db.inquiryMessages[idx], ...patch, editedAt: new Date().toISOString() }
+  if (patch.body !== undefined) next.mentions = parseMentions(patch.body, db.employees)
+  db.inquiryMessages[idx] = next
+  return next
+}
+
+/**
+ * @param {{ inquiryMessages?: import('./model.js').InquiryMessage[] }} db
+ * @param {string} messageId
+ */
+export function removeInquiryMessage(db, messageId) {
+  if (!db.inquiryMessages) return
+  db.inquiryMessages = db.inquiryMessages.filter((m) => m.id !== messageId)
+}
+
+/**
+ * Create a named sub-channel (discussion) under a product's channel.
+ * @param {{ discussionChannels?: import('./model.js').DiscussionChannel[] }} db
+ * @param {{ productId: string; name: string; createdById?: string }} input
+ */
+export function appendDiscussionChannel(db, input) {
+  const name = String(input.name ?? '').trim()
+  if (!name || !input.productId) return null
+  if (!db.discussionChannels) db.discussionChannels = []
+  /** @type {import('./model.js').DiscussionChannel} */
+  const channel = {
+    id: `ch-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    productId: input.productId,
+    name,
+    createdById: input.createdById,
+    createdAt: new Date().toISOString(),
+  }
+  db.discussionChannels.push(channel)
+  return channel
+}
+
+/**
+ * Delete a discussion sub-channel together with its messages.
+ * @param {{ discussionChannels?: import('./model.js').DiscussionChannel[]; inquiryMessages?: import('./model.js').InquiryMessage[] }} db
+ * @param {string} channelId
+ */
+export function removeDiscussionChannel(db, channelId) {
+  db.discussionChannels = (db.discussionChannels ?? []).filter((c) => c.id !== channelId)
+  db.inquiryMessages = (db.inquiryMessages ?? []).filter((m) => !String(m.threadKey).endsWith(`:ch:${channelId}`))
+}

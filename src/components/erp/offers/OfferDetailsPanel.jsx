@@ -1,12 +1,17 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Plus, Trash2, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
+import { advanceOnEnter } from '../../../lib/forms.js'
+import { groupAmount } from '../../../lib/money.js'
+import { generateOfferMatrix } from '../../../services/offers/index.js'
+import OfferPhotos from './OfferPhotos.jsx'
+import DatePicker from '../../DatePicker.jsx'
 import {
   selectQuoteOfferLines,
-  selectOfferLinesTotal,
   offerLineNetTotal,
   selectTermsOfDelivery,
   selectTermsOfPayment,
+  selectQuoteDocuments,
 } from '../../../domains/quotations/selectors.js'
 import {
   appendQuoteOfferLine,
@@ -14,7 +19,10 @@ import {
   removeQuoteOfferLine,
   patchQuoteVersion,
   appendTerm,
+  appendQuoteDocument,
 } from '../../../domains/quotations/mutations.js'
+
+const ATTACHMENT_KINDS = ['photo', 'drawing', 'spec', 'other']
 
 const inputCls =
   'w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-slate-50 disabled:text-slate-400'
@@ -115,9 +123,28 @@ function LookupSelect({ value, options, disabled, placeholder, addLabel, onSelec
  *   onChange?: () => void
  * }} props
  */
-export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
+export default function OfferDetailsPanel({ db, version, clientId, actorId, onChange }) {
   const { t } = useLanguage()
   const [expandedLine, setExpandedLine] = useState(/** @type {string | null} */ (null))
+
+  // Heal a draft that has no attachments by preloading them from the most recent
+  // earlier version (e.g. a "Send new offer" draft, or one made before
+  // attachments were carried over). Only fires when the draft has none.
+  useEffect(() => {
+    if (!version || version.status !== 'draft') return
+    const attach = (vid) => selectQuoteDocuments(db, vid).filter((d) => ATTACHMENT_KINDS.includes(d.kind))
+    if (attach(version.id).length) return
+    const prior = (db.quoteVersions ?? [])
+      .filter((v) => v.quoteId === version.quoteId && v.id !== version.id)
+      .sort((a, b) => (a.versionNo ?? 0) - (b.versionNo ?? 0))
+      .map((v) => attach(v.id))
+      .filter((arr) => arr.length)
+      .pop()
+    if (!prior) return
+    for (const d of prior) appendQuoteDocument(db, { ...d, id: undefined, quoteVersionId: version.id })
+    onChange?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [version?.id])
 
   if (!version) {
     return (
@@ -131,7 +158,6 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
   const client = db.clients.find((c) => c.id === clientId)
   const products = db.products ?? []
   const lines = selectQuoteOfferLines(db, version.id)
-  const total = selectOfferLinesTotal(db, version.id)
   const currency = version.currency ?? 'EUR'
   const termsDelivery = selectTermsOfDelivery(db)
   const termsPayment = selectTermsOfPayment(db)
@@ -173,7 +199,7 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onKeyDown={advanceOnEnter}>
       {/* Customer & terms */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
         <h4 className="mb-3 text-sm font-semibold text-slate-900">{t('offer.details.customerTerms')}</h4>
@@ -298,34 +324,28 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
 
           <div>
             <label className="block text-xs font-medium text-slate-600">{t('offer.details.orderDate')}</label>
-            <input
-              type="date"
-              className={`mt-1 ${inputCls}`}
-              value={version.orderDate ?? ''}
-              disabled={isLocked}
-              onChange={(e) => patchHeader({ orderDate: e.target.value })}
-            />
+            <DatePicker className="mt-1" value={version.orderDate ?? ''} disabled={isLocked} onChange={(iso) => patchHeader({ orderDate: iso })} />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-600">{t('offer.details.dispatchDate')}</label>
-            <input
-              type="date"
-              className={`mt-1 ${inputCls}`}
-              value={version.dispatchDate ?? ''}
-              disabled={isLocked}
-              onChange={(e) => patchHeader({ dispatchDate: e.target.value })}
-            />
+            <DatePicker className="mt-1" value={version.dispatchDate ?? ''} disabled={isLocked} onChange={(iso) => patchHeader({ dispatchDate: iso })} />
           </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-600">{t('offer.validUntil')}</label>
+            <DatePicker className="mt-1" value={version.validUntil ?? ''} disabled={isLocked} onChange={(iso) => patchHeader({ validUntil: iso })} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-600">{t('offer.leadTime')} <span className="text-slate-400">(days)</span></label>
             <input
-              type="date"
+              type="number"
+              min={0}
               className={`mt-1 ${inputCls}`}
-              value={version.validUntil ?? ''}
+              value={version.leadTimeDays ?? ''}
               disabled={isLocked}
-              onChange={(e) => patchHeader({ validUntil: e.target.value })}
+              onChange={(e) => patchHeader({ leadTimeDays: e.target.value === '' ? undefined : Number(e.target.value) })}
             />
           </div>
 
@@ -341,16 +361,40 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
               <option value="bg">Български</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-600">{t('offer.priceBasis')}</label>
+            <select
+              className={`mt-1 ${inputCls}`}
+              value={version.priceBasis ?? 'both'}
+              disabled={isLocked}
+              onChange={(e) => patchHeader({ priceBasis: e.target.value })}
+            >
+              <option value="both">{t('offer.priceBasis.both')}</option>
+              <option value="dap">{t('offer.priceBasis.dap')}</option>
+              <option value="exw">{t('offer.priceBasis.exw')}</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Offer lines */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <h4 className="text-sm font-semibold text-slate-900">{t('offer.details.lines')}</h4>
-          <span className="text-xs font-medium text-slate-500">
-            {t('offer.details.total')}: <span className="font-bold text-slate-800">{total.toFixed(2)} {currency}</span>
-          </span>
+          <div className="flex items-center gap-2">
+            {!isLocked ? (
+              <button
+                type="button"
+                onClick={() => { const r = generateOfferMatrix(db, version.id); if (r.ok) onChange?.() }}
+                className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                title={t('offer.details.generateHint')}
+              >
+                {t('offer.details.generate')}
+              </button>
+            ) : null}
+            <span className="text-xs font-medium text-slate-400">{t('offer.details.perQty')}</span>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -430,13 +474,7 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                             disabled={isLocked}
                             onChange={(e) => editLine(l.id, { requestedQty: Number(e.target.value) })}
                           />
-                          <input
-                            type="date"
-                            className={`${inputCls} text-xs`}
-                            value={l.requestedDate ?? ''}
-                            disabled={isLocked}
-                            onChange={(e) => editLine(l.id, { requestedDate: e.target.value })}
-                          />
+                          <DatePicker value={l.requestedDate ?? ''} disabled={isLocked} onChange={(iso) => editLine(l.id, { requestedDate: iso })} />
                         </div>
                       </td>
                       <td className="px-2 py-2">
@@ -450,13 +488,7 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                             placeholder={String(l.requestedQty)}
                             onChange={(e) => editLine(l.id, { confirmedQty: e.target.value === '' ? undefined : Number(e.target.value) })}
                           />
-                          <input
-                            type="date"
-                            className={`${inputCls} text-xs`}
-                            value={l.confirmedDate ?? ''}
-                            disabled={isLocked}
-                            onChange={(e) => editLine(l.id, { confirmedDate: e.target.value })}
-                          />
+                          <DatePicker value={l.confirmedDate ?? ''} disabled={isLocked} onChange={(iso) => editLine(l.id, { confirmedDate: iso })} />
                         </div>
                       </td>
                       <td className="px-2 py-2">
@@ -471,7 +503,7 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
                         />
                       </td>
                       <td className="px-2 py-2 text-right font-semibold text-slate-800">
-                        {lineTotal.toFixed(2)}
+                        {groupAmount(lineTotal)}
                         {Number(l.discountPercent) > 0 ? (
                           <span className="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700">
                             −{l.discountPercent}%
@@ -559,6 +591,9 @@ export default function OfferDetailsPanel({ db, version, clientId, onChange }) {
           ) : null}
         </div>
       </div>
+
+      {/* Photos / attachments included in the offer */}
+      <OfferPhotos db={db} versionId={version.id} isLocked={isLocked} actorId={actorId} onChange={onChange} />
     </div>
   )
 }

@@ -47,10 +47,13 @@ import {
   quoteOfferLines,
   termsOfDelivery,
   termsOfPayment,
+  costSheets,
+  costSheetLines,
+  costCatalog,
 } from '../domains/quotations/mockData.js'
 import { inquiries } from '../domains/inquiries/mockData.js'
 import { auditEntries } from '../domains/audit/mockData.js'
-import { outboundEmails } from '../domains/communications/mockData.js'
+import { outboundEmails, inquiryMessages } from '../domains/communications/mockData.js'
 import { bomHeaders, bomLines, bomOperations } from '../domains/bom/mockData.js'
 import { stockLocations, stockQuants, stockMoves } from '../domains/inventory/mockData.js'
 
@@ -105,27 +108,46 @@ export function createMockDatabase() {
     quoteOfferLines: structuredClone(quoteOfferLines),
     termsOfDelivery: structuredClone(termsOfDelivery),
     termsOfPayment: structuredClone(termsOfPayment),
+    costSheets: structuredClone(costSheets),
+    costSheetLines: structuredClone(costSheetLines),
+    costCatalog: structuredClone(costCatalog),
     inquiries: structuredClone(inquiries),
     auditEntries: structuredClone(auditEntries),
     outboundEmails: structuredClone(outboundEmails),
+    inquiryMessages: structuredClone(inquiryMessages),
     bomHeaders: structuredClone(bomHeaders),
     bomLines: structuredClone(bomLines),
     bomOperations: structuredClone(bomOperations),
     stockLocations: structuredClone(stockLocations),
     stockQuants: structuredClone(stockQuants),
     stockMoves: structuredClone(stockMoves),
+    notifications: [],
   }
+}
+
+/**
+ * Empty database with the exact same shape as the seed but no records.
+ * This is what the running app boots with — demo data lives only in the
+ * seeded `createMockDatabase()` (kept for tests / `npm run validate`).
+ * @returns {MockDatabase}
+ */
+export function createEmptyDatabase() {
+  const db = createMockDatabase()
+  for (const key of Object.keys(db)) {
+    if (Array.isArray(db[key])) db[key] = []
+  }
+  return db
 }
 
 /** @type {MockDatabase | null} */
 let singleton = null
 
-/** Shared read-only default instance for React tree (reset in tests via resetMockDatabase). */
+/** Shared default instance for the React tree — starts empty (no demo data). */
 export function getMockDatabase() {
-  if (!singleton) singleton = createMockDatabase()
+  if (!singleton) singleton = createEmptyDatabase()
   return singleton
 }
 
 export function resetMockDatabase() {
-  singleton = createMockDatabase()
+  singleton = createEmptyDatabase()
 }

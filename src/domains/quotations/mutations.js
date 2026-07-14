@@ -6,6 +6,41 @@ let documentCounter = 30000
 let decisionCounter = 30000
 let offerLineCounter = 30000
 let termCounter = 30000
+let costSheetCounter = 30000
+let costSheetLineCounter = 30000
+
+/** Highest numeric id suffix across the given collections (or `base`). */
+function maxIdNum(base, ...arrays) {
+  let max = base
+  for (const arr of arrays) {
+    for (const x of arr ?? []) {
+      const n = Number(String(x?.id ?? '').replace(/^\D+/, ''))
+      if (Number.isFinite(n) && n > max) max = n
+    }
+  }
+  return max
+}
+
+/**
+ * Reseed the id counters past whatever already exists in the loaded database.
+ * Module counters reset on every page load, but data persists — without this,
+ * a newly created quote/version/cost-sheet reuses an id that already exists
+ * (e.g. two versions ending up as `qv-30001`). Call once after the db loads.
+ *
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ */
+export function syncCounters(db) {
+  quoteCounter = maxIdNum(30000, db.quoteDrafts)
+  versionCounter = maxIdNum(30000, db.quoteVersions)
+  lineItemCounter = maxIdNum(30000, db.quoteLineItems)
+  approvalCounter = maxIdNum(30000, db.quoteApprovals)
+  documentCounter = maxIdNum(30000, db.quoteDocuments)
+  decisionCounter = maxIdNum(30000, db.quoteDecisions)
+  offerLineCounter = maxIdNum(30000, db.quoteOfferLines)
+  termCounter = maxIdNum(30000, db.termsOfDelivery, db.termsOfPayment)
+  costSheetCounter = maxIdNum(30000, db.costSheets)
+  costSheetLineCounter = maxIdNum(30000, db.costSheetLines)
+}
 
 /**
  * @param {import('../../data/mockDatabase.js').MockDatabase} db
@@ -34,6 +69,9 @@ export function appendQuote(db, input) {
     deliveryTerms: input.deliveryTerms,
     paymentTerms: input.paymentTerms,
     moq: input.moq,
+    offerNo: input.offerNo,
+    kind: input.kind,
+    parentQuoteId: input.parentQuoteId,
   }
   db.quoteDrafts.push(quote)
   return quote
@@ -150,11 +188,35 @@ export function appendQuoteDocument(db, input) {
     quoteVersionId: input.quoteVersionId,
     kind: input.kind,
     name: input.name,
+    caption: input.caption,
     storageRef: input.storageRef,
+    uploadedById: input.uploadedById,
     createdAt: input.createdAt ?? new Date().toISOString(),
   }
   db.quoteDocuments.push(doc)
   return doc
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} documentId
+ * @param {Partial<import('./model.js').QuoteDocument>} patch
+ */
+export function patchQuoteDocument(db, documentId, patch) {
+  if (!db.quoteDocuments) return null
+  const idx = db.quoteDocuments.findIndex((d) => d.id === documentId)
+  if (idx < 0) return null
+  db.quoteDocuments[idx] = { ...db.quoteDocuments[idx], ...patch }
+  return db.quoteDocuments[idx]
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} documentId
+ */
+export function removeQuoteDocument(db, documentId) {
+  if (!db.quoteDocuments) return
+  db.quoteDocuments = db.quoteDocuments.filter((d) => d.id !== documentId)
 }
 
 /**
@@ -199,10 +261,12 @@ export function appendQuoteOfferLine(db, input) {
     confirmedQty: input.confirmedQty,
     confirmedDate: input.confirmedDate,
     unitPrice: input.unitPrice ?? 0,
+    exwUnitPrice: input.exwUnitPrice,
     priceCurrency: input.priceCurrency,
     discountPercent: input.discountPercent,
     requirements: input.requirements,
     remark: input.remark,
+    isOneOff: input.isOneOff,
     sortOrder: input.sortOrder ?? db.quoteOfferLines.filter((l) => l.quoteVersionId === input.quoteVersionId).length,
   }
   db.quoteOfferLines.push(line)
@@ -276,6 +340,120 @@ export function patchTerm(db, table, id, patch) {
 export function removeTerm(db, table, id) {
   if (!db[table]) return
   db[table] = db[table].filter((tm) => tm.id !== id)
+}
+
+/* ── Working cost sheet ──────────────────────────────────────────────────── */
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {Omit<import('./model.js').CostSheet, 'id' | 'updatedAt'> & { id?: string; updatedAt?: string }} input
+ */
+export function appendCostSheet(db, input) {
+  if (!db.costSheets) db.costSheets = []
+  /** @type {import('./model.js').CostSheet} */
+  const sheet = {
+    id: input.id ?? `cs-${++costSheetCounter}`,
+    quoteId: input.quoteId,
+    quoteVersionId: input.quoteVersionId,
+    productId: input.productId,
+    productLabel: input.productLabel,
+    productDescription: input.productDescription,
+    currency: input.currency ?? 'EUR',
+    marginPercent: input.marginPercent ?? 10,
+    annualQty: input.annualQty,
+    toolingMode: input.toolingMode ?? 'amortise',
+    amortiseDisplay: input.amortiseDisplay,
+    amortisationMode: input.amortisationMode,
+    amortisationCost: input.amortisationCost,
+    amortisationUnits: input.amortisationUnits,
+    priceBreaks: input.priceBreaks ?? [],
+    notes: input.notes,
+    updatedAt: input.updatedAt ?? new Date().toISOString(),
+  }
+  db.costSheets.push(sheet)
+  return sheet
+}
+
+/**
+ * Deep-copy a set of cost sheets (and their lines) onto a target version, so
+ * the new offer owns an independent calculation. Returns the created sheets.
+ *
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {import('./model.js').CostSheet[]} sourceSheets
+ * @param {{ quoteId: string; quoteVersionId: string }} target
+ */
+export function cloneCostSheetsToVersion(db, sourceSheets, target) {
+  if (!db.costSheets) db.costSheets = []
+  if (!db.costSheetLines) db.costSheetLines = []
+  const created = []
+  for (const src of sourceSheets) {
+    const sheet = appendCostSheet(db, {
+      ...src,
+      id: undefined,
+      quoteId: target.quoteId,
+      quoteVersionId: target.quoteVersionId,
+      priceBreaks: structuredClone(src.priceBreaks ?? []),
+      updatedAt: undefined,
+    })
+    for (const line of db.costSheetLines.filter((l) => l.costSheetId === src.id)) {
+      appendCostSheetLine(db, { ...line, id: undefined, costSheetId: sheet.id })
+    }
+    created.push(sheet)
+  }
+  return created
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} sheetId
+ * @param {Partial<import('./model.js').CostSheet>} patch
+ */
+export function patchCostSheet(db, sheetId, patch) {
+  if (!db.costSheets) return null
+  const idx = db.costSheets.findIndex((s) => s.id === sheetId)
+  if (idx < 0) return null
+  db.costSheets[idx] = { ...db.costSheets[idx], ...patch, updatedAt: new Date().toISOString() }
+  return db.costSheets[idx]
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {Omit<import('./model.js').CostSheetLine, 'id'> & { id?: string }} input
+ */
+export function appendCostSheetLine(db, input) {
+  if (!db.costSheetLines) db.costSheetLines = []
+  /** @type {import('./model.js').CostSheetLine} */
+  const line = {
+    ...input,
+    id: input.id ?? `csl-${++costSheetLineCounter}`,
+    sortOrder:
+      input.sortOrder ??
+      db.costSheetLines.filter((l) => l.costSheetId === input.costSheetId).length,
+  }
+  db.costSheetLines.push(line)
+  return line
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} lineId
+ * @param {Partial<import('./model.js').CostSheetLine>} patch
+ */
+export function patchCostSheetLine(db, lineId, patch) {
+  if (!db.costSheetLines) return null
+  const idx = db.costSheetLines.findIndex((l) => l.id === lineId)
+  if (idx < 0) return null
+  db.costSheetLines[idx] = { ...db.costSheetLines[idx], ...patch }
+  return db.costSheetLines[idx]
+}
+
+/**
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} lineId
+ */
+export function removeCostSheetLine(db, lineId) {
+  if (!db.costSheetLines) return
+  db.costSheetLines = db.costSheetLines.filter((l) => l.id !== lineId)
 }
 
 /**

@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+
+# Local Claude Code config
+.claude/
+
+# Local sample workbooks (not part of the repo)
+/Пример опростена калкулация.xlsx

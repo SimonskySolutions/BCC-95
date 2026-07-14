@@ -13,7 +13,9 @@ import { submitApproval } from '../../../services/offers/quoteApprovalService.js
  */
 export default function OfferApprovalPanel({ db, version, approvals, onChange }) {
   const { t } = useLanguage()
-  const approvers = db.employees.filter((e) => e.canApproveQuotes && e.id !== version?.createdBy)
+  const approvers = db.employees.filter(
+    (e) => e.canApproveQuotes && e.active !== false && e.id !== version?.createdBy,
+  )
   const [approverId, setApproverId] = useState(approvers[0]?.id ?? '')
   const [note, setNote] = useState('')
   const [flash, setFlash] = useState(/** @type {string | null} */ (null))

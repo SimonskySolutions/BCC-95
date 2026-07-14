@@ -1,7 +1,51 @@
 export const STORAGE_KEY = 'bcc95:factory-config'
 
 /** @typedef {{ deliveryPercent: number; qualityPercent: number; productivityPercent: number; processPercent: number }} KpiTargets */
-/** @typedef {{ companyName: string; companySubtitle: string; adminName: string; adminRole: string; currency: string; accentColor: string; enabledModules: string[]; kpiTargets: KpiTargets }} FactoryConfig */
+/** @typedef {{ id: string; method: string; group: string; label?: string }} CostDriverConfig */
+/** @typedef {{ name: string; label: string; suffix?: string }} CustomMethodField */
+/** @typedef {{ key: string; label: string; fields: CustomMethodField[]; formula: string }} CustomMethod */
+/** @typedef {{ companyName: string; companySubtitle: string; adminName: string; adminRole: string; currency: string; accentColor: string; enabledModules: string[]; kpiTargets: KpiTargets; costDrivers?: CostDriverConfig[]; customMethods?: CustomMethod[] }} FactoryConfig */
+
+/** User-defined calculation methods (key, fields, formula). */
+export function getCustomMethods(config) {
+  return config?.customMethods ?? []
+}
+/** Find a custom method by its key (the value stored on a cost line's `driver`). */
+export function getCustomMethod(config, key) {
+  return (config?.customMethods ?? []).find((m) => m.key === key)
+}
+
+/** The built-in calculation methods a cost driver can use (formulas live in code). */
+export const DRIVER_METHODS = ['count', 'weight', 'surface', 'percent', 'allocation', 'pack']
+
+/** Default mapping of calculation methods → cost sections (groups). */
+const DEFAULT_DRIVER_MAP = {
+  material: ['count', 'weight', 'surface'],
+  operation: ['count', 'weight'],
+  tooling: ['count'],
+  other: ['percent', 'allocation', 'count'],
+  logistics: ['pack', 'count'],
+}
+
+/** Flatten the default map into configurable driver entries. */
+export function buildDefaultCostDrivers() {
+  const out = []
+  for (const [group, methods] of Object.entries(DEFAULT_DRIVER_MAP)) {
+    for (const method of methods) out.push({ id: `${group}-${method}`, method, group })
+  }
+  return out
+}
+
+/**
+ * The cost drivers available for a section (group), from config (falls back to
+ * the built-in defaults).
+ * @param {FactoryConfig} config
+ * @param {string} group
+ */
+export function getGroupDrivers(config, group) {
+  const all = config?.costDrivers?.length ? config.costDrivers : buildDefaultCostDrivers()
+  return all.filter((d) => d.group === group)
+}
 
 /** @type {FactoryConfig} */
 export const DEFAULT_FACTORY_CONFIG = {
@@ -13,7 +57,7 @@ export const DEFAULT_FACTORY_CONFIG = {
   accentColor: 'indigo',
   enabledModules: [
     'dashboard', 'products', 'quotations', 'tasks', 'planning', 'manufacturing',
-    'machines', 'inventory', 'purchase', 'shipping', 'people',
+    'machines', 'inventory', 'purchase', 'shipping', 'people', 'messages',
     'quality', 'analytics', 'reports', 'ai-agents', 'crm',
     'documentation', 'settings',
   ],

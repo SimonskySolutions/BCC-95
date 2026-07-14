@@ -1,13 +1,17 @@
-import { Menu, Search } from 'lucide-react'
+import { Menu, Moon, Search, Sparkles, Sun } from 'lucide-react'
 import { useLanguage } from '../i18n/useLanguage.js'
 import { useFactoryConfig } from '../config/useFactoryConfig.js'
+import { useTheme } from '../theme/useTheme.js'
+import UserSwitcher from './UserSwitcher.jsx'
+import NotificationBell from './NotificationBell.jsx'
 
 /**
  * @param {{ title?: string; subtitle?: string; onMenuOpen: () => void; onSearch?: () => void }} props
  */
-export default function Header({ title, subtitle, onMenuOpen, onSearch }) {
+export default function Header({ title, subtitle, onMenuOpen, onSearch, onNavigate, aiOpen, onToggleAi }) {
   const { language, setLanguage } = useLanguage()
-  const { config, theme } = useFactoryConfig()
+  const { config } = useFactoryConfig()
+  const { theme, toggle: toggleTheme } = useTheme()
 
   return (
     <header className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
@@ -73,16 +77,40 @@ export default function Header({ title, subtitle, onMenuOpen, onSearch }) {
           </button>
         </div>
 
-        {/* User pill */}
-        <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-          <div className={`rounded-full ${theme.iconBg} p-1`}>
-            <span className="block h-3.5 w-3.5 rounded-full bg-white/30" />
-          </div>
-          <div className="text-left">
-            <p className="text-xs font-semibold text-slate-900 leading-none">{config.adminName}</p>
-            <p className="mt-0.5 text-xs text-slate-400 leading-none">{config.adminRole}</p>
-          </div>
-        </div>
+        {/* AI assistant toggle */}
+        {onToggleAi ? (
+          <button
+            type="button"
+            onClick={onToggleAi}
+            aria-pressed={Boolean(aiOpen)}
+            title="AI assistant"
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs font-semibold transition ${
+              aiOpen
+                ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
+                : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white hover:text-slate-900 hover:border-slate-300'
+            }`}
+          >
+            <Sparkles size={15} />
+            <span className="hidden lg:inline">AI</span>
+          </button>
+        ) : null}
+
+        {/* Theme toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-500 transition hover:bg-white hover:text-slate-900 hover:border-slate-300"
+        >
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+
+        {/* Notifications */}
+        <NotificationBell onNavigate={onNavigate} />
+
+        {/* Current-user switcher (acting-as) */}
+        <UserSwitcher />
       </div>
     </header>
   )

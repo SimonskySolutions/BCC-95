@@ -9,11 +9,24 @@ export function round2(n) {
 }
 
 /**
+ * Format an amount with space thousands separators and two decimals:
+ * 67362 → "67 362.00". For displayed (non-editable) figures so large numbers
+ * stay readable. Matches the offer document's grouping.
+ * @param {number | string} n
+ */
+export function groupAmount(n) {
+  const [int, dec] = round2(n).toFixed(2).split('.')
+  const sign = int.startsWith('-') ? '-' : ''
+  const digits = sign ? int.slice(1) : int
+  return `${sign}${digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}.${dec}`
+}
+
+/**
  * @param {number | string} n
  * @param {string} [currency]
  */
 export function formatMoney(n, currency = 'EUR') {
-  return `${round2(n).toFixed(2)} ${currency}`
+  return `${groupAmount(n)} ${currency}`
 }
 
 /**

@@ -1,21 +1,23 @@
 import { useMemo, useState } from 'react'
 import { X, Plus, ArrowRight, Check, RotateCcw } from 'lucide-react'
-import { selectTasksByEmployee } from '../domains/tasks/selectors.js'
 import { appendTask, patchTask, validateTaskCreate } from '../domains/tasks/mutations.js'
-import { PLANNED_QUARTERS, TASK_WORKSTREAMS } from '../domains/tasks/model.js'
+import { PLANNED_QUARTERS, TASK_WORKSTREAMS, TASK_PRIORITIES } from '../domains/tasks/model.js'
 import { LIFECYCLE_PHASE_ORDER } from '../domains/lifecycle/model.js'
 import { selectOperationsByProduct } from '../domains/operations/selectors.js'
 import { selectPathLinkByProduct, selectPathTemplateById } from '../domains/manufacturing-path/selectors.js'
 import { buildTaskDefaultsFromOperation } from '../services/tasks/taskAutofillService.js'
 import { useLanguage } from '../i18n/useLanguage.js'
+import { useCurrentUser } from '../auth/useCurrentUser.js'
+import { useDb } from '../data/useDb.js'
+import TaskDetailDrawer from '../components/erp/TaskDetailDrawer.jsx'
+import DatePicker from '../components/DatePicker.jsx'
 
-const CURRENT_USER_ID = 'emp-1'
 const TODAY = new Date().toISOString().slice(0, 10)
 
 const KANBAN_COLS = [
-  { id: 'todo',        labelKey: 'tasks.col.todo',       statuses: ['draft', 'blocked'], accent: 'border-slate-300', headerBg: 'bg-slate-100', countBg: 'bg-slate-200 text-slate-700' },
-  { id: 'in_progress', labelKey: 'tasks.col.inProgress',  statuses: ['in_progress'],      accent: 'border-blue-300',  headerBg: 'bg-blue-50',    countBg: 'bg-blue-100 text-blue-700' },
-  { id: 'done',        labelKey: 'tasks.col.done',         statuses: ['resolved'],          accent: 'border-emerald-300', headerBg: 'bg-emerald-50', countBg: 'bg-emerald-100 text-emerald-700' },
+  { id: 'todo',        labelKey: 'tasks.col.todo',       statuses: ['draft', 'blocked'], dropStatus: 'draft',       accent: 'border-slate-300', headerBg: 'bg-slate-100', countBg: 'bg-slate-200 text-slate-700' },
+  { id: 'in_progress', labelKey: 'tasks.col.inProgress',  statuses: ['in_progress'],      dropStatus: 'in_progress', accent: 'border-blue-300',  headerBg: 'bg-blue-50',    countBg: 'bg-blue-100 text-blue-700' },
+  { id: 'done',        labelKey: 'tasks.col.done',         statuses: ['resolved'],          dropStatus: 'resolved',    accent: 'border-emerald-300', headerBg: 'bg-emerald-50', countBg: 'bg-emerald-100 text-emerald-700' },
 ]
 
 const WORKSTREAM_PILL = {
@@ -46,21 +48,26 @@ function nextStatus(status) {
   return 'draft'
 }
 
-/** @param {{ task: import('../domains/tasks/model.js').Task; db: any; onStatusChange: (id: string, s: string) => void }} props */
-function TaskCard({ task, db, onStatusChange }) {
+/** @param {{ task: import('../domains/tasks/model.js').Task; db: any; onStatusChange: (id: string, s: string) => void; onOpen: (id: string) => void }} props */
+function TaskCard({ task, db, onStatusChange, onOpen }) {
   const product = db.products.find((p) => p.id === task.productId)
   const assignee = db.employees.find((e) => e.id === task.assigneeId)
   const due = relativeDate(task.dueDate)
   const isBlocked = task.status === 'blocked'
   const isOverdue = task.status !== 'resolved' && due?.overdue
   const pillStyle = WORKSTREAM_PILL[task.workstream] ?? 'bg-slate-100 text-slate-600'
+  const subtasks = task.subtasks ?? []
+  const attachments = task.attachments ?? []
 
   const AdvanceIcon = task.status === 'in_progress' ? Check : task.status === 'resolved' ? RotateCcw : ArrowRight
   const advanceTitle = task.status === 'in_progress' ? 'Mark done' : task.status === 'resolved' ? 'Reopen' : 'Start'
 
   return (
     <article
-      className={`group relative rounded-xl border bg-white p-3 shadow-sm transition hover:shadow-md ${
+      draggable
+      onDragStart={(e) => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move' }}
+      onClick={() => onOpen(task.id)}
+      className={`group relative cursor-pointer rounded-xl border bg-white p-3 shadow-sm transition hover:shadow-md active:cursor-grabbing ${
         isOverdue ? 'border-rose-200' : isBlocked ? 'border-amber-200' : 'border-slate-200'
       }`}
     >
@@ -72,7 +79,7 @@ function TaskCard({ task, db, onStatusChange }) {
         <button
           type="button"
           title={advanceTitle}
-          onClick={() => onStatusChange(task.id, nextStatus(task.status))}
+          onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, nextStatus(task.status)) }}
           className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 opacity-0 transition hover:border-slate-400 hover:text-slate-700 group-hover:opacity-100"
         >
           <AdvanceIcon size={11} />
@@ -92,6 +99,14 @@ function TaskCard({ task, db, onStatusChange }) {
         <span className="mt-1.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
           BLOCKED
         </span>
+      )}
+
+      {/* Meta chips: subtasks / attachments */}
+      {(subtasks.length > 0 || attachments.length > 0) && (
+        <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+          {subtasks.length > 0 && <span>☑ {subtasks.filter((s) => s.done).length}/{subtasks.length}</span>}
+          {attachments.length > 0 && <span>📎 {attachments.length}</span>}
+        </div>
       )}
 
       {/* Bottom row: assignee + due date */}
@@ -121,16 +136,25 @@ function TaskCard({ task, db, onStatusChange }) {
  */
 export default function MyTasksPage({ db }) {
   const { t } = useLanguage()
+  const { user } = useCurrentUser()
+  const { commit } = useDb()
+  const currentUserId = user?.id ?? ''
   const [version, setVersion] = useState(0)
   const [search, setSearch] = useState('')
   const [productFilter, setProductFilter] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [yearFilter, setYearFilter] = useState(2026)
   const [quarterFilter, setQuarterFilter] = useState(/** @type {'all' | import('../domains/tasks/model.js').PlannedQuarter} */ ('all'))
+  const [assigneeFilter, setAssigneeFilter] = useState('all')
+  const [priorityFilter, setPriorityFilter] = useState('all')
+  const [workstreamFilter, setWorkstreamFilter] = useState('all')
+  const [labelFilter, setLabelFilter] = useState('all')
+  const [dueFrom, setDueFrom] = useState('')
+  const [dueTo, setDueTo] = useState('')
 
   const [form, setForm] = useState({
     title: '',
-    assigneeId: CURRENT_USER_ID,
+    assigneeId: '',
     productId: db.products[0]?.id ?? 'prod-1',
     operationId: '',
     dueDate: '2026-06-30',
@@ -141,29 +165,40 @@ export default function MyTasksPage({ db }) {
   })
   const [formError, setFormError] = useState(/** @type {string | null} */ (null))
   const [autofillNote, setAutofillNote] = useState('')
+  const [openTaskId, setOpenTaskId] = useState(/** @type {string | null} */ (null))
 
   void version
 
-  const mine = useMemo(() => selectTasksByEmployee(db, CURRENT_USER_ID), [db, version])
-  const overdueCount = useMemo(
-    () => mine.filter((t) => t.status !== 'resolved' && t.dueDate < TODAY).length,
-    [mine],
+  const allLabels = useMemo(
+    () => [...new Set((db.tasks ?? []).flatMap((t) => t.labels ?? []))].sort(),
+    [db, version],
   )
 
   const filtered = useMemo(() => {
-    let result = mine
+    let result = db.tasks ?? []
+    if (assigneeFilter !== 'all') result = result.filter((t) => t.assigneeId === assigneeFilter)
     if (quarterFilter !== 'all') {
       result = result.filter((t) => t.plannedYear === yearFilter && t.plannedQuarter === quarterFilter)
     } else {
       result = result.filter((t) => t.plannedYear === yearFilter)
     }
     if (productFilter !== 'all') result = result.filter((t) => t.productId === productFilter)
+    if (priorityFilter !== 'all') result = result.filter((t) => (t.priority ?? 'medium') === priorityFilter)
+    if (workstreamFilter !== 'all') result = result.filter((t) => t.workstream === workstreamFilter)
+    if (labelFilter !== 'all') result = result.filter((t) => (t.labels ?? []).includes(labelFilter))
+    if (dueFrom) result = result.filter((t) => t.dueDate && t.dueDate >= dueFrom)
+    if (dueTo) result = result.filter((t) => t.dueDate && t.dueDate <= dueTo)
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter((t) => t.title.toLowerCase().includes(q))
     }
     return result
-  }, [mine, yearFilter, quarterFilter, productFilter, search])
+  }, [db, version, assigneeFilter, yearFilter, quarterFilter, productFilter, priorityFilter, workstreamFilter, labelFilter, dueFrom, dueTo, search])
+
+  const overdueCount = useMemo(
+    () => filtered.filter((t) => t.status !== 'resolved' && t.dueDate < TODAY).length,
+    [filtered],
+  )
 
   const kanbanColumns = useMemo(
     () =>
@@ -228,7 +263,7 @@ export default function MyTasksPage({ db }) {
       operationId: form.operationId || undefined,
     })
     if (!v.ok) { setFormError(v.errors.join(', ')); return }
-    appendTask(db, v.task)
+    commit(() => appendTask(db, v.task))
     setVersion((x) => x + 1)
     setAutofillNote('')
     setForm((f) => ({ ...f, title: '' }))
@@ -236,7 +271,7 @@ export default function MyTasksPage({ db }) {
   }
 
   function handleStatusChange(taskId, newStatus) {
-    patchTask(db, taskId, { status: newStatus, ...(newStatus === 'resolved' ? { completedAt: TODAY } : {}) })
+    commit(() => patchTask(db, taskId, { status: newStatus, ...(newStatus === 'resolved' ? { completedAt: TODAY } : {}) }))
     setVersion((x) => x + 1)
   }
 
@@ -286,6 +321,54 @@ export default function MyTasksPage({ db }) {
           value={yearFilter}
           onChange={(e) => setYearFilter(Number(e.target.value))}
         />
+        <select
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+          value={assigneeFilter}
+          onChange={(e) => setAssigneeFilter(e.target.value)}
+          title={t('task.assignee')}
+        >
+          <option value="all">{t('tasks.filter.allAssignees')}</option>
+          {db.employees.map((emp) => (
+            <option key={emp.id} value={emp.id}>{emp.id === currentUserId ? `${emp.name} (${t('tasks.filter.me')})` : emp.name}</option>
+          ))}
+        </select>
+        <select
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          title={t('task.priority')}
+        >
+          <option value="all">{t('tasks.filter.allPriorities')}</option>
+          {TASK_PRIORITIES.map((p) => <option key={p} value={p}>{t(`taskPriority.${p}`, p)}</option>)}
+        </select>
+        <select
+          className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+          value={workstreamFilter}
+          onChange={(e) => setWorkstreamFilter(e.target.value)}
+          title={t('tasks.fieldWorkstream')}
+        >
+          <option value="all">{t('tasks.filter.allWorkstreams')}</option>
+          {TASK_WORKSTREAMS.map((w) => <option key={w} value={w}>{t(`taskWorkstream.${w}`, w)}</option>)}
+        </select>
+        {allLabels.length > 0 ? (
+          <select
+            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
+            value={labelFilter}
+            onChange={(e) => setLabelFilter(e.target.value)}
+            title={t('task.labels')}
+          >
+            <option value="all">{t('tasks.filter.allLabels')}</option>
+            {allLabels.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        ) : null}
+        <label className="flex items-center gap-1 text-xs text-slate-500">
+          {t('tasks.filter.dueFrom')}
+          <DatePicker className="w-40" value={dueFrom} onChange={(iso) => setDueFrom(iso)} />
+        </label>
+        <label className="flex items-center gap-1 text-xs text-slate-500">
+          {t('tasks.filter.dueTo')}
+          <DatePicker className="w-40" value={dueTo} onChange={(iso) => setDueTo(iso)} />
+        </label>
 
         <div className="ml-auto flex items-center gap-2">
           {overdueCount > 0 && (
@@ -367,12 +450,9 @@ export default function MyTasksPage({ db }) {
                   <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
                     {t('common.due')}
                   </label>
-                  <input
-                    type="date"
-                    className={inputCls}
+                  <DatePicker
                     value={form.dueDate}
-                    onChange={(e) => {
-                      const d = e.target.value
+                    onChange={(d) => {
                       setForm((f) => ({ ...f, dueDate: d }))
                       if (form.operationId) applyOperationDefaults(form.productId, form.operationId, d)
                     }}
@@ -511,14 +591,22 @@ export default function MyTasksPage({ db }) {
                   {col.tasks.length}
                 </span>
               </div>
-              <div className="space-y-2 p-3">
+              <div
+                className="min-h-[60px] space-y-2 p-3"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const id = e.dataTransfer.getData('text/plain')
+                  if (id) handleStatusChange(id, col.dropStatus)
+                }}
+              >
                 {col.tasks.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-6 text-center text-xs text-slate-400">
                     No tasks
                   </p>
                 ) : (
                   col.tasks.map((task) => (
-                    <TaskCard key={task.id} task={task} db={db} onStatusChange={handleStatusChange} />
+                    <TaskCard key={task.id} task={task} db={db} onStatusChange={handleStatusChange} onOpen={setOpenTaskId} />
                   ))
                 )}
               </div>
@@ -526,6 +614,16 @@ export default function MyTasksPage({ db }) {
           ))}
         </div>
       </div>
+
+      {openTaskId ? (
+        <TaskDetailDrawer
+          db={db}
+          taskId={openTaskId}
+          actorId={currentUserId}
+          onClose={() => setOpenTaskId(null)}
+          onChange={() => { commit(); setVersion((x) => x + 1) }}
+        />
+      ) : null}
     </div>
   )
 }

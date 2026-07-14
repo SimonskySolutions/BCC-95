@@ -9,12 +9,18 @@ const ATTACHMENT_KINDS = ['drawing', 'spec', 'email', 'other']
  * Inquiry modal and the intake form so a drawing can satisfy the VSM intake
  * checklist from the moment of creation.
  *
+ * Optionally exposes a "no files provided" toggle — when checked, the inquiry
+ * is explicitly marked as having no attachments, which satisfies the drawings
+ * intake requirement (we don't always receive files with an inquiry).
+ *
  * @param {{
  *   attachments: import('../../../domains/inquiries/model.js').InquiryAttachment[]
  *   onChange: (next: import('../../../domains/inquiries/model.js').InquiryAttachment[]) => void
+ *   noAttachments?: boolean
+ *   onToggleNoAttachments?: (next: boolean) => void
  * }} props
  */
-export default function AttachmentEditor({ attachments, onChange }) {
+export default function AttachmentEditor({ attachments, onChange, noAttachments, onToggleNoAttachments }) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -35,12 +41,28 @@ export default function AttachmentEditor({ attachments, onChange }) {
         <h4 className="text-xs font-semibold text-slate-700">{t('inquiry.attachments')}</h4>
         <button
           type="button"
+          disabled={noAttachments}
           onClick={() => setOpen((v) => !v)}
-          className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-medium text-white hover:bg-slate-800"
+          className="rounded-lg bg-slate-900 px-2 py-1 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-40"
         >
           + {t('inquiry.addAttachment')}
         </button>
       </div>
+
+      {onToggleNoAttachments ? (
+        <label className="mt-2 flex items-center gap-2 rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            checked={Boolean(noAttachments)}
+            onChange={(e) => {
+              const next = e.target.checked
+              if (next && attachments.length) onChange([])
+              onToggleNoAttachments(next)
+            }}
+          />
+          <span className="font-medium">{t('inquiry.noFilesProvided')}</span>
+        </label>
+      ) : null}
       {open ? (
         <div className="mt-2 flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
           <div className="flex-1 min-w-[160px]">

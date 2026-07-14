@@ -74,3 +74,18 @@ export function runCreateOperationDefinition(db, input) {
   }
   return r.operation
 }
+
+/**
+ * Change an operation's shop-floor status. Records `startedAt` the first time
+ * it enters `in_progress`.
+ * @param {import('../../data/mockDatabase.js').MockDatabase} db
+ * @param {string} operationId
+ * @param {import('./model.js').OperationStatus} status
+ */
+export function setOperationStatus(db, operationId, status) {
+  const operation = (db.operations ?? []).find((o) => o.id === operationId)
+  if (!operation) return null
+  operation.status = status
+  if (status === 'in_progress' && !operation.startedAt) operation.startedAt = new Date().toISOString()
+  return operation
+}

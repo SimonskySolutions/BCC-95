@@ -283,3 +283,91 @@ export const termsOfDelivery = []
 
 /** @type {import('./model.js').TermsOfPayment[]} */
 export const termsOfPayment = []
+
+/* ── Working cost sheets ─────────────────────────────────────────────────────
+ * Seeded empty — a sheet is created on demand when the Costing step is opened.
+ * The catalog below is seeded from the rows of the reference calculation
+ * workbook so engineers pick standard lines instead of retyping them.
+ */
+
+/** @type {import('./model.js').CostSheet[]} */
+export const costSheets = []
+
+/** @type {import('./model.js').CostSheetLine[]} */
+export const costSheetLines = []
+
+/** @type {import('./model.js').CostCatalogEntry[]} */
+export const costCatalog = [
+  // Seeded from the «Номенклатури» workbook (материали / Операции /
+  // инструменти / общи разходи / Логистика). Labels are the source
+  // nomenclature; rates default to 0 for the engineer to fill in.
+  { id: "cc-mat-01", group: "material", driver: "weight", label: "Метали тръби", defaults: { scrapPct: 3, costPerKg: 0 } },
+  { id: "cc-mat-02", group: "material", driver: "weight", label: "Метали ламарина", defaults: { scrapPct: 3, costPerKg: 0 } },
+  { id: "cc-mat-03", group: "material", driver: "weight", label: "Метали тел", defaults: { scrapPct: 3, costPerKg: 0 } },
+  { id: "cc-mat-04", group: "material", driver: "weight", label: "Метали неръждаеми", defaults: { scrapPct: 3, costPerKg: 0 } },
+  { id: "cc-mat-05", group: "material", driver: "weight", label: "Метали други", defaults: { scrapPct: 3, costPerKg: 0 } },
+  { id: "cc-mat-06", group: "material", driver: "count", label: "Скрепителни елементи", defaults: { qty: 1 } },
+  { id: "cc-mat-07", group: "material", driver: "count", label: "Заварочни материали", defaults: { qty: 1 } },
+  { id: "cc-mat-08", group: "material", driver: "count", label: "Консумативи", defaults: { qty: 1 } },
+  { id: "cc-mat-09", group: "material", driver: "surface", label: "Покритие - прахова боя", defaults: { gPerDm2: 1.8, costPerKg: 0 } },
+  { id: "cc-mat-10", group: "material", driver: "count", label: "Покритие - обезмасляване", defaults: { qty: 1 } },
+  { id: "cc-mat-11", group: "material", driver: "surface", label: "Покритие - галванично", defaults: { gPerDm2: 0, costPerKg: 0 } },
+  { id: "cc-mat-12", group: "material", driver: "surface", label: "Покритие - горещо поцинковане", defaults: { gPerDm2: 0, costPerKg: 0 } },
+  { id: "cc-mat-13", group: "material", driver: "count", label: "Компоненти - пластмаса", defaults: { qty: 1 } },
+  { id: "cc-mat-14", group: "material", driver: "count", label: "Компоненти - дърво", defaults: { qty: 1 } },
+  { id: "cc-mat-15", group: "material", driver: "count", label: "Компоненти - текстил", defaults: { qty: 1 } },
+  { id: "cc-mat-16", group: "material", driver: "count", label: "Компоненти - други", defaults: { qty: 1 } },
+  { id: "cc-mat-17", group: "material", driver: "count", label: "Опаковки - етикети", defaults: { qty: 1 } },
+  { id: "cc-mat-18", group: "material", driver: "count", label: "Опаковки - инструкции", defaults: { qty: 1 } },
+  { id: "cc-mat-19", group: "material", driver: "count", label: "Опаковки - полиетилен", defaults: { qty: 1 } },
+  { id: "cc-mat-20", group: "material", driver: "count", label: "Опаковки - кашон,кутия", defaults: { qty: 1 } },
+  { id: "cc-mat-21", group: "material", driver: "count", label: "Опаковки - пълнежи", defaults: { qty: 1 } },
+  { id: "cc-mat-22", group: "material", driver: "count", label: "Опаковки - картон палети", defaults: { qty: 1 } },
+  { id: "cc-mat-23", group: "material", driver: "count", label: "Опаковки - дървени палети", defaults: { qty: 1 } },
+  { id: "cc-mat-24", group: "material", driver: "count", label: "Опаковки - други", defaults: { qty: 1 } },
+  { id: "cc-mat-25", group: "material", driver: "weight", label: "Енергия , горива", defaults: { costPerKg: 0, linkNetKg: true } },
+  { id: "cc-mat-26", group: "material", driver: "count", label: "Други материали", defaults: { qty: 1 } },
+  { id: "cc-op-01", group: "operation", driver: "count", label: "Разкрояване циркулярно", defaults: { qty: 1 } },
+  { id: "cc-op-02", group: "operation", driver: "count", label: "Разкрояване лазерно", defaults: { qty: 1 } },
+  { id: "cc-op-03", group: "operation", driver: "count", label: "Пресоване", defaults: { qty: 1 } },
+  { id: "cc-op-04", group: "operation", driver: "count", label: "Огъване", defaults: { qty: 1 } },
+  { id: "cc-op-05", group: "operation", driver: "count", label: "Формоване", defaults: { qty: 1 } },
+  { id: "cc-op-06", group: "operation", driver: "count", label: "Сбиване", defaults: { qty: 1 } },
+  { id: "cc-op-07", group: "operation", driver: "count", label: "Направа на фаска", defaults: { qty: 1 } },
+  { id: "cc-op-08", group: "operation", driver: "count", label: "Нарязване на резба", defaults: { qty: 1 } },
+  { id: "cc-op-09", group: "operation", driver: "count", label: "Заваряване ръчно", defaults: { qty: 1 } },
+  { id: "cc-op-10", group: "operation", driver: "count", label: "Заваряване полуавтомат", defaults: { qty: 1 } },
+  { id: "cc-op-11", group: "operation", driver: "count", label: "Заваряване робот", defaults: { qty: 1 } },
+  { id: "cc-op-12", group: "operation", driver: "count", label: "Дробометриране", defaults: { qty: 1 } },
+  { id: "cc-op-13", group: "operation", driver: "count", label: "Шлайфане", defaults: { qty: 1 } },
+  { id: "cc-op-14", group: "operation", driver: "count", label: "Обезмасляване", defaults: { qty: 1 } },
+  { id: "cc-op-15", group: "operation", driver: "count", label: "ЕП прахово покритие", defaults: { qty: 1 } },
+  { id: "cc-op-16", group: "operation", driver: "count", label: "Други видове покритие", defaults: { qty: 1 } },
+  { id: "cc-op-17", group: "operation", driver: "count", label: "Монтиране", defaults: { qty: 1 } },
+  { id: "cc-op-18", group: "operation", driver: "count", label: "Опаковане", defaults: { qty: 1 } },
+  { id: "cc-op-19", group: "operation", driver: "count", label: "Други операции", defaults: { qty: 1 } },
+  { id: "cc-tool-01", group: "tooling", driver: "count", label: "щанци", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-tool-02", group: "tooling", driver: "count", label: "огъвни ролки", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-tool-03", group: "tooling", driver: "count", label: "формоващи за  преси", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-tool-04", group: "tooling", driver: "count", label: "шприц  форми", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-tool-05", group: "tooling", driver: "count", label: "заварочни шаблони", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-tool-06", group: "tooling", driver: "count", label: "контролни шаблони", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-tool-07", group: "tooling", driver: "count", label: "нестандартни приспособления", defaults: { qty: 1, unitCost: 0 } },
+  // Burden — computed as in «Пример опростена калкулация»: flat per-unit
+  // amounts (count) or fixed ÷ volume (allocation). No percentages — only
+  // profit is a % (applied in the combined summary).
+  { id: "cc-bur-01", group: "other", driver: "count", label: "непряк труд", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-bur-02", group: "other", driver: "count", label: "вътрешен транспорт", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-bur-03", group: "other", driver: "count", label: "режийни и подръжка", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-bur-04", group: "other", driver: "count", label: "административни разходи", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-bur-05", group: "other", driver: "count", label: "маркетинг и реклама", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-bur-06", group: "other", driver: "allocation", label: "амортизации", defaults: { fixedTotal: 0, allocationUnits: 1 } },
+  { id: "cc-bur-07", group: "other", driver: "count", label: "финансови", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-bur-08", group: "other", driver: "allocation", label: "разходи за инструменти", defaults: { fixedTotal: 0, allocationUnits: 1 } },
+  { id: "cc-bur-09", group: "other", driver: "count", label: "други", defaults: { qty: 1, unitCost: 0 } },
+  { id: "cc-log-01", group: "logistics", driver: "count", label: "Транспортни опаковки", defaults: { qty: 1 } },
+  { id: "cc-log-02", group: "logistics", driver: "count", label: "Митническо представителство", defaults: { qty: 1 } },
+  { id: "cc-log-03", group: "logistics", driver: "pack", label: "Транспорт до клиента с пълен камион", defaults: { unitsPerPack: 40, costPerPack: 0 } },
+  { id: "cc-log-04", group: "logistics", driver: "pack", label: "Транспорт до клиента - на палет", defaults: { unitsPerPack: 40, costPerPack: 0 } },
+  { id: "cc-log-05", group: "logistics", driver: "count", label: "Други транспротни разходи", defaults: { qty: 1 } },
+]

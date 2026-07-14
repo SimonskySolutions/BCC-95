@@ -2,6 +2,82 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Custom date picker animations ───────────────────────────────────────── */
+@keyframes dp-pop {
+  0% { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes dp-day-in {
+  0% { opacity: 0; transform: translateY(5px) scale(0.9); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes dp-ripple {
+  0% { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.dp-pop { animation: dp-pop 0.16s ease-out; transform-origin: top center; }
+.dp-day-in { animation: dp-day-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.dp-ripple {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgba(37, 99, 235, 0.35);
+  pointer-events: none;
+  animation: dp-ripple 0.5s ease-out forwards;
+}
+
+/* Address map (Leaflet) — keep its internal z-indexes from escaping the card. */
+.addr-map {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  animation: dp-pop 0.16s ease-out;
+}
+.addr-pin {
+  background: transparent;
+  border: 0;
+}
+.dark .addr-map { border-color: #2a3550; }
+.dark .addr-map .leaflet-tile { filter: brightness(0.75) invert(1) hue-rotate(180deg) saturate(0.7) contrast(0.9); }
+.dark .addr-map .leaflet-container { background: #0f1729; }
+.dark .addr-map .leaflet-control-attribution { background: rgba(15, 23, 41, 0.8); color: #94a3b8; }
+.dark .addr-map .leaflet-control-attribution a { color: #7da2e3; }
+.dark .addr-map .leaflet-control-zoom a { background: #151c30; color: #cbd5e1; border-color: #2a3550; }
+.dark .addr-map .leaflet-popup-content-wrapper, .dark .addr-map .leaflet-popup-tip { background: #151c30; color: #e2e8f0; }
+
+/* Thin, themed scrollbars — the chunky OS default breaks the card look. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark * {
+  scrollbar-color: #334155 transparent;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Fixed-width digits so amount/qty columns line up. */
+table {
+  font-variant-numeric: tabular-nums;
+}
+
 html,
 body,
 #root {
@@ -15,7 +91,119 @@ body {
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   DARK MODE
+   The app is built with literal Tailwind utilities (bg-white, text-slate-*,
+   border-slate-*) and no `dark:` variants. Rather than touch 300+ usages, we
+   remap those chrome utilities centrally under `.dark`. Each selector is more
+   specific than the bare Tailwind class, so it wins regardless of source order.
+   Notes:
+   - `text-white` and `bg-slate-900`/`bg-white/NN` are intentionally left alone
+     (white-on-accent text and dark overlay bands stay correct).
+   - The printable offer document (offerHtml string) is rendered light always.
+   ────────────────────────────────────────────────────────────────────────── */
+.dark body {
+  background: #0b1120;
+  color: #e2e8f0;
+}
+
+/* Surfaces */
+.dark .bg-white { background-color: #151c30; }
+.dark .bg-slate-50 { background-color: #0f1729; }
+.dark .bg-slate-100 { background-color: #1f2a44; }
+.dark .bg-slate-25 { background-color: #151c30; }
+
+/* Text */
+.dark .text-slate-900 { color: #f1f5f9; }
+.dark .text-slate-800 { color: #e8eef6; }
+.dark .text-slate-700 { color: #d4dce8; }
+.dark .text-slate-600 { color: #aab6c8; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #7c8aa0; }
+
+/* Borders & dividers */
+.dark .border-slate-100 { border-color: #1f2940; }
+.dark .border-slate-200 { border-color: #2a3550; }
+.dark .border-slate-300 { border-color: #3a465f; }
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #2a3550; }
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #1f2940; }
+
+/* Hovers */
+.dark .hover\:bg-slate-50:hover { background-color: #1b2640; }
+.dark .hover\:bg-slate-100:hover { background-color: #232f4c; }
+.dark .hover\:bg-white:hover { background-color: #1b2640; }
+.dark .hover\:border-slate-300:hover { border-color: #44516d; }
+
+/* Card shadows read as a soft outline on dark */
+.dark .shadow-card,
+.dark .shadow-sm,
+.dark .shadow-cardHover { box-shadow: 0 10px 30px -22px rgba(0, 0, 0, 0.85); }
+
+/* Status / accent tints. The light -50/-100/-200 fills become translucent dark
+   so the lightened (saturated) text stays readable — this is what fixes the
+   "data not readable" badges (e.g. bg-emerald-100 text-emerald-800). */
+.dark .bg-slate-200 { background-color: #2a3550; }
+.dark .bg-blue-50 { background-color: rgba(37, 99, 235, 0.14); }
+.dark .bg-blue-100 { background-color: rgba(37, 99, 235, 0.22); }
+.dark .bg-blue-200 { background-color: rgba(37, 99, 235, 0.30); }
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.14); }
+.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.22); }
+.dark .bg-emerald-200 { background-color: rgba(16, 185, 129, 0.30); }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.14); }
+.dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.22); }
+.dark .bg-amber-200 { background-color: rgba(245, 158, 11, 0.30); }
+.dark .bg-rose-50 { background-color: rgba(244, 63, 94, 0.14); }
+.dark .bg-rose-100 { background-color: rgba(244, 63, 94, 0.22); }
+.dark .bg-rose-200 { background-color: rgba(244, 63, 94, 0.30); }
+.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.14); }
+.dark .bg-indigo-100 { background-color: rgba(99, 102, 241, 0.22); }
+.dark .bg-sky-50 { background-color: rgba(14, 165, 233, 0.14); }
+.dark .bg-sky-100 { background-color: rgba(14, 165, 233, 0.22); }
+.dark .bg-violet-50 { background-color: rgba(139, 92, 246, 0.14); }
+.dark .bg-violet-100 { background-color: rgba(139, 92, 246, 0.22); }
+
+.dark .text-blue-600, .dark .text-blue-700, .dark .text-blue-800, .dark .text-blue-900 { color: #93c5fd; }
+.dark .text-emerald-600, .dark .text-emerald-700, .dark .text-emerald-800, .dark .text-emerald-900 { color: #6ee7b7; }
+.dark .text-amber-600, .dark .text-amber-700, .dark .text-amber-800, .dark .text-amber-900 { color: #fcd34d; }
+.dark .text-rose-600, .dark .text-rose-700, .dark .text-rose-800, .dark .text-rose-900 { color: #fda4af; }
+.dark .text-indigo-600, .dark .text-indigo-700, .dark .text-indigo-800, .dark .text-indigo-900 { color: #a5b4fc; }
+.dark .text-sky-600, .dark .text-sky-700, .dark .text-sky-800 { color: #7dd3fc; }
+.dark .text-violet-600, .dark .text-violet-700, .dark .text-violet-800 { color: #c4b5fd; }
+
+/* Inset rings on tinted badges → translucent so they don't glow on dark */
+.dark .ring-blue-200 { --tw-ring-color: rgba(37, 99, 235, 0.4); }
+.dark .ring-emerald-200 { --tw-ring-color: rgba(16, 185, 129, 0.4); }
+.dark .ring-amber-200 { --tw-ring-color: rgba(245, 158, 11, 0.4); }
+.dark .ring-rose-200 { --tw-ring-color: rgba(244, 63, 94, 0.4); }
+.dark .ring-indigo-200 { --tw-ring-color: rgba(99, 102, 241, 0.4); }
+.dark .ring-slate-200 { --tw-ring-color: #2a3550; }
+
+/* Form controls */
+.dark .input-base {
+  background: #151c30;
+  border-color: #2a3550;
+  color: #e2e8f0;
+}
+.dark select { background-color: #151c30; color: #e2e8f0; }
+.dark select option { background: #151c30; color: #e2e8f0; }
+.dark input::placeholder,
+.dark textarea::placeholder { color: #64748b; }
+
+/* Documentation (VSM) content */
+.dark .vsm-content h2,
+.dark .vsm-content h3,
+.dark .vsm-content h4,
+.dark .vsm-content h5 { color: #f1f5f9; }
+.dark .vsm-content p,
+.dark .vsm-content li { color: #cbd5e1; }
+.dark .vsm-content .step-item { background: #0f1729; border-color: #2a3550; }
+.dark .vsm-content .step-item.detail { background: #151c30; }
+.dark .vsm-content th { background: #1f2a44; color: #cbd5e1; }
+.dark .vsm-content th,
+.dark .vsm-content td { border-color: #2a3550; }
 
 /* Utility used on `hover:bg-white/8` which Tailwind doesn't generate by default */
 .hover\:bg-white\/8:hover {
@@ -42,6 +230,33 @@ body {
 textarea.input-base {
   height: auto;
   padding: 0.5rem 0.625rem;
+}
+
+/* Consistent styling for every native <select> across the app — removes the
+   default OS chevron and renders one custom chevron, with room for it. */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 1rem;
+  padding-right: 1.9rem !important;
+  cursor: pointer;
+}
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background-image: none;
+}
+select:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+select option {
+  padding: 0.4rem 0.5rem;
+  color: #0f172a;
 }
 
 .vsm-content h2,

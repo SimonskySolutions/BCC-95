@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Paperclip, X as XIcon } from 'lucide-react'
 import { useLanguage } from '../../../i18n/useLanguage.js'
+import { useFactoryConfig } from '../../../config/useFactoryConfig.js'
+import EmailChipsInput from '../../EmailChipsInput.jsx'
 import {
   buildOfferEmailBody,
+  buildOfferEmailSubject,
   resolveAcceptanceBaseUrl,
   sendOffer,
 } from '../../../services/offers/quoteSendService.js'
@@ -19,48 +23,78 @@ import {
  */
 export default function OfferSendDialog({ db, quote, version, actorId, open, onClose, onSent }) {
   const { t } = useLanguage()
+  const { config } = useFactoryConfig()
   const client = quote ? db.clients.find((c) => c.id === quote.clientId) : undefined
-  const contact = useMemo(() => {
-    if (!quote) return ''
-    const inquiry = (db.inquiries ?? []).find(
-      (i) => i.productId === quote.productId && i.customerId === quote.clientId,
-    )
-    return inquiry?.customerContactEmail ?? ''
-  }, [db, quote])
+  const inquiry = useMemo(
+    () => (quote ? (db.inquiries ?? []).find((i) => i.productId === quote.productId && i.customerId === quote.clientId) : undefined),
+    [db, quote],
+  )
+  const contactEmail = inquiry?.customerContactEmail ?? client?.contactEmail ?? ''
+  const contactName = version?.contactName || inquiry?.customerContactName || client?.contactName || client?.contacts?.[0]?.name || ''
+  const offerNo = quote?.offerNo ?? quote?.id ?? ''
+  const orderDate = version?.orderDate ?? new Date().toISOString().slice(0, 10)
+  const inquiryRef = inquiry?.receivedAt ? String(inquiry.receivedAt).slice(0, 10) : (inquiry?.id ?? '')
 
   const previewLink = `${resolveAcceptanceBaseUrl().replace(/\/$/, '')}/offer-accept/<token>`
 
   const defaultSubject = useMemo(() => {
     if (!quote || !version) return ''
-    const product = db.products.find((p) => p.id === quote.productId)
-    if (version.language === 'bg') {
-      return `Оферта ${quote.id} v${version.versionNo} — ${product?.name ?? ''}`
-    }
-    return `Offer ${quote.id} v${version.versionNo} — ${product?.name ?? ''}`
-  }, [db, quote, version])
+    return buildOfferEmailSubject({ offerNo, orderDate, inquiryRef, language: version.language })
+  }, [quote, version, offerNo, orderDate, inquiryRef])
   const defaultBody = useMemo(() => {
     if (!quote || !version) return ''
-    const product = db.products.find((p) => p.id === quote.productId)
     return buildOfferEmailBody({
-      productName: product?.name ?? '',
-      quoteId: quote.id,
-      versionNo: version.versionNo,
+      contactName,
       acceptanceLink: previewLink,
       language: version.language,
-      subtotal: version.subtotal,
-      currency: version.currency,
+      companyName: config.companyName,
     })
-  }, [db, quote, version, previewLink])
+  }, [quote, version, contactName, previewLink, config.companyName])
 
   const [from, setFrom] = useState('offers@bcc-erp.example')
-  const [to, setTo] = useState(contact)
-  const [cc, setCc] = useState('')
+  const [to, setTo] = useState(/** @type {string[]} */ ([]))
+  const [cc, setCc] = useState(/** @type {string[]} */ ([]))
   const [subject, setSubject] = useState(defaultSubject)
   const [body, setBody] = useState(defaultBody)
+
+  // Auto-fill subject/body/recipient when the dialog opens for an offer. Keyed
+  // on the version id so re-opening for a different offer re-composes, but a
+  // user's edits to the same offer are preserved.
+  const composedFor = useRef(/** @type {string | null} */ (null))
+  useEffect(() => {
+    if (!open || !version) return
+    if (composedFor.current !== version.id) {
+      composedFor.current = version.id
+      setSubject(defaultSubject)
+      setBody(defaultBody)
+      setTo(contactEmail ? [contactEmail] : [])
+    }
+  }, [open, version, defaultSubject, defaultBody, contactEmail])
   const [sentLink, setSentLink] = useState(/** @type {string | null} */ (null))
   const [error, setError] = useState(/** @type {string | null} */ (null))
+  const [attachments, setAttachments] = useState(/** @type {{id:string,name:string}[]} */ ([]))
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef(/** @type {HTMLInputElement | null} */ (null))
 
   if (!open) return null
+
+  async function onAttach(e) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (!files.length || !quote) return
+    setUploading(true)
+    try {
+      for (const file of files) {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('clientId', quote.clientId)
+        fd.append('folder', 'Offer attachments')
+        if (actorId) fd.append('uploadedBy', actorId)
+        const res = await fetch('/api/files', { method: 'POST', body: fd }).then((r) => r.json()).catch(() => null)
+        if (res?.id) setAttachments((a) => [...a, { id: res.id, name: res.name }])
+      }
+    } finally { setUploading(false) }
+  }
 
   function handleSend() {
     if (!version) return
@@ -68,10 +102,11 @@ export default function OfferSendDialog({ db, quote, version, actorId, open, onC
     const res = sendOffer(db, {
       quoteVersionId: version.id,
       from,
-      to: to.split(',').map((x) => x.trim()).filter(Boolean),
-      cc: cc ? cc.split(',').map((x) => x.trim()).filter(Boolean) : undefined,
+      to,
+      cc: cc.length ? cc : undefined,
       subject,
       body: body.replace(previewLink, '<generated acceptance link>'),
+      attachmentIds: attachments.map((a) => a.id),
       actorId,
     })
     if (res.ok) {
@@ -90,7 +125,7 @@ export default function OfferSendDialog({ db, quote, version, actorId, open, onC
             <span className="text-2xl">✓</span>
           </div>
           <h3 className="text-lg font-semibold text-slate-900">{t('send.sent')}</h3>
-          <p className="mt-1 text-sm text-slate-500">Offer sent to <span className="font-medium text-slate-700">{to}</span></p>
+          <p className="mt-1 text-sm text-slate-500">Offer sent to <span className="font-medium text-slate-700">{to.join(', ')}</span></p>
           <div className="mt-4 rounded-lg bg-slate-50 p-3 text-left">
             <p className="text-xs font-medium text-slate-500">Acceptance link:</p>
             <p className="mt-1 break-all text-xs font-mono text-blue-700">{sentLink}</p>
@@ -140,24 +175,14 @@ export default function OfferSendDialog({ db, quote, version, actorId, open, onC
               onChange={(e) => setFrom(e.target.value)}
             />
           </label>
-          <label className="block text-xs font-medium text-slate-600">
+          <div className="block text-xs font-medium text-slate-600">
             {t('send.to')}
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              placeholder="email@example.com, email2@example.com"
-            />
-          </label>
-          <label className="block text-xs font-medium text-slate-600 md:col-span-2">
+            <EmailChipsInput value={to} onChange={setTo} placeholder="email@example.com" />
+          </div>
+          <div className="block text-xs font-medium text-slate-600 md:col-span-2">
             {t('send.cc')}
-            <input
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm"
-              value={cc}
-              onChange={(e) => setCc(e.target.value)}
-              placeholder="Optional — comma-separated"
-            />
-          </label>
+            <EmailChipsInput value={cc} onChange={setCc} placeholder={t('send.ccPlaceholder', 'Optional — type an address and press +')} />
+          </div>
           <label className="block text-xs font-medium text-slate-600 md:col-span-2">
             {t('send.subject')}
             <input
@@ -175,6 +200,30 @@ export default function OfferSendDialog({ db, quote, version, actorId, open, onC
               onChange={(e) => setBody(e.target.value)}
             />
           </label>
+
+          {/* Attachments — the offer PDF is always included; add extra files here */}
+          <div className="md:col-span-2">
+            <p className="text-xs font-medium text-slate-600">{t('send.attachments')}</p>
+            <ul className="mt-1 space-y-1">
+              <li className="flex items-center gap-2 rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-600">
+                <Paperclip size={13} className="text-slate-400" /> {t('send.offerPdf')}
+                <span className="ml-auto rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-500">{t('send.auto')}</span>
+              </li>
+              {attachments.map((a) => (
+                <li key={a.id} className="flex items-center gap-2 rounded-lg border border-slate-100 px-2 py-1.5 text-xs text-slate-700">
+                  <Paperclip size={13} className="text-slate-400" />
+                  <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                  <button type="button" onClick={() => setAttachments((x) => x.filter((f) => f.id !== a.id))}
+                    className="text-slate-300 hover:text-rose-600"><XIcon size={13} /></button>
+                </li>
+              ))}
+            </ul>
+            <input ref={fileRef} type="file" multiple className="hidden" onChange={onAttach} />
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+              <Paperclip size={13} /> {uploading ? t('send.uploading') : t('send.addAttachment')}
+            </button>
+          </div>
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">
           <button
@@ -188,8 +237,8 @@ export default function OfferSendDialog({ db, quote, version, actorId, open, onC
             type="button"
             onClick={handleSend}
             className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!version || version.status !== 'approved'}
-            title={version?.status !== 'approved' ? 'Version must be approved before sending' : undefined}
+            disabled={!version || version.status !== 'approved' || to.length === 0}
+            title={version?.status !== 'approved' ? 'Version must be approved before sending' : to.length === 0 ? 'Add at least one recipient' : undefined}
           >
             {t('send.send')}
           </button>

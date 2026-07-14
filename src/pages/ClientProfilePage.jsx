@@ -1,6 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pencil, Plus, Trash2, Check } from 'lucide-react'
 import { selectClientProfileBundle } from '../domains/crm/selectors.js'
+import ClientOffers from '../components/erp/crm/ClientOffers.jsx'
+import ClientStatusBar from '../components/erp/crm/ClientStatusBar.jsx'
+import ClientDocuments from '../components/erp/crm/ClientDocuments.jsx'
+import ClientProductSchematics from '../components/erp/crm/ClientProductSchematics.jsx'
+import ClientExternalAccess from '../components/erp/crm/ClientExternalAccess.jsx'
+import ClientRequests from '../components/erp/crm/ClientRequests.jsx'
 import { selectProductById } from '../domains/products/selectors.js'
 import { selectMachineById } from '../domains/machines/selectors.js'
 import {
@@ -9,10 +15,19 @@ import {
   removeClientContact,
   appendClientAddress,
   removeClientAddress,
+  appendInvoice,
+  appendPaymentRecord,
+  resolveOrderIssue,
 } from '../domains/crm/mutations.js'
+import OrderLogPanel from '../components/erp/crm/OrderLogPanel.jsx'
+import DatePicker from '../components/DatePicker.jsx'
+import { groupAmount } from '../lib/money.js'
+import { useToast } from '../components/ui/feedbackContext.js'
 import { useDb } from '../data/useDb.js'
 import { useLanguage } from '../i18n/useLanguage.js'
-import { COUNTRY_NAMES, regionForCountry } from '../lib/countries.js'
+import { countryNames, localizedCountryName, regionForCountry } from '../lib/countries.js'
+import { lookupCompany, parseRegisteredAddress, searchRegistry } from '../lib/registry.js'
+import AddressMap from '../components/AddressMap.jsx'
 
 const inputCls =
   'w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300'
@@ -35,19 +50,87 @@ const CLIENT_FIELDS = [
  * @param {{ client: import('../domains/crm/model.js').Client }} props
  */
 function ClientDetailsEditor({ client }) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const { db, commit } = useDb()
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState(/** @type {Record<string, string>} */ ({}))
   const [newContact, setNewContact] = useState({ name: '', title: '', email: '', phone: '' })
   const [newAddress, setNewAddress] = useState({ label: '', address: '', city: '', postCode: '', country: '' })
+  const [eikInput, setEikInput] = useState('')
+  const [lookupBusy, setLookupBusy] = useState(false)
+  const [lookupMsg, setLookupMsg] = useState(/** @type {null | { ok: boolean; text: string }} */ (null))
 
   const startEdit = () => {
     const initial = {}
     for (const [key] of CLIENT_FIELDS) initial[key] = client[key] ?? ''
+    initial.eik = client.eik ?? ''
     initial.notes = client.notes ?? ''
     setForm(initial)
+    setEikInput(client.eik || client.vat || '')
+    setLookupMsg(null)
+    sugSkipRef.current = true // don't pop suggestions for the pre-filled name
     setEditing(true)
+  }
+
+  async function runLookup(idArg) {
+    const id = (typeof idArg === 'string' ? idArg : eikInput).trim()
+    if (!id || lookupBusy) return
+    setLookupBusy(true)
+    setLookupMsg(null)
+    try {
+      const d = await lookupCompany(id)
+      if (!d) { setLookupMsg({ ok: false, text: t('registry.unavailable', 'Registry unavailable — try again later.') }); return }
+      const c = d.company
+      if (!c) { setLookupMsg({ ok: false, text: t('registry.notFound', 'No company found for this ЕИК/VAT.') }); return }
+      const country = localizedCountryName(c.country_code, language) || form.country
+      const parsed = parseRegisteredAddress(c.address)
+      setForm((f) => ({
+        ...f,
+        companyName: c.legal_name || f.companyName,
+        address: c.address || f.address,
+        vat: c.vat || f.vat,
+        eik: c.eik || f.eik,
+        city: parsed.city || f.city,
+        postCode: parsed.postCode || f.postCode,
+        country,
+        region: regionForCountry(country) || f.region,
+      }))
+      const suffix = d.valid ? '' : ` — ${t('registry.noVat', 'no VAT registration')}`
+      setLookupMsg({ ok: true, text: (c.legal_name || t('registry.found', 'Company found.')) + suffix })
+    } finally {
+      setLookupBusy(false)
+    }
+  }
+
+  // Live name suggestions from the BG Commercial Register while editing.
+  const [nameSugs, setNameSugs] = useState(/** @type {{ eik: string; name: string; fullName: string }[]} */ ([]))
+  const [sugBusy, setSugBusy] = useState(false)
+  const sugSkipRef = useRef(false)
+
+  const editedName = editing ? String(form.companyName ?? '') : ''
+  useEffect(() => {
+    if (!editing) return undefined
+    if (sugSkipRef.current) { sugSkipRef.current = false; return undefined }
+    const q = editedName.trim()
+    if (q.length < 3) { setNameSugs([]); setSugBusy(false); return undefined }
+    let alive = true
+    setSugBusy(true)
+    const timer = setTimeout(async () => {
+      const rows = await searchRegistry(q)
+      if (!alive) return
+      setNameSugs(rows)
+      setSugBusy(false)
+    }, 350)
+    return () => { alive = false; clearTimeout(timer) }
+  }, [editedName, editing])
+
+  function pickSuggestion(s) {
+    sugSkipRef.current = true
+    setNameSugs([])
+    setSugBusy(false)
+    setForm((f) => ({ ...f, companyName: s.name, eik: s.eik }))
+    setEikInput(s.eik)
+    runLookup(s.eik)
   }
 
   const save = () => {
@@ -91,11 +174,37 @@ function ClientDetailsEditor({ client }) {
 
         {editing ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="md:col-span-3">
+              <label className="block text-xs font-medium text-slate-600">{t('registry.eik', 'ЕИК / VAT')}</label>
+              <div className="mt-1 flex gap-2">
+                <input
+                  className={inputCls}
+                  value={eikInput}
+                  onChange={(e) => setEikInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); runLookup() } }}
+                  placeholder="131071587 / BG131071587"
+                />
+                <button
+                  type="button"
+                  onClick={runLookup}
+                  disabled={lookupBusy || !eikInput.trim()}
+                  className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {lookupBusy ? t('registry.looking', 'Looking…') : t('registry.lookup', 'Auto-fill')}
+                </button>
+              </div>
+              {lookupMsg ? (
+                <p className={`mt-1 text-[11px] ${lookupMsg.ok ? 'text-emerald-600' : 'text-rose-600'}`}>{lookupMsg.text}</p>
+              ) : (
+                <p className="mt-1 text-[11px] text-slate-400">{t('registry.hint', 'Enter ЕИК (BG) or full EU VAT and auto-fill from the register.')}</p>
+              )}
+            </div>
             {CLIENT_FIELDS.map(([key, labelKey]) => (
-              <label key={key} className="block text-xs font-medium text-slate-600">
+              <label key={key} className="relative block text-xs font-medium text-slate-600">
                 {t(labelKey)}
                 <input
                   list={key === 'country' ? 'cli-countries' : undefined}
+                  autoComplete={key === 'companyName' ? 'off' : undefined}
                   className={`mt-1 ${inputCls}`}
                   value={form[key] ?? ''}
                   onChange={(e) => {
@@ -104,11 +213,33 @@ function ClientDetailsEditor({ client }) {
                       ? { ...f, country: value, region: regionForCountry(value) || f.region }
                       : { ...f, [key]: value })
                   }}
+                  onKeyDown={key === 'companyName' ? (e) => { if (e.key === 'Escape') setNameSugs([]) } : undefined}
+                  onBlur={key === 'companyName' ? () => setTimeout(() => { setNameSugs([]); setSugBusy(false) }, 150) : undefined}
                 />
+                {key === 'companyName' && (sugBusy || nameSugs.length > 0) && String(form.companyName ?? '').trim().length >= 3 ? (
+                  <ul className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    {sugBusy && nameSugs.length === 0 ? (
+                      <li className="px-3 py-2 text-xs font-normal text-slate-400">{t('registry.searching', 'Searching the register…')}</li>
+                    ) : (
+                      nameSugs.map((s) => (
+                        <li key={s.eik}>
+                          <button
+                            type="button"
+                            className="flex w-full items-baseline justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-blue-50"
+                            onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s) }}
+                          >
+                            <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{s.fullName || s.name}</span>
+                            <span className="shrink-0 text-[11px] font-normal text-slate-400">{s.eik}</span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                ) : null}
               </label>
             ))}
             <datalist id="cli-countries">
-              {COUNTRY_NAMES.map((c) => <option key={c} value={c} />)}
+              {countryNames(language).map((c) => <option key={c} value={c} />)}
             </datalist>
             <label className="block text-xs font-medium text-slate-600 md:col-span-3">
               {t('client.field.notes')}
@@ -130,6 +261,12 @@ function ClientDetailsEditor({ client }) {
             ))}
           </dl>
         )}
+        <AddressMap
+          address={editing ? form.address : client.address}
+          city={editing ? form.city : client.city}
+          country={editing ? form.country : client.country}
+          className="mt-4"
+        />
       </section>
 
       {/* Contacts & addresses */}
@@ -250,10 +387,16 @@ function ClientDetailsEditor({ client }) {
  *   db: import('../data/mockDatabase.js').MockDatabase
  *   clientId: string
  *   onBack: () => void
+ *   onOpenOffer?: (quoteId: string) => void
+ *   onOpenProduct?: (productId: string) => void
  * }} props
  */
-export default function ClientProfilePage({ db, clientId, onBack }) {
+export default function ClientProfilePage({ db, clientId, onBack, onOpenOffer, onOpenProduct }) {
   const { t } = useLanguage()
+  const { commit } = useDb()
+  const toast = useToast()
+  const [addingInvoice, setAddingInvoice] = useState(false)
+  const [invoiceForm, setInvoiceForm] = useState({ orderId: '', amount: '', dueAt: '' })
   const bundle = selectClientProfileBundle(db, clientId)
   if (!bundle) {
     return (
@@ -269,7 +412,7 @@ export default function ClientProfilePage({ db, clientId, onBack }) {
       </div>
     )
   }
-  const { client, orders, lines, executions, machineUsages, timeLogs, issues, invoices, payments, schematics } =
+  const { client, orders, lines, executions, machineUsages, timeLogs, issues, invoices, payments } =
     bundle
 
   return (
@@ -292,6 +435,16 @@ export default function ClientProfilePage({ db, clientId, onBack }) {
 
       {client.notes ? <p className="text-sm text-slate-600">{client.notes}</p> : null}
 
+      <ClientStatusBar client={client} />
+
+      <ClientRequests db={db} clientId={clientId} onOpenProduct={onOpenProduct} />
+
+      <ClientOffers db={db} clientId={clientId} onOpenOffer={onOpenOffer} />
+
+      <ClientDocuments db={db} clientId={clientId} />
+
+      <ClientExternalAccess client={client} />
+
       <ClientDetailsEditor client={client} />
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
@@ -309,13 +462,15 @@ export default function ClientProfilePage({ db, clientId, onBack }) {
                 <ul className="mt-2 space-y-1 text-slate-600">
                   {oLines.map((l) => (
                     <li key={l.id}>
-                      {l.description}: {l.qty} × {l.unitPrice}
+                      {l.description}: {groupAmount(l.qty)} × {groupAmount(l.unitPrice)}
                     </li>
                   ))}
                 </ul>
+                <OrderLogPanel db={db} commit={commit} order={o} />
               </li>
             )
           })}
+          {orders.length === 0 ? <li className="text-xs text-slate-400">{t('client.noOrders', 'No orders yet — accepted offers become orders here.')}</li> : null}
         </ul>
       </section>
 
@@ -329,6 +484,7 @@ export default function ClientProfilePage({ db, clientId, onBack }) {
             </li>
           ))}
         </ul>
+        {executions.length === 0 ? <p className="text-xs text-slate-400">{t('client.noRecords', 'No records yet.')}</p> : null}
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
@@ -345,6 +501,7 @@ export default function ClientProfilePage({ db, clientId, onBack }) {
               )
             })}
           </ul>
+          {machineUsages.length === 0 ? <p className="text-xs text-slate-400">{t('client.noRecords', 'No records yet.')}</p> : null}
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
           <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('client.timePlanned')}</h3>
@@ -353,9 +510,11 @@ export default function ClientProfilePage({ db, clientId, onBack }) {
               <li key={timeRow.id}>
                 {timeRow.phase}: {timeRow.plannedHours}h {t('client.timePlanActual')} {timeRow.actualHours}h{' '}
                 {t('client.timeActual')} {timeRow.orderId}
+                {timeRow.actualHours > timeRow.plannedHours ? <span className="ml-1 text-[11px] font-medium text-rose-600">+{Math.round((timeRow.actualHours - timeRow.plannedHours) * 10) / 10}h</span> : null}
               </li>
             ))}
           </ul>
+          {timeLogs.length === 0 ? <p className="text-xs text-slate-400">{t('client.noRecords', 'No records yet.')}</p> : null}
         </div>
       </section>
 
@@ -363,49 +522,119 @@ export default function ClientProfilePage({ db, clientId, onBack }) {
         <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('client.issues')}</h3>
         <ul className="space-y-2 text-sm text-slate-600">
           {issues.map((i) => (
-            <li key={i.id} className="rounded-lg border border-slate-100 px-3 py-2">
-              <span className="font-medium text-slate-800">{i.severity}</span> · {i.description} (
-              {i.status})
+            <li key={i.id} className="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2">
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                i.severity === 'high' ? 'bg-rose-50 text-rose-700' : i.severity === 'low' ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-700'
+              }`}>{t(`client.sev.${i.severity}`, i.severity)}</span>
+              <span className={`min-w-0 flex-1 ${i.status === 'resolved' ? 'text-slate-400 line-through' : ''}`}>{i.description}</span>
+              {i.status === 'resolved' ? (
+                <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{t('client.issueStatus.resolved', 'Resolved')}</span>
+              ) : (
+                <button type="button" onClick={() => { commit(() => resolveOrderIssue(db, i.id)); toast(t('client.issueResolved', 'Issue resolved.')) }} className="shrink-0 rounded-lg border border-emerald-200 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50">
+                  {t('client.issueResolve', 'Resolve')}
+                </button>
+              )}
             </li>
           ))}
         </ul>
+        {issues.length === 0 ? <p className="text-xs text-slate-400">{t('client.noRecords', 'No records yet.')}</p> : null}
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('client.invoices')}</h3>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900">{t('client.invoices')}</h3>
+          {orders.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setAddingInvoice((v) => !v)}
+              className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              + {t('client.addInvoice', 'Add invoice')}
+            </button>
+          ) : null}
+        </div>
+
+        {addingInvoice ? (
+          <div className="mb-3 grid grid-cols-1 gap-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3 md:grid-cols-[1.5fr_1fr_1fr_auto]">
+            <label className="block text-xs font-medium text-slate-600">
+              {t('client.invoiceOrder', 'Order')} *
+              <select
+                className={`mt-1 ${inputCls}`}
+                value={invoiceForm.orderId}
+                onChange={(e) => {
+                  const orderId = e.target.value
+                  const total = lines.filter((l) => l.orderId === orderId).reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unitPrice) || 0), 0)
+                  setInvoiceForm((f) => ({ ...f, orderId, amount: total > 0 ? String(Math.round(total * 100) / 100) : f.amount }))
+                }}
+              >
+                <option value="">—</option>
+                {orders.map((o) => <option key={o.id} value={o.id}>{o.id} · {selectProductById(db, o.productId)?.name ?? o.productId}</option>)}
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-slate-600">
+              {t('client.invoiceAmount', 'Amount')} *
+              <input type="number" min={0} step="any" className={`mt-1 ${inputCls}`} value={invoiceForm.amount} onChange={(e) => setInvoiceForm((f) => ({ ...f, amount: e.target.value }))} />
+            </label>
+            <div className="block text-xs font-medium text-slate-600">
+              {t('client.invoiceDue', 'Due date')} *
+              <DatePicker className="mt-1" value={invoiceForm.dueAt} onChange={(iso) => setInvoiceForm((f) => ({ ...f, dueAt: iso }))} />
+            </div>
+            <button
+              type="button"
+              disabled={!invoiceForm.orderId || !(Number(invoiceForm.amount) > 0) || !invoiceForm.dueAt}
+              onClick={() => {
+                let inv = null
+                commit(() => { inv = appendInvoice(db, { orderId: invoiceForm.orderId, clientId, amount: Number(invoiceForm.amount), dueAt: invoiceForm.dueAt }) })
+                if (inv) toast(`${t('client.invoiceCreated', 'Invoice created:')} ${inv.id}`)
+                setInvoiceForm({ orderId: '', amount: '', dueAt: '' })
+                setAddingInvoice(false)
+              }}
+              className="self-end rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {t('common.add', 'Add')}
+            </button>
+          </div>
+        ) : null}
+
         <ul className="space-y-2 text-sm text-slate-600">
-          {invoices.map((inv) => (
-            <li key={inv.id}>
-              {inv.id}: {inv.amount} · {t('client.due')} {inv.dueAt}
-            </li>
-          ))}
+          {invoices.map((inv) => {
+            const payment = payments.find((p) => p.invoiceId === inv.id)
+            const today = new Date().toISOString().slice(0, 10)
+            const overdue = !payment && inv.dueAt < today
+            return (
+              <li key={inv.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 px-3 py-2">
+                <span className="font-medium text-slate-800">{inv.id}</span>
+                <span>{groupAmount(inv.amount)}</span>
+                <span className="text-xs text-slate-400">{t('client.due')} {inv.dueAt}</span>
+                <span className="min-w-0 flex-1" />
+                {payment ? (
+                  payment.daysLate === 0 ? (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">{t('client.paidOnTimeChip', 'Paid on time')} · {payment.paidAt}</span>
+                  ) : (
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">{t('client.paidLateChip', 'Paid {n}d late').replace('{n}', String(payment.daysLate))} · {payment.paidAt}</span>
+                  )
+                ) : (
+                  <>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${overdue ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>
+                      {overdue ? t('client.overdue', 'Overdue') : t('client.unpaid', 'Unpaid')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { commit(() => appendPaymentRecord(db, { invoiceId: inv.id })); toast(t('client.paymentRecorded', 'Payment recorded.')) }}
+                      className="rounded-lg border border-emerald-200 px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
+                    >
+                      {t('client.recordPayment', 'Record payment')}
+                    </button>
+                  </>
+                )}
+              </li>
+            )
+          })}
         </ul>
-        <ul className="mt-3 space-y-1 text-sm text-slate-600">
-          {payments.map((p) => (
-            <li key={p.id}>
-              {t('client.paidOn')} {p.amount} {t('client.on')} {p.paidAt} —{' '}
-              {p.daysLate === 0 ? t('client.onTime') : `${p.daysLate}d ${t('client.late')}`}
-            </li>
-          ))}
-        </ul>
+        {invoices.length === 0 ? <p className="text-xs text-slate-400">{t('client.noInvoices', 'No invoices yet.')}</p> : null}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('client.schematics')}</h3>
-        <ul className="space-y-2 text-sm">
-          {schematics.map((s) => (
-            <li key={s.id}>
-              <a className="font-medium text-blue-700 hover:underline" href={s.url}>
-                {s.title} {t('client.rev')} {s.revision}
-              </a>
-              <span className="text-slate-500">
-                {' '}
-                · {t('client.order')} {s.orderId}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ClientProductSchematics db={db} clientId={clientId} onOpenProduct={onOpenProduct} />
     </div>
   )
 }

@@ -1,0 +1,74 @@
+# Local stack for BCC-95.
+#
+#   Production-style (built SPA on nginx):   docker compose up --build web
+#     → http://localhost:8080
+#
+#   Hot-reload dev (Vite, source mounted):   docker compose --profile dev up web-dev
+#     → http://localhost:5173
+#
+#   Database + Adminer:                       docker compose up db adminer
+#     → Adminer http://localhost:8081  (server: db, user/pass/db: bcc95)
+#
+# The API persists all working data in Postgres; the web images proxy /api to
+# the api service (nginx in production, Vite proxy in dev).
+services:
+  web:
+    build: .
+    image: bcc95-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  web-dev:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    profiles:
+      - dev
+
+  api:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && node index.js"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    environment:
+      PGHOST: db
+      PGUSER: bcc95
+      PGPASSWORD: bcc95
+      PGDATABASE: bcc95
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: bcc95
+      POSTGRES_PASSWORD: bcc95
+      POSTGRES_DB: bcc95
+    ports:
+      - "5432:5432"
+    volumes:
+      # PG 18+ stores data in a version subdir under /var/lib/postgresql
+      - bcc95_pgdata:/var/lib/postgresql
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:4
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+
+volumes:
+  bcc95_pgdata:

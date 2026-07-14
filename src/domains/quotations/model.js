@@ -30,6 +30,9 @@
  * @property {number} [moq]
  * @property {number} [currentVersionNo]
  * @property {string} [currentVersionId]
+ * @property {string} [offerNo]                         — customer-facing offer number (OF-YYYY-####)
+ * @property {'goods' | 'tooling'} [kind]               — 'tooling' = a separately-billed tooling/amortisation offer
+ * @property {string} [parentQuoteId]                   — for a tooling offer, the goods quote it belongs to
  */
 
 /**
@@ -60,6 +63,7 @@
  * @property {QuoteCurrency} [currency]
  * @property {string} [language]
  * @property {string} [notes]
+ * @property {'exw' | 'dap' | 'both'} [priceBasis]    — which unit price the offer matrix shows
  *
  * Customer-facing header (mapped from the legacy GS "Order Confirmation"):
  * @property {string} [customerOrderRef]              — customer's own PO ref ("Ваша Поръчка #")
@@ -105,7 +109,7 @@
  */
 
 /**
- * @typedef {'drawing' | 'spec' | 'generated_offer_pdf' | 'customer_email' | 'acceptance_receipt' | 'other'} QuoteDocumentKind
+ * @typedef {'drawing' | 'spec' | 'photo' | 'generated_offer_pdf' | 'customer_email' | 'acceptance_receipt' | 'other'} QuoteDocumentKind
  */
 
 /**
@@ -114,6 +118,7 @@
  * @property {string} quoteVersionId
  * @property {QuoteDocumentKind} kind
  * @property {string} name
+ * @property {string} [caption]                — explanation shown under the photo in the offer
  * @property {string} [storageRef]
  * @property {string} createdAt
  */
@@ -175,11 +180,13 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {string} [requestedDate]                  — ISO date (ExpeditionDate)
  * @property {number} [confirmedQty]                   — what we commit to (OriginalQuantity)
  * @property {string} [confirmedDate]                  — ISO date (OriginalDate)
- * @property {number} unitPrice                        — price per unit in the quote currency
+ * @property {number} unitPrice                        — price per unit (DAP/delivered) in the quote currency
+ * @property {number} [exwUnitPrice]                   — ex-works unit price (matrix shows EXW + DAP)
  * @property {number} [priceCurrency]                  — secondary-currency price (PriceCurrency)
  * @property {number} [discountPercent]                — per-line discount (e.g. volume discount)
  * @property {string} [requirements]                   — spec / requirements (ResourceRequiments)
  * @property {string} [remark]                         — line remark (ResourceRemarks)
+ * @property {boolean} [isOneOff]                       — a one-off charge (e.g. separately-billed tooling), qty-independent
  * @property {number} [sortOrder]
  */
 
@@ -198,5 +205,124 @@ export const QUOTE_LINE_ITEM_KINDS = [
  * @property {string} [code]
  * @property {string} label
  */
+
+/* ── Working cost sheet ──────────────────────────────────────────────────────
+ * The cost sheet is the *always-editable* internal calculation that lives on the
+ * quote (not on a version). Drafting/sending an offer snapshots it into the
+ * immutable QuoteVersion line items — so history stays frozen while the
+ * engineer can keep refining costs at any time. Modelled on the «бланка» sheet
+ * of the reference calculation workbook: the cost is split into independent
+ * groups that each roll up separately, then combine into cost price → EXW → DAP.
+ */
+
+/**
+ * The five calculation parts, mirroring the «Номенклатури» workbook tabs. Each
+ * maps onto a QuoteLineItemKind so snapshots stay backward-compatible.
+ * - `material`   — материали: raw material, surface, consumables, fittings, packaging, energy
+ * - `operation`  — Операции: process operations (cutting, bending, welding, assembly…) incl. labour
+ * - `tooling`    — инструменти: one-off tooling ledger (billed separately or amortised)
+ * - `other`      — общи разходи: overhead, admin, marketing, depreciation, financial
+ * - `logistics`  — Логистика: freight that lifts EXW → DAP
+ * @typedef {'material' | 'operation' | 'tooling' | 'other' | 'logistics'} CostGroup
+ */
+
+/**
+ * How a line computes its per-unit amount:
+ * - `count`      — qty × unitCost
+ * - `weight`     — netKg × (1 + scrapPct/100) × costPerKg   (gross from net)
+ * - `surface`    — areaDm2 × gPerDm2 / 1000 × costPerKg      (coating from area)
+ * - `percent`    — percentOfBase % of the cost base (materials+labour+machine)
+ * - `allocation` — fixedTotal ÷ allocationUnits             (fixed cost / volume)
+ * - `pack`       — costPerPack ÷ unitsPerPack                (freight per unit)
+ * @typedef {'count' | 'weight' | 'surface' | 'percent' | 'allocation' | 'pack'} CostDriver
+ */
+
+/**
+ * @typedef {Object} CostSheet
+ * @property {string} id
+ * @property {string} quoteId
+ * @property {string} [quoteVersionId]                — the offer version this calculation belongs to; each version owns its own copy (legacy sheets have none)
+ * @property {string} [productId]                     — linked product (optional for ad-hoc products)
+ * @property {string} [productLabel]                  — product name being costed (one offer can cost several products)
+ * @property {string} [productDescription]            — product description shown on the offer
+ * @property {import('./model.js').QuoteCurrency} currency
+ * @property {number} marginPercent                  — profit % applied to cost price
+ * @property {number} [annualQty]                    — informational (Pcs/year)
+ * @property {'separate' | 'amortise'} toolingMode   — amortise into the goods offer, or bill separately (its own offer)
+ * @property {'blended' | 'line'} [amortiseDisplay]  — amortise mode: spread into unit price ('blended') or show as its own line ('line')
+ * @property {'units' | 'cost'} [amortisationMode]   — amortise tooling over a unit count or over a cost base
+ * @property {number} [amortisationUnits]            — units the tooling cost is spread over (editable)
+ * @property {number} [amortisationCost]             — cost/value base the tooling is spread over (mode 'cost')
+ * @property {QuantityBreak[]} [priceBreaks]         — per-quantity margin tiers (100/200/500…)
+ * @property {string} [notes]                        — free-text note for the whole calculation
+ * @property {string} updatedAt
+ */
+
+/**
+ * A quantity tier with its own profit margin — lets the same calculation be
+ * quoted at different prices for 100 / 200 / 500 pcs, etc.
+ * @typedef {Object} QuantityBreak
+ * @property {string} id
+ * @property {number} qty
+ * @property {number} marginPercent
+ */
+
+/**
+ * @typedef {Object} CostSheetLine
+ * @property {string} id
+ * @property {string} costSheetId
+ * @property {CostGroup} group
+ * @property {CostDriver | string} driver            — built-in driver, or a custom method key (`cm-…`)
+ * @property {string} [formula]                      — custom method: expression over field names + netKg/costBase (snapshot)
+ * @property {{ name: string; label: string; suffix?: string }[]} [fields]  — custom method: input field defs (snapshot)
+ * @property {Record<string, number>} [values]       — custom method: entered values keyed by field name
+ * @property {string} description
+ * @property {string} [note]                         — free-text clarification next to the item (бланка col. B)
+ * @property {string} [catalogRefId]                 — catalog entry it was picked from
+ * @property {number} [qty]                          — count/pack driver
+ * @property {number} [unitCost]                     — count driver
+ * @property {number} [netKg]                        — weight driver (net mass)
+ * @property {number} [scrapPct]                     — weight driver (scrap uplift %)
+ * @property {number} [costPerKg]                    — weight/surface driver (€/kg)
+ * @property {number} [areaDm2]                      — surface driver
+ * @property {number} [gPerDm2]                      — surface driver (consumption)
+ * @property {boolean} [linkNetKg]                   — weight line reads the sheet's total net kg (energy)
+ * @property {number} [percent]                      — percent driver
+ * @property {number} [fixedTotal]                   — allocation driver
+ * @property {number} [allocationUnits]              — allocation driver
+ * @property {number} [unitsPerPack]                 — pack driver
+ * @property {number} [costPerPack]                  — pack driver (freight per pack)
+ * @property {number} [sortOrder]
+ */
+
+/**
+ * A reusable nomenclature entry — pick it on a line to pre-fill the driver
+ * columns and default rate. Grouped so each cost group shows only its catalog.
+ * @typedef {Object} CostCatalogEntry
+ * @property {string} id
+ * @property {CostGroup} group
+ * @property {CostDriver} driver
+ * @property {string} label
+ * @property {Partial<CostSheetLine>} defaults       — values copied onto the new line
+ * @property {string} [note]
+ */
+
+/** The five parts, in display order (matches the «Номенклатури» tabs). @type {CostGroup[]} */
+export const COST_GROUPS = ['material', 'operation', 'tooling', 'other', 'logistics']
+
+/** Cost groups that sum into the product cost price (before profit & logistics). */
+export const COST_PRICE_GROUPS = ['material', 'operation', 'other']
+
+/** @type {CostDriver[]} */
+export const COST_DRIVERS = ['count', 'weight', 'surface', 'percent', 'allocation', 'pack']
+
+/** Which drivers each group is allowed to use in the UI. */
+export const GROUP_DRIVERS = {
+  material: ['count', 'weight', 'surface'],
+  operation: ['count', 'weight'],
+  tooling: ['count'],
+  other: ['percent', 'allocation', 'count'],
+  logistics: ['pack', 'count'],
+}
 
 export {}

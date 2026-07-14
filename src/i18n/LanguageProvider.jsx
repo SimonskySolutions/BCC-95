@@ -24,6 +24,8 @@ export function LanguageProvider({ children }) {
     } catch {
       /* ignore */
     }
+    // Tell the browser which dictionary to use for native spell-checking.
+    if (typeof document !== 'undefined') document.documentElement.lang = language
   }, [language])
 
   const setLanguage = useCallback((lang) => {

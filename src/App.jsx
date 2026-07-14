@@ -1,36 +1,43 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import Sidebar from './components/Sidebar.jsx'
 import Header from './components/Header.jsx'
 import CommandPalette from './components/CommandPalette.jsx'
+import ChatLauncher from './components/ChatLauncher.jsx'
+import AiAssistantPanel from './components/AiAssistantPanel.jsx'
 import { useLanguage } from './i18n/useLanguage.js'
 import { useFactoryConfig } from './config/useFactoryConfig.js'
+import { useCurrentUser } from './auth/useCurrentUser.js'
 import { useDb } from './data/useDb.js'
-import DashboardPage from './pages/DashboardPage.jsx'
 import NewInquiryForm from './components/erp/offers/NewInquiryForm.jsx'
-import ProductsPage from './pages/ProductsPage.jsx'
-import ProductWorkspacePage from './pages/ProductWorkspacePage.jsx'
-import QuotationsPage from './pages/QuotationsPage.jsx'
-import OfferWorkspacePage from './pages/OfferWorkspacePage.jsx'
-import MyTasksPage from './pages/MyTasksPage.jsx'
-import TeamWorkloadPage from './pages/TeamWorkloadPage.jsx'
-import ManufacturingPage from './pages/ManufacturingPage.jsx'
-import MachinesPage from './pages/MachinesPage.jsx'
-import MachineProfilePage from './pages/MachineProfilePage.jsx'
-import PeoplePage from './pages/PeoplePage.jsx'
-import QualityPage from './pages/QualityPage.jsx'
-import AnalyticsPage from './pages/AnalyticsPage.jsx'
-import PlanningPage from './pages/PlanningPage.jsx'
-import DocumentationPage from './pages/DocumentationPage.jsx'
-import SettingsPage from './pages/SettingsPage.jsx'
-import InventoryPage from './pages/InventoryPage.jsx'
-import PurchasePage from './pages/PurchasePage.jsx'
-import ShippingPage from './pages/ShippingPage.jsx'
-import CRMPage from './pages/CRMPage.jsx'
-import ClientProfilePage from './pages/ClientProfilePage.jsx'
-import AiAgentsPage from './pages/AiAgentsPage.jsx'
-import ReportsPage from './pages/ReportsPage.jsx'
-import OfferAcceptancePage from './pages/public/OfferAcceptancePage.jsx'
+// Route pages are lazy-loaded so the initial bundle stays small — each page
+// (and its heavy deps like charts/flow) loads only when first navigated to.
+const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'))
+const ProductsPage = lazy(() => import('./pages/ProductsPage.jsx'))
+const ProductWorkspacePage = lazy(() => import('./pages/ProductWorkspacePage.jsx'))
+const QuotationsPage = lazy(() => import('./pages/QuotationsPage.jsx'))
+const OfferWorkspacePage = lazy(() => import('./pages/OfferWorkspacePage.jsx'))
+const MyTasksPage = lazy(() => import('./pages/MyTasksPage.jsx'))
+const TeamWorkloadPage = lazy(() => import('./pages/TeamWorkloadPage.jsx'))
+const ManufacturingPage = lazy(() => import('./pages/ManufacturingPage.jsx'))
+const MachinesPage = lazy(() => import('./pages/MachinesPage.jsx'))
+const MachineProfilePage = lazy(() => import('./pages/MachineProfilePage.jsx'))
+const PeoplePage = lazy(() => import('./pages/PeoplePage.jsx'))
+const MessagesPage = lazy(() => import('./pages/MessagesPage.jsx'))
+const QualityPage = lazy(() => import('./pages/QualityPage.jsx'))
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage.jsx'))
+const PlanningPage = lazy(() => import('./pages/PlanningPage.jsx'))
+const DocumentationPage = lazy(() => import('./pages/DocumentationPage.jsx'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'))
+const InventoryPage = lazy(() => import('./pages/InventoryPage.jsx'))
+const PurchasePage = lazy(() => import('./pages/PurchasePage.jsx'))
+const ShippingPage = lazy(() => import('./pages/ShippingPage.jsx'))
+const CRMPage = lazy(() => import('./pages/CRMPage.jsx'))
+const ClientProfilePage = lazy(() => import('./pages/ClientProfilePage.jsx'))
+const AiAgentsPage = lazy(() => import('./pages/AiAgentsPage.jsx'))
+const ReportsPage = lazy(() => import('./pages/ReportsPage.jsx'))
+const OfferAcceptancePage = lazy(() => import('./pages/public/OfferAcceptancePage.jsx'))
+const UploadPortalPage = lazy(() => import('./pages/public/UploadPortalPage.jsx'))
 import { ERP_NAV_ITEMS } from './config/erpNav.js'
 
 const PAGE_META_KEYS = {
@@ -55,6 +62,7 @@ const PAGE_META_KEYS = {
   purchase: { titleKey: 'page.purchase.title', subtitleKey: 'page.purchase.subtitle' },
   shipping: { titleKey: 'page.shipping.title', subtitleKey: 'page.shipping.subtitle' },
   people: { titleKey: 'page.people.title', subtitleKey: 'page.people.subtitle' },
+  messages: { titleKey: 'page.messages.title', subtitleKey: 'page.messages.subtitle' },
   quality: { titleKey: 'page.quality.title', subtitleKey: 'page.quality.subtitle' },
   analytics: { titleKey: 'page.analytics.title', subtitleKey: 'page.analytics.subtitle' },
   reports: { titleKey: 'page.reports.title', subtitleKey: 'page.reports.subtitle' },
@@ -82,6 +90,14 @@ const PAGE_META_KEYS = {
  *   openReports: () => void
  * }} actions
  */
+function PageFallback() {
+  return (
+    <div className="flex h-64 items-center justify-center">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+    </div>
+  )
+}
+
 function renderPage(route, db, actions) {
   switch (route.page) {
     case 'dashboard':
@@ -90,6 +106,8 @@ function renderPage(route, db, actions) {
           db={db}
           onNewInquiry={actions.openNewInquiry}
           onNavigate={actions.navigate}
+          onOpenOffer={actions.openOffer}
+          onOpenClient={actions.openClient}
         />
       )
     case 'products':
@@ -113,6 +131,7 @@ function renderPage(route, db, actions) {
           productId={route.productId ?? 'prod-1'}
           onBack={actions.backFromProduct}
           onOpenReports={actions.openReports}
+          onOpenOffer={actions.openOffer}
         />
       )
     case 'tasks':
@@ -141,6 +160,8 @@ function renderPage(route, db, actions) {
       return <ShippingPage db={db} />
     case 'people':
       return <PeoplePage db={db} onTeamWorkload={actions.openTeamWorkload} />
+    case 'messages':
+      return <MessagesPage />
     case 'quality':
       return <QualityPage db={db} />
     case 'analytics':
@@ -157,6 +178,8 @@ function renderPage(route, db, actions) {
           db={db}
           clientId={route.clientId ?? 'client-1'}
           onBack={actions.backFromClient}
+          onOpenOffer={actions.openOffer}
+          onOpenProduct={actions.openProduct}
         />
       )
     case 'documentation':
@@ -172,17 +195,20 @@ function renderPage(route, db, actions) {
 function detectAcceptanceToken() {
   if (typeof window === 'undefined') return null
   const path = window.location?.pathname ?? ''
-  const match = /^\/offer-accept\/([^/?#]+)/.exec(path)
-  if (match) return { token: decodeURIComponent(match[1]) }
+  const accept = /^\/offer-accept\/([^/?#]+)/.exec(path)
+  if (accept) return { type: 'offer-accept', token: decodeURIComponent(accept[1]) }
+  const upload = /^\/upload\/([^/?#]+)/.exec(path)
+  if (upload) return { type: 'upload', token: decodeURIComponent(upload[1]) }
   const params = new URLSearchParams(window.location?.search ?? '')
-  const queryToken = params.get('offerAccept')
-  if (queryToken) return { token: queryToken }
+  if (params.get('offerAccept')) return { type: 'offer-accept', token: params.get('offerAccept') }
+  if (params.get('upload')) return { type: 'upload', token: params.get('upload') }
   return null
 }
 
 function App() {
   const { t } = useLanguage()
   const { config, theme } = useFactoryConfig()
+  const { can } = useCurrentUser()
   const { db } = useDb()
   const [route, setRoute] = useState(
     /** @type {{ page: string; productId: string | null; clientId: string | null; machineId: string | null }} */ ({
@@ -200,7 +226,10 @@ function App() {
   const sidebarItems = useMemo(
     () =>
       ERP_NAV_ITEMS
-        .filter((item) => config.enabledModules.includes(item.id))
+        // Dashboard + Settings are always reachable (avoid locking yourself out
+        // of the control panel); everything else respects module toggles + perms.
+        .filter((item) => item.id === 'dashboard' || item.id === 'settings' ||
+          (config.enabledModules.includes(item.id) && can(`module.${item.id}`)))
         .map((item) => ({
           id: item.id,
           icon: item.icon,
@@ -212,10 +241,18 @@ function App() {
             (route.page === 'client-profile' && item.id === 'crm') ||
             (route.page === 'machine-profile' && item.id === 'machines'),
         })),
-    [route.page, t, config.enabledModules],
+    [route.page, t, config.enabledModules, can],
   )
 
   const [cmdOpen, setCmdOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
+  const mainRef = useRef(/** @type {HTMLElement | null} */ (null))
+
+  // Always start a newly opened page at the top, not wherever the previous
+  // page was scrolled to.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 })
+  }, [route.page, route.quoteId, route.productId, route.clientId, route.machineId])
 
   useEffect(() => {
     function onKey(e) {
@@ -259,8 +296,11 @@ function App() {
     [],
   )
 
-  if (publicRoute) {
-    return <OfferAcceptancePage db={db} token={publicRoute.token} />
+  if (publicRoute?.type === 'offer-accept') {
+    return <Suspense fallback={<PageFallback />}><OfferAcceptancePage db={db} token={publicRoute.token} /></Suspense>
+  }
+  if (publicRoute?.type === 'upload') {
+    return <Suspense fallback={<PageFallback />}><UploadPortalPage token={publicRoute.token} /></Suspense>
   }
 
   return (
@@ -280,9 +320,17 @@ function App() {
         onMobileClose={() => setSidebarOpen(false)}
       />
 
-      <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6 xl:p-8">
-        <Header title={meta.title} subtitle={meta.subtitle} onMenuOpen={() => setSidebarOpen(true)} onSearch={() => setCmdOpen(true)} />
-        {renderPage(route, db, actions)}
+      <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 md:p-6 xl:p-8">
+        <Header
+          title={meta.title}
+          subtitle={meta.subtitle}
+          onMenuOpen={() => setSidebarOpen(true)}
+          onSearch={() => setCmdOpen(true)}
+          aiOpen={aiOpen}
+          onToggleAi={() => setAiOpen((v) => !v)}
+          onNavigate={(link) => setRoute({ page: link.page, quoteId: link.quoteId ?? null, productId: link.productId ?? null, clientId: link.clientId ?? null, machineId: null })}
+        />
+        <Suspense fallback={<PageFallback />}>{renderPage(route, db, actions)}</Suspense>
       </main>
 
       {/* Floating action button — New Inquiry (dashboard only) */}
@@ -291,7 +339,7 @@ function App() {
           type="button"
           onClick={() => setShowNewInquiry(true)}
           title={t('dashboard.quickActions.newInquiry')}
-          className={`fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition active:scale-95 ${theme.primaryBtn}`}
+          className={`fixed bottom-24 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition active:scale-95 ${theme.primaryBtn}`}
         >
           <Plus size={22} />
         </button>
@@ -331,6 +379,12 @@ function App() {
           </div>
         </div>
       ) : null}
+
+      {/* Toggleable right-side AI assistant */}
+      <AiAssistantPanel open={aiOpen} onClose={() => setAiOpen(false)} />
+
+      {/* Global floating chat bubble — 1:1 employee conversations */}
+      <ChatLauncher />
     </div>
   )
 }

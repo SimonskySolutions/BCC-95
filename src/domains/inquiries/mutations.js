@@ -9,23 +9,27 @@ let idCounter = 20000
  * @property {import('./model.js').InquiryChannel} channel
  * @property {string} [summary]
  * @property {number} [requestedQuantity]
+ * @property {number[]} [requestedQuantities]
+ * @property {{ name: string; quantities: number[] }[]} [extraProducts]
  * @property {string} [requestedDeadline]
  * @property {string} [specificationNote]
  * @property {string} [customerContactName]
  * @property {string} [customerContactEmail]
  * @property {import('./model.js').InquiryAttachment[]} [attachments]
+ * @property {boolean} [noAttachments]
  */
 
 /**
  * Compute missing intake fields based on the documented Phase 1.1 requirements:
  * drawings, quantity, deadline, specifications, customer requirements.
+ * An inquiry explicitly marked "no files provided" satisfies the drawings check.
  * @param {import('./model.js').Inquiry} inquiry
  * @returns {import('./model.js').IntakeRequirement[]}
  */
 export function computeMissingIntakeFields(inquiry) {
   const missing = /** @type {import('./model.js').IntakeRequirement[]} */ ([])
   const hasDrawing = (inquiry.attachments ?? []).some((att) => att.kind === 'drawing')
-  if (!hasDrawing) missing.push('drawings')
+  if (!hasDrawing && !inquiry.noAttachments) missing.push('drawings')
   if (!inquiry.requestedQuantity || inquiry.requestedQuantity <= 0) missing.push('quantity')
   if (!inquiry.requestedDeadline) missing.push('deadline')
   if (!inquiry.specificationNote?.trim()) missing.push('specifications')
@@ -49,11 +53,14 @@ export function createInquiryDraft(input, id) {
     status: 'received',
     summary: input.summary,
     requestedQuantity: input.requestedQuantity,
+    requestedQuantities: input.requestedQuantities ?? (input.requestedQuantity ? [input.requestedQuantity] : []),
+    extraProducts: input.extraProducts ?? [],
     requestedDeadline: input.requestedDeadline,
     specificationNote: input.specificationNote,
     customerContactName: input.customerContactName,
     customerContactEmail: input.customerContactEmail,
     attachments: input.attachments ?? [],
+    noAttachments: input.noAttachments ?? false,
   })
   inquiry.missingFields = computeMissingIntakeFields(inquiry)
   inquiry.status = inquiry.missingFields.length === 0 ? 'intake_complete' : 'intake_pending'

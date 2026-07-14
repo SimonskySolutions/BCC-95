@@ -9,9 +9,10 @@ import { useLanguage } from '../i18n/useLanguage.js'
  *   productId: string
  *   onBack: () => void
  *   onOpenReports?: () => void
+ *   onOpenOffer?: (quoteId: string) => void
  * }} props
  */
-export default function ProductWorkspacePage({ db, productId, onBack, onOpenReports }) {
+export default function ProductWorkspacePage({ db, productId, onBack, onOpenReports, onOpenOffer }) {
   const { t } = useLanguage()
   const bundle = selectProductWorkspaceBundle(db, productId)
 
@@ -25,7 +26,7 @@ export default function ProductWorkspacePage({ db, productId, onBack, onOpenRepo
         <ArrowLeft size={14} />
         {t('pw.back')}
       </button>
-      <ProductWorkspace db={db} bundle={bundle} onOpenReports={onOpenReports} />
+      <ProductWorkspace db={db} bundle={bundle} onOpenReports={onOpenReports} onOpenOffer={onOpenOffer} />
     </div>
   )
 }

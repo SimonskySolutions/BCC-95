@@ -25,6 +25,9 @@ import {
 import { computeDailyOperationKpis } from '../services/operations/dailyOperationKpiService.js'
 import { useLanguage } from '../i18n/useLanguage.js'
 import { selectEmployeeById } from '../domains/people/selectors.js'
+import { selectMonthlySpend, selectTopVendorsBySpend } from '../domains/purchase/selectors.js'
+import { groupAmount } from '../lib/money.js'
+import DatePicker from '../components/DatePicker.jsx'
 
 /**
  * @param {{ db: import('../data/mockDatabase.js').MockDatabase }} props
@@ -33,6 +36,8 @@ export default function AnalyticsPage({ db }) {
   const { t } = useLanguage()
   const [kpiDate, setKpiDate] = useState('2026-04-11')
   const operationKpis = useMemo(() => computeDailyOperationKpis(db, kpiDate), [db, kpiDate])
+  const monthlySpend = useMemo(() => selectMonthlySpend(db), [db])
+  const topVendors = useMemo(() => selectTopVendorsBySpend(db), [db])
 
   const referenceDate = '2026-04-10'
   const delivery = computeDeliveryMetrics(db, referenceDate)
@@ -167,17 +172,55 @@ export default function AnalyticsPage({ db }) {
         </div>
       </section>
 
+      {monthlySpend.length > 0 || topVendors.length > 0 ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h3 className="text-sm font-semibold text-slate-900">{t('analytics.purchasingTitle', 'Purchasing')}</h3>
+          <p className="mt-1 text-xs text-slate-600">{t('analytics.purchasingHelp', 'Spend from purchase orders (cancelled orders excluded).')}</p>
+          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 xl:col-span-2">
+              <p className="text-sm font-semibold text-slate-900">{t('analytics.monthlySpend', 'Monthly spend')}</p>
+              <div className="mt-3 h-60">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlySpend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="spend" name={t('purchase.stat.spend', 'Total spend')} fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm font-semibold text-slate-900">{t('analytics.topVendors', 'Top vendors by spend')}</p>
+              <ul className="mt-3 space-y-2">
+                {topVendors.map((v) => {
+                  const max = topVendors[0]?.spend || 1
+                  return (
+                    <li key={v.vendorId} className="text-xs">
+                      <div className="flex justify-between gap-2">
+                        <span className="truncate font-medium text-slate-800">{v.vendor}</span>
+                        <span className="shrink-0 text-slate-500">{groupAmount(v.spend)}</span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-slate-200">
+                        <div className="h-1.5 rounded-full bg-blue-500" style={{ width: `${Math.max(4, Math.round((v.spend / max) * 100))}%` }} />
+                      </div>
+                    </li>
+                  )
+                })}
+                {topVendors.length === 0 ? <li className="text-xs text-slate-400">—</li> : null}
+              </ul>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
         <h3 className="text-sm font-semibold text-slate-900">{t('analytics.kpiTitle')}</h3>
         <p className="mt-1 text-xs text-slate-600">{t('analytics.kpiHelp')}</p>
         <label className="mt-3 block text-xs font-medium text-slate-700">
           {t('common.date')}
-          <input
-            type="date"
-            value={kpiDate}
-            onChange={(e) => setKpiDate(e.target.value)}
-            className="ml-2 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-          />
+          <DatePicker className="ml-2 mt-1 w-48" value={kpiDate} onChange={(iso) => setKpiDate(iso)} />
         </label>
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="min-w-full text-left text-xs text-slate-700">

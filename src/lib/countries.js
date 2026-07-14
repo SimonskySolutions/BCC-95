@@ -1,105 +1,120 @@
 /**
- * World countries with their region, for the customer country picker.
- * Local and offline — no geo API. Cities stay free text on purpose: a full
- * world-city catalog is 100k+ entries and belongs behind a backend lookup.
+ * World countries (ISO alpha-2 + region) for the customer country picker.
+ * Display names are derived per-language via Intl.DisplayNames, so the dropdown
+ * localizes automatically (e.g. Bulgarian names when the app is in BG). Cities
+ * stay free text on purpose.
  *
- * Tuples: [country name, region]
+ * Tuples: [ISO alpha-2 code, region]
  * @type {Array<[string, string]>}
  */
 const RAW = [
   // Europe
-  ['Albania', 'Europe'], ['Andorra', 'Europe'], ['Austria', 'Europe'], ['Belarus', 'Europe'],
-  ['Belgium', 'Europe'], ['Bosnia and Herzegovina', 'Europe'], ['Bulgaria', 'Europe'],
-  ['Croatia', 'Europe'], ['Cyprus', 'Europe'], ['Czechia', 'Europe'], ['Denmark', 'Europe'],
-  ['Estonia', 'Europe'], ['Finland', 'Europe'], ['France', 'Europe'], ['Germany', 'Europe'],
-  ['Greece', 'Europe'], ['Hungary', 'Europe'], ['Iceland', 'Europe'], ['Ireland', 'Europe'],
-  ['Italy', 'Europe'], ['Kosovo', 'Europe'], ['Latvia', 'Europe'], ['Liechtenstein', 'Europe'],
-  ['Lithuania', 'Europe'], ['Luxembourg', 'Europe'], ['Malta', 'Europe'], ['Moldova', 'Europe'],
-  ['Monaco', 'Europe'], ['Montenegro', 'Europe'], ['Netherlands', 'Europe'],
-  ['North Macedonia', 'Europe'], ['Norway', 'Europe'], ['Poland', 'Europe'],
-  ['Portugal', 'Europe'], ['Romania', 'Europe'], ['Russia', 'Europe'], ['San Marino', 'Europe'],
-  ['Serbia', 'Europe'], ['Slovakia', 'Europe'], ['Slovenia', 'Europe'], ['Spain', 'Europe'],
-  ['Sweden', 'Europe'], ['Switzerland', 'Europe'], ['Ukraine', 'Europe'],
-  ['United Kingdom', 'Europe'], ['Vatican City', 'Europe'],
+  ['AL', 'Europe'], ['AD', 'Europe'], ['AT', 'Europe'], ['BY', 'Europe'], ['BE', 'Europe'],
+  ['BA', 'Europe'], ['BG', 'Europe'], ['HR', 'Europe'], ['CY', 'Europe'], ['CZ', 'Europe'],
+  ['DK', 'Europe'], ['EE', 'Europe'], ['FI', 'Europe'], ['FR', 'Europe'], ['DE', 'Europe'],
+  ['GR', 'Europe'], ['HU', 'Europe'], ['IS', 'Europe'], ['IE', 'Europe'], ['IT', 'Europe'],
+  ['XK', 'Europe'], ['LV', 'Europe'], ['LI', 'Europe'], ['LT', 'Europe'], ['LU', 'Europe'],
+  ['MT', 'Europe'], ['MD', 'Europe'], ['MC', 'Europe'], ['ME', 'Europe'], ['NL', 'Europe'],
+  ['MK', 'Europe'], ['NO', 'Europe'], ['PL', 'Europe'], ['PT', 'Europe'], ['RO', 'Europe'],
+  ['RU', 'Europe'], ['SM', 'Europe'], ['RS', 'Europe'], ['SK', 'Europe'], ['SI', 'Europe'],
+  ['ES', 'Europe'], ['SE', 'Europe'], ['CH', 'Europe'], ['UA', 'Europe'], ['GB', 'Europe'],
+  ['VA', 'Europe'],
 
   // Middle East
-  ['Bahrain', 'Middle East'], ['Iran', 'Middle East'], ['Iraq', 'Middle East'],
-  ['Israel', 'Middle East'], ['Jordan', 'Middle East'], ['Kuwait', 'Middle East'],
-  ['Lebanon', 'Middle East'], ['Oman', 'Middle East'], ['Palestine', 'Middle East'],
-  ['Qatar', 'Middle East'], ['Saudi Arabia', 'Middle East'], ['Syria', 'Middle East'],
-  ['Türkiye', 'Middle East'], ['United Arab Emirates', 'Middle East'], ['Yemen', 'Middle East'],
+  ['BH', 'Middle East'], ['IR', 'Middle East'], ['IQ', 'Middle East'], ['IL', 'Middle East'],
+  ['JO', 'Middle East'], ['KW', 'Middle East'], ['LB', 'Middle East'], ['OM', 'Middle East'],
+  ['PS', 'Middle East'], ['QA', 'Middle East'], ['SA', 'Middle East'], ['SY', 'Middle East'],
+  ['TR', 'Middle East'], ['AE', 'Middle East'], ['YE', 'Middle East'],
 
   // Asia
-  ['Afghanistan', 'Asia'], ['Armenia', 'Asia'], ['Azerbaijan', 'Asia'], ['Bangladesh', 'Asia'],
-  ['Bhutan', 'Asia'], ['Brunei', 'Asia'], ['Cambodia', 'Asia'], ['China', 'Asia'],
-  ['Georgia', 'Asia'], ['India', 'Asia'], ['Indonesia', 'Asia'], ['Japan', 'Asia'],
-  ['Kazakhstan', 'Asia'], ['Kyrgyzstan', 'Asia'], ['Laos', 'Asia'], ['Malaysia', 'Asia'],
-  ['Maldives', 'Asia'], ['Mongolia', 'Asia'], ['Myanmar', 'Asia'], ['Nepal', 'Asia'],
-  ['North Korea', 'Asia'], ['Pakistan', 'Asia'], ['Philippines', 'Asia'], ['Singapore', 'Asia'],
-  ['South Korea', 'Asia'], ['Sri Lanka', 'Asia'], ['Taiwan', 'Asia'], ['Tajikistan', 'Asia'],
-  ['Thailand', 'Asia'], ['Timor-Leste', 'Asia'], ['Turkmenistan', 'Asia'],
-  ['Uzbekistan', 'Asia'], ['Vietnam', 'Asia'],
+  ['AF', 'Asia'], ['AM', 'Asia'], ['AZ', 'Asia'], ['BD', 'Asia'], ['BT', 'Asia'], ['BN', 'Asia'],
+  ['KH', 'Asia'], ['CN', 'Asia'], ['GE', 'Asia'], ['IN', 'Asia'], ['ID', 'Asia'], ['JP', 'Asia'],
+  ['KZ', 'Asia'], ['KG', 'Asia'], ['LA', 'Asia'], ['MY', 'Asia'], ['MV', 'Asia'], ['MN', 'Asia'],
+  ['MM', 'Asia'], ['NP', 'Asia'], ['KP', 'Asia'], ['PK', 'Asia'], ['PH', 'Asia'], ['SG', 'Asia'],
+  ['KR', 'Asia'], ['LK', 'Asia'], ['TW', 'Asia'], ['TJ', 'Asia'], ['TH', 'Asia'], ['TL', 'Asia'],
+  ['TM', 'Asia'], ['UZ', 'Asia'], ['VN', 'Asia'],
 
   // Africa
-  ['Algeria', 'Africa'], ['Angola', 'Africa'], ['Benin', 'Africa'], ['Botswana', 'Africa'],
-  ['Burkina Faso', 'Africa'], ['Burundi', 'Africa'], ['Cabo Verde', 'Africa'],
-  ['Cameroon', 'Africa'], ['Central African Republic', 'Africa'], ['Chad', 'Africa'],
-  ['Comoros', 'Africa'], ['Congo (Brazzaville)', 'Africa'], ['Congo (DRC)', 'Africa'],
-  ["Côte d'Ivoire", 'Africa'], ['Djibouti', 'Africa'], ['Egypt', 'Africa'],
-  ['Equatorial Guinea', 'Africa'], ['Eritrea', 'Africa'], ['Eswatini', 'Africa'],
-  ['Ethiopia', 'Africa'], ['Gabon', 'Africa'], ['Gambia', 'Africa'], ['Ghana', 'Africa'],
-  ['Guinea', 'Africa'], ['Guinea-Bissau', 'Africa'], ['Kenya', 'Africa'], ['Lesotho', 'Africa'],
-  ['Liberia', 'Africa'], ['Libya', 'Africa'], ['Madagascar', 'Africa'], ['Malawi', 'Africa'],
-  ['Mali', 'Africa'], ['Mauritania', 'Africa'], ['Mauritius', 'Africa'], ['Morocco', 'Africa'],
-  ['Mozambique', 'Africa'], ['Namibia', 'Africa'], ['Niger', 'Africa'], ['Nigeria', 'Africa'],
-  ['Rwanda', 'Africa'], ['São Tomé and Príncipe', 'Africa'], ['Senegal', 'Africa'],
-  ['Seychelles', 'Africa'], ['Sierra Leone', 'Africa'], ['Somalia', 'Africa'],
-  ['South Africa', 'Africa'], ['South Sudan', 'Africa'], ['Sudan', 'Africa'],
-  ['Tanzania', 'Africa'], ['Togo', 'Africa'], ['Tunisia', 'Africa'], ['Uganda', 'Africa'],
-  ['Zambia', 'Africa'], ['Zimbabwe', 'Africa'],
+  ['DZ', 'Africa'], ['AO', 'Africa'], ['BJ', 'Africa'], ['BW', 'Africa'], ['BF', 'Africa'],
+  ['BI', 'Africa'], ['CV', 'Africa'], ['CM', 'Africa'], ['CF', 'Africa'], ['TD', 'Africa'],
+  ['KM', 'Africa'], ['CG', 'Africa'], ['CD', 'Africa'], ['CI', 'Africa'], ['DJ', 'Africa'],
+  ['EG', 'Africa'], ['GQ', 'Africa'], ['ER', 'Africa'], ['SZ', 'Africa'], ['ET', 'Africa'],
+  ['GA', 'Africa'], ['GM', 'Africa'], ['GH', 'Africa'], ['GN', 'Africa'], ['GW', 'Africa'],
+  ['KE', 'Africa'], ['LS', 'Africa'], ['LR', 'Africa'], ['LY', 'Africa'], ['MG', 'Africa'],
+  ['MW', 'Africa'], ['ML', 'Africa'], ['MR', 'Africa'], ['MU', 'Africa'], ['MA', 'Africa'],
+  ['MZ', 'Africa'], ['NA', 'Africa'], ['NE', 'Africa'], ['NG', 'Africa'], ['RW', 'Africa'],
+  ['ST', 'Africa'], ['SN', 'Africa'], ['SC', 'Africa'], ['SL', 'Africa'], ['SO', 'Africa'],
+  ['ZA', 'Africa'], ['SS', 'Africa'], ['SD', 'Africa'], ['TZ', 'Africa'], ['TG', 'Africa'],
+  ['TN', 'Africa'], ['UG', 'Africa'], ['ZM', 'Africa'], ['ZW', 'Africa'],
 
   // North America
-  ['Canada', 'North America'], ['Mexico', 'North America'], ['United States', 'North America'],
+  ['CA', 'North America'], ['MX', 'North America'], ['US', 'North America'],
 
   // Central America & Caribbean
-  ['Antigua and Barbuda', 'Central America & Caribbean'], ['Bahamas', 'Central America & Caribbean'],
-  ['Barbados', 'Central America & Caribbean'], ['Belize', 'Central America & Caribbean'],
-  ['Costa Rica', 'Central America & Caribbean'], ['Cuba', 'Central America & Caribbean'],
-  ['Dominica', 'Central America & Caribbean'], ['Dominican Republic', 'Central America & Caribbean'],
-  ['El Salvador', 'Central America & Caribbean'], ['Grenada', 'Central America & Caribbean'],
-  ['Guatemala', 'Central America & Caribbean'], ['Haiti', 'Central America & Caribbean'],
-  ['Honduras', 'Central America & Caribbean'], ['Jamaica', 'Central America & Caribbean'],
-  ['Nicaragua', 'Central America & Caribbean'], ['Panama', 'Central America & Caribbean'],
-  ['Saint Kitts and Nevis', 'Central America & Caribbean'], ['Saint Lucia', 'Central America & Caribbean'],
-  ['Saint Vincent and the Grenadines', 'Central America & Caribbean'],
-  ['Trinidad and Tobago', 'Central America & Caribbean'],
+  ['AG', 'Central America & Caribbean'], ['BS', 'Central America & Caribbean'],
+  ['BB', 'Central America & Caribbean'], ['BZ', 'Central America & Caribbean'],
+  ['CR', 'Central America & Caribbean'], ['CU', 'Central America & Caribbean'],
+  ['DM', 'Central America & Caribbean'], ['DO', 'Central America & Caribbean'],
+  ['SV', 'Central America & Caribbean'], ['GD', 'Central America & Caribbean'],
+  ['GT', 'Central America & Caribbean'], ['HT', 'Central America & Caribbean'],
+  ['HN', 'Central America & Caribbean'], ['JM', 'Central America & Caribbean'],
+  ['NI', 'Central America & Caribbean'], ['PA', 'Central America & Caribbean'],
+  ['KN', 'Central America & Caribbean'], ['LC', 'Central America & Caribbean'],
+  ['VC', 'Central America & Caribbean'], ['TT', 'Central America & Caribbean'],
 
   // South America
-  ['Argentina', 'South America'], ['Bolivia', 'South America'], ['Brazil', 'South America'],
-  ['Chile', 'South America'], ['Colombia', 'South America'], ['Ecuador', 'South America'],
-  ['Guyana', 'South America'], ['Paraguay', 'South America'], ['Peru', 'South America'],
-  ['Suriname', 'South America'], ['Uruguay', 'South America'], ['Venezuela', 'South America'],
+  ['AR', 'South America'], ['BO', 'South America'], ['BR', 'South America'], ['CL', 'South America'],
+  ['CO', 'South America'], ['EC', 'South America'], ['GY', 'South America'], ['PY', 'South America'],
+  ['PE', 'South America'], ['SR', 'South America'], ['UY', 'South America'], ['VE', 'South America'],
 
   // Oceania
-  ['Australia', 'Oceania'], ['Fiji', 'Oceania'], ['Kiribati', 'Oceania'],
-  ['Marshall Islands', 'Oceania'], ['Micronesia', 'Oceania'], ['Nauru', 'Oceania'],
-  ['New Zealand', 'Oceania'], ['Palau', 'Oceania'], ['Papua New Guinea', 'Oceania'],
-  ['Samoa', 'Oceania'], ['Solomon Islands', 'Oceania'], ['Tonga', 'Oceania'],
-  ['Tuvalu', 'Oceania'], ['Vanuatu', 'Oceania'],
+  ['AU', 'Oceania'], ['FJ', 'Oceania'], ['KI', 'Oceania'], ['MH', 'Oceania'], ['FM', 'Oceania'],
+  ['NR', 'Oceania'], ['NZ', 'Oceania'], ['PW', 'Oceania'], ['PG', 'Oceania'], ['WS', 'Oceania'],
+  ['SB', 'Oceania'], ['TO', 'Oceania'], ['TV', 'Oceania'], ['VU', 'Oceania'],
 ]
 
-/** Sorted country names for datalist pickers. */
-export const COUNTRY_NAMES = RAW.map(([name]) => name).sort((a, b) => a.localeCompare(b))
+const dnCache = {}
+function displayNames(lang) {
+  const key = lang === 'bg' ? 'bg' : 'en'
+  if (!dnCache[key]) {
+    try { dnCache[key] = new Intl.DisplayNames([key], { type: 'region' }) }
+    catch { dnCache[key] = new Intl.DisplayNames(['en'], { type: 'region' }) }
+  }
+  return dnCache[key]
+}
+
+/** Localized country name for an ISO alpha-2 code. */
+export function localizedCountryName(code, lang = 'en') {
+  if (!code) return ''
+  try { return displayNames(lang).of(String(code).toUpperCase()) || code } catch { return code }
+}
+
+/** Sorted, localized country names for the datalist picker. */
+export function countryNames(lang = 'en') {
+  const collator = new Intl.Collator(lang === 'bg' ? 'bg' : 'en')
+  return RAW.map(([code]) => localizedCountryName(code, lang)).sort((a, b) => collator.compare(a, b))
+}
+
+/** English list — kept for back-compat. */
+export const COUNTRY_NAMES = countryNames('en')
 
 /** All distinct regions. */
 export const REGIONS = [...new Set(RAW.map(([, region]) => region))]
 
-const regionByCountry = new Map(RAW.map(([name, region]) => [name.toLowerCase(), region]))
+// Region keyed by every localized name (en + bg), so lookup works whatever
+// language the value was picked in.
+const regionByName = new Map()
+for (const [code, region] of RAW) {
+  for (const lang of ['en', 'bg']) {
+    const name = localizedCountryName(code, lang)
+    if (name) regionByName.set(name.toLowerCase(), region)
+  }
+}
 
 /**
- * Region for a country name (case-insensitive); empty string when unknown.
+ * Region for a country name in any supported language (case-insensitive).
  * @param {string} country
  */
 export function regionForCountry(country) {
-  return regionByCountry.get(String(country).trim().toLowerCase()) ?? ''
+  return regionByName.get(String(country).trim().toLowerCase()) ?? ''
 }

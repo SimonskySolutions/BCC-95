@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { selectOperationsByProduct } from '../domains/operations/selectors.js'
 import { createOperationDefinition } from '../domains/operations/mutations.js'
+import { useDb } from '../data/useDb.js'
+import OperationActions, { OperationStatusChip } from '../components/erp/OperationActions.jsx'
 import {
   createExecutionActualEntry,
   applyExecutionActualToTask,
@@ -9,12 +11,14 @@ import {
 import { selectEmployeeById } from '../domains/people/selectors.js'
 import { useLanguage } from '../i18n/useLanguage.js'
 import ProductPathBuilder from '../components/erp/ProductPathBuilder.jsx'
+import DatePicker from '../components/DatePicker.jsx'
 
 /**
  * @param {{ db: import('../data/mockDatabase.js').MockDatabase }} props
  */
 export default function ManufacturingPage({ db }) {
   const { t } = useLanguage()
+  const { commit } = useDb()
   const [productId, setProductId] = useState('prod-1')
   const [, setTick] = useState(0)
   const [opSearch, setOpSearch] = useState('')
@@ -130,7 +134,7 @@ export default function ManufacturingPage({ db }) {
   function onCreateOperation(e) {
     e.preventDefault()
     setBanner(null)
-    const r = createOperationDefinition(db, {
+    const r = commit(() => createOperationDefinition(db, {
       productId,
       name: opName,
       stepCode: opStep,
@@ -145,7 +149,7 @@ export default function ManufacturingPage({ db }) {
         maxDefectRatePercent: Number(opTgtDefect),
         targetCycleMinutes: Number(opTgtCycle),
       },
-    })
+    }))
     if (r.ok) {
       setBanner({
         type: 'ok',
@@ -377,8 +381,9 @@ export default function ManufacturingPage({ db }) {
                       <td className="px-3 py-2 text-right tabular-nums">{op.dailyKpiTarget?.targetCycleMinutes ?? '—'}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{op.dailyKpiTarget?.maxDefectRatePercent ?? '—'}</td>
                       <td className="px-3 py-2">
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-700">
-                          {op.status}
+                        <span className="flex items-center gap-1.5">
+                          <OperationStatusChip status={op.status} />
+                          <OperationActions operation={op} />
                         </span>
                       </td>
                     </tr>
@@ -677,14 +682,10 @@ export default function ManufacturingPage({ db }) {
         <form onSubmit={onCaptureActual} className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <label className="text-xs font-medium text-slate-700">
             {t('mfg.workDate')}
-            <input
-              type="date"
+            <DatePicker
+              className="mt-1"
               value={capDate}
-              onChange={(e) => {
-                setCapDate(e.target.value)
-                setCapAssignment('')
-              }}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-sm"
+              onChange={(iso) => { setCapDate(iso); setCapAssignment('') }}
             />
           </label>
           <label className="text-xs font-medium text-slate-700 md:col-span-2">
